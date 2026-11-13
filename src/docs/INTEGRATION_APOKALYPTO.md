@@ -6,7 +6,8 @@ die apokalypto-Merkmale (Oase, Wasserwege, Dünen …) werden danach einzeln als
 
 | Schritt | Stand | apokalypto-Commit |
 |---|---|---|
-| 1. Generator, LOD-Optik, 0,5-m-Physik-Kacheln | **erledigt** | `a5e0afdd` (Branch `claude/focused-cerf-gj1kcv`) |
+| 1. Generator, LOD-Optik, 0,5-m-Physik-Kacheln | **erledigt** | `a5e0afdd` |
+| 1b. Physik-Worker baut Terrain-Kacheln selbst (wie suspension) | **erledigt** | Branch `claude/focused-cerf-gj1kcv` |
 | 2. apokalypto-Merkmale als Schichten | offen – Liste in §7 | – |
 
 Vorher hatte apokalypto 3×3 Chunks à 8192 m mit 256 Unterteilungen (**32 m Zellweite**, Optik = Physik).
@@ -27,22 +28,22 @@ Alles unter `apokalypto/src/game/game-terrain/`. Benennung nach apokalypto-Konve
 | `render/terrain/LodTerrain.ts` | `game-terrain-lod/game-terrain-lod.ts` (`GameTerrainLod`) | absolute Platzierung im `worldGroup`, `primeAround()` für den Boot |
 | `render/terrain/tileWorker.ts` | `game-terrain-lod/game-terrain-lod-tile.worker.ts` | ohne `terrain`-Nachricht |
 | `terrainMaterial()` | `game-terrain-look/game-terrain-look-material.ts` → `buildGameTerrainLodMaterial()` | Morph + apokalypto-Look-Kette (§5) |
-| `physics/terrainColliders.ts` | `game-terrain-chunk-ring.ts` (umgebaut) | über apokalypto-SAB/IPC statt direkt im Physik-Worker (§4) |
+| `physics/terrainColliders.ts` | `game-physics-worker/environment/game-physics-worker-environment-terrain.ts` (`PhysicsWorkerTerrainTiles`) | Kacheln unter **jedem** dynamischen Körper statt um ein Fahrzeug (§4) |
 | `shared/origin.ts`, `originShifter.ts` | – **nicht übernommen** | apokalypto hat eigenes Floating Origin (§3) |
 
 ## 2. Eine Höhenfunktion für alles
-`gameTerrainHeightAtWorld(x, z)` (`game-terrain-height/game-terrain-height-base.ts`) liest jetzt den Generator.
-Alle Nutzer laufen darüber oder über die Physik-Grids, die exakt dieselben Punkte enthalten:
+`gameTerrainHeightAtWorld(x, z)` (`game-terrain-height/game-terrain-height-base.ts`) liest den Generator. Er ist rein und
+läuft in jedem Thread – es gibt **keine Höhen-Grids, keinen SAB und keine Bereitschafts-Abfragen** mehr:
 
-| Nutzer | Quelle | Verhalten außerhalb der Physik-Kacheln |
-|---|---|---|
-| Physik-Heightfields | Worker `computeHeightTile` → SAB-Slot → Rapier | – |
-| LOD-Optik | Kachel-Worker → `gameTerrainGenSampleGrid` (bandbegrenzt) | – (unendlich) |
-| Fahrzeug-Platzierung, Spawn (`sampleCoarseTerrainYAt`) | Physik-Grids | `NaN` = „noch kein Boden“ → Platzierung wartet (gewollt) |
-| Dekor Gras/Steine (Radius 320/225 m) | Physik-Grids | `NaN`, liegt aber immer im Ring (±416 m) |
-| Flora-/Prop-Bake (`createGameTerrainWorkerHeightSampler`) | Grids, sonst Generator | Generator |
-| Minimap (1000 m) | Grids, sonst Generator | Generator |
-| Biom-Farben (`gameTerrainVertexAlbedoRgbAtWorld`) | im Kachel-Worker je Vertex | – |
+| Nutzer | Quelle |
+|---|---|
+| Physik-Heightfields | Physik-Worker, `gameTerrainGenSampleRowsInto` (volle Auflösung) |
+| LOD-Optik | Kachel-Worker, `gameTerrainGenSampleGrid` (bandbegrenzt) |
+| Spawn, Fahrzeug-Platzierung, Props, Dekor, Flora, Minimap | `gameTerrainHeightAtWorld` / `session.sampleCoarseTerrainYAt` |
+| Biom-Farben (`gameTerrainVertexAlbedoRgbAtWorld`) | im Kachel-Worker je Vertex |
+
+Physik-Kacheln liegen auf exakt denselben Punkten; zwischen den Punkten interpoliert Rapier linear (Abweichung zur
+Generator-Höhe < 1 cm bei 0,5-m-Raster).
 
 ## 3. Koordinaten, Floating Origin, Versatz
 | Thema | suspension | apokalypto |
@@ -59,21 +60,28 @@ Preset-Gebiet, Gebirge in Sichtweite). Neue Seeds/Presets → Suche wiederholen.
 
 Biom-Höhenbänder passen ohne Änderung: kalt ab 500 m, Schnee ab 1000 m → Gebirge werden kalt/verschneit, Hochebene bleibt temperate.
 
-## 4. Physik-Kacheln
+## 4. Physik-Kacheln (gehören dem Physik-Worker)
 Kachel = 128 Zellen × 0,5 m = 64 m (= 2×2 LOD-0-Kacheln, gleiche Punkte, gleiche Diagonale wie Rapier).
+Der Physik-Worker baut sie selbst, vor jedem `world.step()` (`PhysicsWorkerCore.updateTerrainTiles`):
 
-| Größe | Wert | Grund |
+| Regel | Wert | Grund |
 |---|---|---|
-| Ring (gewünscht) | Radius 6 → 13×13 = 169 Kacheln, ±416 m | apokalypto-Streaming legt Physik-Körper in Tier 0 an (≤ 2 Zellen à 128 m ≈ 320 m) – suspension braucht nur ein Fahrzeug (Radius 1) |
-| Behalten bis | Radius 7 | Hysterese gegen Pendeln an Kachelgrenzen |
-| Boot wartet auf | ganzen Ring (Radius 6) | Fahrzeuge/Props im Umkreis werden beim Boot auf diese Höhen gesetzt |
-| SAB-Slots | 15×15 + 4 + 2 = 231 (≈ 15 MB) | Behalten-Ring + Attach-Budget + Puffer |
-| Pro Tick | 4 anhängen / 4 entladen | |
+| Sofort (im selben Schritt) | Kachel unter jedem aktiven dynamischen Körper + unter seiner Position in 0,25 s | nichts fällt je durch fehlenden Boden; 10–20 ms je Kachel |
+| Verteilt | Ring Radius 1 (3×3, ±96 m) um jeden Körper, nächste zuerst, 2048 Höhen pro Schritt | wie suspension (`tiles.update(…, 2500)`) |
+| Behalten | Radius 2 um jeden Körper | Hysterese |
+| Entladen | max. 4 pro Schritt, Constraints am Körper werden vorher gelöst | |
+| Fokus neu sammeln | alle 8 Schritte (`world.forEachRigidBody`, dynamisch + aktiv) | dazwischen nur „Kachel unter Körper“ |
 
-Ablauf (unverändert apokalypto-Pipeline, nur Größe/Inhalt neu): `GameTerrainChunkRing` fordert
-`computeHeightTile(cx, cz)` beim Terrain-Worker-Pool an (volle Auflösung, `sampleGrid(…, full = true)`), schreibt die
-Höhen in einen SAB-Slot, der Physik-Worker baut daraus das Heightfield (`postWorldPhysicsTerrainChunkAdd`).
-Optik ist nicht mehr Teil des Rings.
+Unterschied zu suspension: dort ein Fahrzeug, hier alle Körper (Character, Fahrzeuge, Props, Equipment) – deshalb
+keine Ring-Größe nach Streaming-Tier mehr nötig. Nach einem Worker-Neustart (Recovery) baut der neue Worker die
+Kacheln von selbst wieder auf.
+
+Haupt-Thread erfährt Änderungen nur per Antwort (`TERRAIN_CHUNK_READY` / `TERRAIN_CHUNK_REMOVED`) →
+`game-terrain-mesh-physics-registry.ts` (Tether-Anker, Kontakt-Zuordnung, Telemetrie `Chunks=`).
+Topologie-Änderungen markieren die Raycast-Controller nahe Fahrzeuge zur Neuerstellung (wie früher bei `TERRAIN_CHUNK_ADD`).
+
+Entfernt gegenüber Schritt 1: `GameTerrainChunkRing`, Höhen-Grid-SAB (Layout, Views, Slots, Bind), Terrain-Worker-Job
+`computeHeightTile`, `TERRAIN_CHUNK_ADD`/`REMOVE`, `INIT_TERRAIN_HEIGHT_GRID_SAB`, Grid-Interpolation.
 
 Das **8192-m-Raster bleibt** als „Makro-Chunk“ (`GAME_TERRAIN_MACRO_CHUNK_M`, `gameTerrainMacro…` in
 `game-terrain-chunk-coords.ts`) für Wasser-Ebenen, Cell-Streaming-Unterzellen und Float-Origin-Recenter (4096 m).
@@ -82,7 +90,7 @@ Das **8192-m-Raster bleibt** als „Makro-Chunk“ (`GAME_TERRAIN_MACRO_CHUNK_M`
 ## 5. LOD-Optik und Material
 - `GameTerrainLod` gehört der `GameTerrainSession` (`session.lod`), `bindWorldGroup` hängt das BatchedMesh ein,
   `tickLodAtCamera(absX, absY, absZ)` läuft in `game-world-present-chunk-surface-lane.ts`.
-- Boot: `bootGroundAtSpawn` füllt Physik-Ring und LOD parallel (`primeAround`, max. 8 s, Rest streamt grob → fein nach).
+- Boot: `bootGroundAtSpawn` füllt nur noch das LOD (`primeAround`, max. 8 s, Rest streamt grob → fein nach); Physik baut der Worker beim Spawnen der Körper.
 - Name des BatchedMesh = `GAME_TERRAIN_CHUNK_DRAW_MESH_NAME` → der Boot-Shader-Compile findet es wie früher die Chunks.
 - **Material** (`buildGameTerrainLodMaterial`): CDLOD-Morph wie suspension (Höhe + Normale) **plus Farbe**
   (`morphColor`, sonst springt die Biom-Farbe an Hängen beim Kachelwechsel, weil sie von der Normalen abhängt).
@@ -94,9 +102,10 @@ Das **8192-m-Raster bleibt** als „Makro-Chunk“ (`GAME_TERRAIN_MACRO_CHUNK_M`
 ## 6. Stolpersteine (beim Einbau aufgetreten)
 | Symptom | Ursache | Lösung / Ort |
 |---|---|---|
-| Rapier „unreachable“-Panic nach 2–11 Schritten, Fahrzeuge mit `terrainY = NaN` | Erster Present-Frame las PLAYER_ANCHOR = (0,0): Boot-Seed setzte `interp`, aber nicht `previousPose/currentPose` → Physik-Ring zentrierte auf 0,0 und entlud die Kacheln am Spawn. Beim alten 8-km-Chunk lagen 0,0 und Spawn im selben Chunk – Fehler unsichtbar | `seedPlayerAnchorPresentInterpAtBoot` setzt jetzt auch die Pose-Paare (`game-world-player-anchor.ts`) |
-| Fahrzeuge nahe Spawn ohne Boden | Boot wartete nur auf 3×3 Kacheln (±96 m), Fahrzeuge stehen bis ~320 m | Boot wartet auf den ganzen Ring |
-| Minimap schwarz | las nur geladene Grids (früher 24 km, jetzt ±416 m) | Rückfall auf Generator |
+| (Schritt 1) Rapier „unreachable“-Panic nach 2–11 Schritten, Fahrzeuge mit `terrainY = NaN` | Erster Present-Frame las PLAYER_ANCHOR = (0,0): Boot-Seed setzte `interp`, aber nicht `previousPose/currentPose` → Physik-Ring zentrierte auf 0,0 und entlud die Kacheln am Spawn. Beim alten 8-km-Chunk lagen 0,0 und Spawn im selben Chunk – Fehler unsichtbar | `seedPlayerAnchorPresentInterpAtBoot` setzt jetzt auch die Pose-Paare (`game-world-player-anchor.ts`) |
+| (Schritt 1) Fahrzeuge nahe Spawn ohne Boden | Ring um den Spieler deckte nicht alle Körper ab | Physik-Worker baut Kacheln unter jedem Körper (§4) |
+| Minimap schwarz | las nur geladene Grids | liest den Generator |
+| Character fällt nach freiem Fall durchs Terrain (mit Fallschirm nicht) | harter Aufprall → Ragdoll aus zwei kleinen Kugeln (≈ 0,15 m) startet mit Aufprallgeschwindigkeit (≈ −31 m/s) → tunnelt in Rapier durch das Heightfield, auch mit CCD und auch bei grobem Raster (isoliert nachgestellt) | **offen** – Ragdoll-Einstieg (`game-physics-worker-character-ragdoll-chain.ts`): Startgeschwindigkeit begrenzen bzw. knapp über dem Boden starten |
 | „Chunk“ meinte zwei Dinge | Wasser/Streaming/Origin brauchen weiter 8 km, Physik 64 m | Makro-Chunk getrennt (§4) |
 | Headless-Test schwarz | SwiftShader-WebGPU scheitert an `createBuffer`-Limits (auch ohne diese Änderung) | Sichtprüfung mit `WebGPURenderer({ forceWebGL: true })`, gleiche TSL-Materialien |
 
@@ -127,10 +136,11 @@ in apokalypto anlegen (dort gibt es noch keinen Vitest – Smoke-Skript in `_Scr
 ## 8. Offen
 - **Reversed-Z / Sichtweite 32 km**: apokalypto-Kamera far = 20 km mit Standard-Tiefe. Für 32 km wie suspension:
   `reversedDepthBuffer: true` am Renderer, dann Post-Processing/Shader prüfen, die Tiefe lesen (Wasser, `game-scene-resolved-depth`).
-- **Fern-Physik**: Körper außerhalb ±416 m haben keinen Boden. Heute legt das Streaming dort keine an; für ferne
-  Fahrzeuge siehe TERRAIN.md „Später“ (gröbere Heightfield-Ringe).
-- `_Scripts/terrain-boot-hill-spawn-smoke-check.ts` war schon vor der Umstellung nicht lauffähig (fehlende Hilfsdatei
-  `terrain-worker-in-process-worker.ts`) und bezieht sich auf den alten 3×3-Chunk-Ring.
+- **Ragdoll tunnelt** durchs Heightfield (§6).
+- **Floating Origin**: der Physik-Worker rechnet Szene = absolut (Origin im Worker nie gesetzt). Solange
+  `CELL_STREAMING_FLOAT_ORIGIN_GATE` aus ist, stimmt das; beim Einschalten braucht der Worker den Origin (ohnehin nötig für `ORIGIN_SHIFT`).
+- `_Scripts/terrain-boot-hill-spawn-smoke-check.ts` wurde gelöscht (war schon vorher nicht lauffähig, testete den alten Chunk-Ring).
+- `vehicle-manifest-stream-in-placement-gate-smoke-check.ts` schlägt fehl – unabhängig vom Terrain (auch auf `lokal-arbeit` allein).
 - Leistung im echten Browser messen (Boot-Füllung headless/SwiftShader: LOD 3–8 s CPU, im Browser mit GPU deutlich weniger erwartet).
 
 ## 9. Zahlen (headless, SwiftShader, nur CPU)
@@ -138,5 +148,6 @@ in apokalypto anlegen (dort gibt es noch keinen Vitest – Smoke-Skript in `_Scr
 |---|---|
 | LOD-Erstfüllung am Spawn (3 Kachel-Worker) | 162 sichtbare / 216 gebaute Kacheln, 4,3 … 7,6 s |
 | LOD am Gebirge | 149 sichtbare Kacheln, 5,4 s |
-| Physik-Ring | 169 Kacheln × 16 641 Höhen |
+| Physik-Kachel (64 m, 16 641 Höhen) | 10 ms (Ebene) … 20 ms (Gebirge) |
+| Physik-Kacheln am Spawn (7 dynamische Körper) | 21 |
 | Höhe am Spawn (794, 74) | ~287 m |
