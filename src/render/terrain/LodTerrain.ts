@@ -52,6 +52,9 @@ interface Chunk {
   iz: number;
   /** Platz im BatchedMesh (Geometrie- = Instanz-Index) */
   slot: number;
+  /** Höhenspanne [min, max] (absolut = lokal, y wird nicht verschoben) */
+  minY: number;
+  maxY: number;
   lastUsed: number;
 }
 
@@ -157,7 +160,7 @@ export class LodTerrain {
     this.mesh.setGeometryAt(slot, g);
     g.dispose();
     this.mesh.setVisibleAt(slot, false);
-    const c: Chunk = { key, lod, ix, iz, slot, lastUsed: this.frame };
+    const c: Chunk = { key, lod, ix, iz, slot, lastUsed: this.frame, minY: a.bounds[0], maxY: a.bounds[1] };
     this.place(c);
     this.cache.set(key, c);
     this.dirty = true;
@@ -212,11 +215,17 @@ export class LodTerrain {
     const want: { lod: number; ix: number; iz: number; d: number }[] = [];
     const key = (lod: number, ix: number, iz: number) => `${lod},${ix},${iz}`;
     const ready = (lod: number, ix: number, iz: number) => this.cache.has(key(lod, ix, iz));
+    /**
+     * Abstand Kamera ↔ Kachel in 3D: über die Höhenspanne der Kachel (Berg 2 km höher zählt mit).
+     * Noch nicht gebaute Kachel: Kamerahöhe über dem Boden darunter als Näherung.
+     */
     const dist = (lod: number, ix: number, iz: number) => {
       const s = tileSize(lod);
       const dx = Math.max(0, Math.abs(ax - (ix + 0.5) * s) - s / 2);
       const dz = Math.max(0, Math.abs(az - (iz + 0.5) * s) - s / 2);
-      return Math.hypot(dx, dz, camH);
+      const c = this.cache.get(key(lod, ix, iz));
+      const dy = c ? Math.max(0, c.minY - camY, camY - c.maxY) : camH;
+      return Math.sqrt(dx * dx + dz * dz + dy * dy);
     };
     /** Sichtweiten-Grenze ebenfalls mit Hysterese (sonst Pendeln am Nebel-Ende) */
     const nextInView = new Set<string>();

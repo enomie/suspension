@@ -1,6 +1,7 @@
 # suspension
 
-Joint-basierter Fahrzeug-Baukasten (Rapier SIMD) auf unendlichem LOD-Terrain (WebGPU, three.js).
+Joint-basierter Fahrzeug-Baukasten (Rapier SIMD) auf unendlichem, deterministischem LOD-Terrain (WebGPU, three.js):
+Kontinente und Meeresboden bis −1500 m, Gebirgszüge bis 3000 m.
 Zehn Aufhängungsprinzipien zum Durchschalten, Physik im Worker mit 120 Hz, Sichtweite 32 km.
 
 ```bash
@@ -28,7 +29,7 @@ npm test
 | Maus | Kamera kreisen / zoomen |
 | F1 … F7 | Debug-Schalter (Schatten, Morph, Interpolation, LOD einfrieren, Drahtgitter, Sonne, Schattenfilter) |
 
-URL-Parameter: `?x=…&z=…` Startposition, `?worker=0` Physik im Haupt-Thread, `?dpr=1` geringere Auflösung,
+URL-Parameter: `?x=…&z=…` Startposition (Gebirge: `?x=858000&z=897000`), `?terrain=world|hills`, `?seed=…`, `?worker=0` Physik im Haupt-Thread, `?dpr=1` geringere Auflösung,
 `?debug=shadows,morph,interp` Schalter vorab aus.
 
 ## Doku

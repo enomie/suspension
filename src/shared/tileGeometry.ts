@@ -66,6 +66,8 @@ export interface TileArrays {
   morphNormal: Float32Array;
   /** [start, end] je Vertex (konstant je Kachel) */
   morphRange: Float32Array;
+  /** [min, max] Höhe der Kachel inkl. Morph-Ziel (für LOD-Abstand in 3D) */
+  bounds: Float32Array;
 }
 
 export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays {
@@ -133,7 +135,18 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     }
   }
 
-  const skirt = d * 2 + 0.5 * 2 ** lod;
+  // Höhenspanne + größter Morph-Ausschlag → Skirt-Tiefe deckt Risse auch an steilen Hängen
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let maxMorph = 0;
+  for (let k = 0; k < VERTS; k++) {
+    const y = pos[k * 3 + 1];
+    const m = morph[k];
+    minY = Math.min(minY, y, y + m);
+    maxY = Math.max(maxY, y, y + m);
+    maxMorph = Math.max(maxMorph, m < 0 ? -m : m);
+  }
+  const skirt = d * 2 + 0.5 * 2 ** lod + 2 * maxMorph;
   RING.forEach((src, r) => {
     const k = VERTS + r;
     pos[k * 3] = pos[src * 3];
@@ -148,5 +161,12 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     range[k * 2] = r0;
     range[k * 2 + 1] = r1;
   }
-  return { position: pos, normal: nor, morph, morphNormal: mnor, morphRange: range };
+  return {
+    position: pos,
+    normal: nor,
+    morph,
+    morphNormal: mnor,
+    morphRange: range,
+    bounds: new Float32Array([minY - skirt, maxY]),
+  };
 }

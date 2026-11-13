@@ -7,7 +7,7 @@ import { DEFAULT_TERRAIN } from './presets';
 import type { TerrainConfig } from './types';
 
 export { createTerrain, type Terrain } from './generator';
-export { DEFAULT_TERRAIN, TERRAIN_PRESETS } from './presets';
+export { DEFAULT_TERRAIN, HILLS_TERRAIN, TERRAIN_PRESETS, WORLD_TERRAIN } from './presets';
 export type { TerrainConfig, LayerConfig, Layer, SampleContext } from './types';
 
 let active: Terrain = createTerrain(DEFAULT_TERRAIN);

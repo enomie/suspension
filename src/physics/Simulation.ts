@@ -72,7 +72,7 @@ export class Simulation {
   step(): void {
     const v = this.vehicle;
     const t = v.chassis.translation();
-    this.tiles.update(t.x, t.z, 1); // höchstens 1 neue Kachel pro Schritt
+    this.tiles.update(t.x, t.z, 2500); // Nachbarkacheln stückweise: ~2500 Punkte (~2,5 ms) pro Schritt
     v.applyInput(this.input, PHYSICS_DT);
     this.world.step();
     v.updateTelemetry();

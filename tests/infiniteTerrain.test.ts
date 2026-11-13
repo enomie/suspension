@@ -5,6 +5,7 @@ import { LodTerrain } from '../src/render/terrain/LodTerrain';
 import { sampleTerrainHeightWorld } from '../src/shared/terrainHeight';
 import { TILE_SIZE } from '../src/shared/config';
 import { ORIGIN, originShiftFor } from '../src/shared/origin';
+import { HILLS_TERRAIN, setTerrain, WORLD_TERRAIN } from '../src/shared/terrain';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
 import { car } from '../src/physics/vehicle/presets/car';
 
@@ -44,13 +45,26 @@ describe('physics tiles', () => {
     });
   }
 
-  it('maxBuild: Kachel unter dem Fahrzeug sofort, Nachbarn verteilt auf mehrere Aufrufe', () => {
+  it('Budget: Kachel unter dem Fahrzeug sofort, Nachbarn stückweise; Ergebnis identisch', () => {
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     const tiles = new PhysicsTiles(RAPIER, world);
-    tiles.update(0, 0, 1);
+    tiles.update(0, 0, 2500);
     expect(tiles.count).toBe(1);
-    for (let i = 0; i < 8; i++) tiles.update(0, 0, 1);
+    let calls = 1;
+    while (tiles.busy || tiles.count < 9) {
+      tiles.update(0, 0, 2500);
+      calls++;
+    }
     expect(tiles.count).toBe(9);
+    expect(calls).toBeGreaterThan(8 * 6); // je Nachbar ~7 Aufrufe
+    world.step();
+    let worst = 0;
+    for (let i = 0; i < 100; i++) {
+      const x = ((i * 37) % 180) - 60 + 0.13;
+      const z = ((i * 53) % 180) - 60 + 0.29;
+      worst = Math.max(worst, Math.abs(rayY(world, x, z) - sampleTerrainHeightWorld(x, z)));
+    }
+    expect(worst).toBeLessThan(0.1);
   });
 
   it('stream: far tiles are removed, new ones built', () => {
@@ -180,6 +194,38 @@ describe('LOD stability (no flicker)', () => {
 });
 
 describe('LOD beim Fahren (Kacheln kommen verzögert wie aus dem Worker)', () => {
+  it('Gebirge (Welt): kein Hin-und-her-Schalten', () => {
+    setTerrain(WORLD_TERRAIN);
+    ORIGIN.x = 858000;
+    ORIGIN.z = 897000;
+    try {
+      const t = new LodTerrain();
+      t.budgetMs = 1e9;
+      const y0 = sampleTerrainHeightWorld(ORIGIN.x, ORIGIN.z) + 4;
+      for (let i = 0; i < 20; i++) t.update(0, y0, 0);
+      t.budgetMs = 0;
+      const hist = new Map<string, number[]>();
+      let prev = new Set(t.visibleKeys());
+      let flips = 0;
+      for (let f = 0; f < 600; f++) {
+        const z = -f * 0.4;
+        t.update(6, sampleTerrainHeightWorld(ORIGIN.x + 6, ORIGIN.z + z) + 4, z);
+        const cur = new Set(t.visibleKeys());
+        for (const k of new Set([...cur, ...prev]))
+          if (cur.has(k) !== prev.has(k)) {
+            const h = hist.get(k) ?? [];
+            h.push(f);
+            hist.set(k, h);
+            if (h.length >= 3 && h[h.length - 1] - h[h.length - 3] < 60) flips++;
+          }
+        prev = cur;
+      }
+      expect(flips).toBe(0);
+    } finally {
+      setTerrain(HILLS_TERRAIN);
+    }
+  }, 60000);
+
   it('kein Hin-und-her-Schalten zwischen grob und fein', () => {
     const t = new LodTerrain();
     t.budgetMs = 1e9;

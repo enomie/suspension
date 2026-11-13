@@ -2,16 +2,20 @@
  * Terrain-Generator: Typen. Alles hier ist reine Daten bzw. reine Funktionen (kein three.js, kein Rapier),
  * damit dieselbe Konfiguration in jedem Thread und in anderen Projekten denselben Boden ergibt.
  */
+import type { ContinentLayerConfig } from './layers/continent';
 import type { DetailLayerConfig } from './layers/detail';
+import type { MountainLayerConfig } from './layers/mountains';
 
 /** Konfiguration einer Schicht – reine Daten (per postMessage übertragbar) */
-export type LayerConfig = DetailLayerConfig;
+export type LayerConfig = ContinentLayerConfig | MountainLayerConfig | DetailLayerConfig;
 
 export interface TerrainConfig {
   /** Grund-Seed; jede Schicht leitet daraus ihren eigenen ab (Name + Seed) */
   seed: number;
   /** Schichten in Reihenfolge der Auswertung */
   layers: LayerConfig[];
+  /** Grenzen [m]: max weich (asymptotisch ab max − knee), min hart */
+  limits?: { min: number; max: number; knee: number };
 }
 
 /**

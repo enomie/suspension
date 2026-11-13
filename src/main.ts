@@ -24,7 +24,13 @@ ORIGIN.x = Number(params.get('x') ?? 0);
 ORIGIN.z = Number(params.get('z') ?? 0);
 /** ?terrain=<preset>&seed=<zahl> – gilt für alle Threads (wird an die Worker weitergegeben) */
 const preset = TERRAIN_PRESETS[params.get('terrain') ?? 'default'] ?? TERRAIN_PRESETS.default;
-setTerrain({ ...preset, seed: Number(params.get('seed') ?? preset.seed) });
+const world = setTerrain({ ...preset, seed: Number(params.get('seed') ?? preset.seed) });
+// ohne ?x/?z: nächster ebener Landpunkt ab 0/0 (Raster 64 m = Origin-Raster → Fahrzeug startet bei lokal 0/0)
+if (!params.has('x') && !params.has('z')) {
+  const p = world.findLand(0, 0, { step: 64 });
+  ORIGIN.x = p.x;
+  ORIGIN.z = p.z;
+}
 
 /** ?dpr=1 senkt die Auflösung (Fill-Rate) */
 const stage = await createStage(document.querySelector<HTMLDivElement>('#app')!, {

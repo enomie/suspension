@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createTerrain, DEFAULT_TERRAIN } from '../src/shared/terrain';
+import { createTerrain, DEFAULT_TERRAIN, HILLS_TERRAIN, WORLD_TERRAIN } from '../src/shared/terrain';
+import { softLimit } from '../src/shared/terrain/generator';
+import { setTerrain } from '../src/shared/terrain';
 import { simplex2, fbm } from '../src/shared/terrain/noise';
 import { buildTileArrays, tileSize } from '../src/shared/tileGeometry';
 import { TILE_SEGMENTS } from '../src/shared/config';
@@ -10,11 +12,12 @@ describe('Terrain-Generator', () => {
   it('Golden Values: Höhenfunktion ändert sich nicht unbemerkt (bitgleich)', () => {
     // Bei ABSICHTLICHER Änderung des Terrains neu erzeugen und hier eintragen.
     const golden: [number, number, number][] = [
-      [0, 0, 4.5],
-      [12.5, -33.2, 5.101901212699477],
-      [1000.25, 777.75, 3.474059902088719],
-      [-54321.5, 98765.125, 5.771483708840468],
-      [2000000.25, -1350000.75, 2.9956669117390926],
+      [0, 0, 23.71920890029155],
+      [858000.5, 897000.25, 2852.4499591578037],
+      [12.5, -33.2, 24.259546188349688],
+      [1000.25, 777.75, 75.4244801087091],
+      [-54321.5, 98765.125, 83.34734422674967],
+      [2000000.25, -1350000.75, 752.9054585556074],
     ];
     for (const [x, z, h] of golden) expect(t.height(x, z)).toBe(h);
   });
@@ -35,8 +38,9 @@ describe('Terrain-Generator', () => {
     expect(diff).toBeGreaterThan(10);
   });
 
-  it('Wertebereich: base … base + amplitude, mit echter Variation', () => {
-    const l = DEFAULT_TERRAIN.layers[0];
+  it('Hügelwelt: base … base + amplitude, mit echter Variation', () => {
+    const t = createTerrain(HILLS_TERRAIN);
+    const l = HILLS_TERRAIN.layers[0] as { base: number; amplitude: number };
     let min = Infinity;
     let max = -Infinity;
     for (let i = 0; i < 20000; i++) {
@@ -66,11 +70,55 @@ describe('Terrain-Generator', () => {
   });
 });
 
+describe('Welt: Kontinent + Gebirge', () => {
+  const w = createTerrain(WORLD_TERRAIN);
+  // grobes Raster über 900 × 900 km
+  const H: number[] = [];
+  for (let i = 0; i < 300; i++) for (let j = 0; j < 300; j++) H.push(w.height(i * 3000 + 0.5, j * 3000 + 0.5));
+
+  it('~60 % Land, ~40 % Meer', () => {
+    const land = H.filter((h) => h > 0).length / H.length;
+    expect(land).toBeGreaterThan(0.55);
+    expect(land).toBeLessThan(0.65);
+  });
+  it('Meeresboden bis −1500 m, Gipfel bis 3000 m (nie darüber)', () => {
+    expect(Math.min(...H)).toBeGreaterThanOrEqual(-1500);
+    expect(Math.min(...H)).toBeLessThan(-1400);
+    expect(Math.max(...H)).toBeLessThanOrEqual(3000);
+    expect(Math.max(...H)).toBeGreaterThan(2500);
+  });
+  it('Gebirge sind Züge, nicht flächendeckend (3–15 % über 800 m)', () => {
+    const m = H.filter((h) => h > 800).length / H.length;
+    expect(m).toBeGreaterThan(0.03);
+    expect(m).toBeLessThan(0.15);
+  });
+  it('findLand: Startpunkt auf flachem Land, deterministisch', () => {
+    const p = w.findLand(0, 0, { step: 64 });
+    expect(w.height(p.x, p.z)).toBeGreaterThan(5);
+    expect(w.height(p.x, p.z)).toBeLessThan(400);
+    expect(p.x % 64).toBe(0);
+    expect(w.findLand(0, 0, { step: 64 })).toEqual(p);
+  });
+
+  it('weiche Obergrenze: stetig, monoton, nie über max', () => {
+    let prev = -Infinity;
+    for (let h = 2000; h < 10000; h += 7) {
+      const v = softLimit(h, -1500, 3000, 300);
+      expect(v).toBeGreaterThanOrEqual(prev);
+      expect(v).toBeLessThan(3000);
+      prev = v;
+    }
+    expect(softLimit(2600, -1500, 3000, 300)).toBe(2600);
+  });
+});
+
 describe('Geomorphing-Ziel = Elternkachel', () => {
-  it('voll gemorphte Kachel hat an den groben Punkten exakt die Höhe der Elternkachel', () => {
+  it('voll gemorphte Kachel hat an den groben Punkten exakt die Höhe der Elternkachel (auch im Gebirge)', () => {
+    setTerrain(WORLD_TERRAIN);
+    // Gebirge bei (858 km, 897 km): Kacheln dort
     for (const lod of [0, 3, 7]) {
-      const ix = 5;
-      const iz = -3;
+      const ix = Math.floor(858000 / tileSize(lod)) + 1;
+      const iz = Math.floor(897000 / tileSize(lod)) - 1;
       const child = buildTileArrays(lod, ix, iz);
       const parent = buildTileArrays(lod + 1, ix >> 1, iz >> 1);
       const N = TILE_SEGMENTS;
@@ -88,7 +136,8 @@ describe('Geomorphing-Ziel = Elternkachel', () => {
           const pj = Math.round((wz - (iz >> 1) * ps) / (ps / N));
           worst = Math.max(worst, Math.abs(morphed - parent.position[(pj * (N + 1) + pi) * 3 + 1]));
         }
-      expect(worst).toBeLessThan(1e-4);
+      expect(worst).toBeLessThan(1e-3);
     }
+    setTerrain(HILLS_TERRAIN);
   });
 });

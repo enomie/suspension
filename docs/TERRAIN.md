@@ -40,11 +40,33 @@ Regeln:
   Auswahl per URL: `?terrain=<preset>&seed=<zahl>`.
 - **Bandbegrenzung:** Render-Kacheln lassen Wellenlängen < 2·Zellweite weg (spart Zeit, kein Flimmern);
   Physik rechnet immer voll. Das Morph-Ziel wird deshalb aus der echten Elternstufe abgetastet (Test „Geomorphing-Ziel“).
-- Physik-Kacheln: höchstens 1 neue Kachel pro Physik-Schritt (Kachel unter dem Fahrzeug sofort) → kein Hänger im Worker.
+- Kosten ~1 µs pro Punkt (Welt). Physik-Kacheln: die unter dem Fahrzeug sofort, Nachbarn stückweise mit
+  ~2500 Punkten pro Physik-Schritt (~2,5 ms) → kein Hänger im Worker.
 
-Schichten heute: `detail` (Hügel 1,5 … 7,5 m). Geplant: `continent`, `regions`, `mountains`, `hills`, `materials`.
+### Schichten
+| Schicht | Datei | Wirkung | Masken |
+|---|---|---|---|
+| `continent` | `layers/continent.ts` | Land/Meer aus Rauschen mit 160 km Wellenlänge; Schwelle −0,06 → ~60 % Land. Land 0 … 300 m (flache Küsten), Schelf −150 m, Tiefsee bis −1500 m | `land`, `coast`, `inland` |
+| `mountains` | `layers/mountains.ts` | Gebirgszüge: Maske (90 km) × `inland`, Grate = ridged multifractal (9 km, 9 Oktaven), Domain Warp 6 km, entlang 30° gestreckt; bis +3000 m. Grate nur, wo die Maske > 0 | `mountain` |
+| `detail` | `layers/detail.ts` | Bodenwellen (50 m, 5 Oktaven) | – |
+
+Grenzen (`limits`): Gipfel weich bis 3000 m (asymptotisch ab 2700), Meeresboden hart bei −1500 m.
+
+### Presets
+| Name | Inhalt |
+|---|---|
+| `world` (= `default`) | Kontinent + Gebirge + Bodenwellen ±3 m |
+| `hills` | nur Hügel 1,5 … 7,5 m – Fahrwerks-, Physik- und LOD-Tests (`tests/setup.ts`) |
+
+Start: ohne `?x/?z` sucht `findLand(0, 0)` den nächsten ebenen Landpunkt (5 … 400 m, Gefälle < 15 %).
+Gebirge zum Anschauen: `?x=858000&z=897000`.
+
+Geplant: `regions` (Ebene, Hügelland, Alpin, Badlands, Fremdartig), `hills`, ortsabhängiges `detail`, `materials`.
 
 ## Gegen Flackern / Popping
+- **LOD-Abstand in 3D:** Abstand Kamera ↔ Kachel über deren Höhenspanne (`bounds`) – ein Berg, der 2 km höher liegt,
+  wird nicht zu fein/zu grob gewählt.
+- **Skirts nach Gelände:** Tiefe = 2·Zellweite + 0,5·2^k + 2·größter Morph-Ausschlag → keine Risse an steilen Hängen.
 - **Verfeinern Ebene für Ebene:** eine Kachel wird nur durch ihre 4 Kinder ersetzt, wenn diese fertig sind; fehlt eins,
   bleibt nur diese Kachel stehen. (Früher musste der ganze Teilbaum bis LOD 0 fertig sein – beim Fahren fiel dann
   regelmäßig ein großer Bereich bis auf die 32-km-Wurzel zurück → starkes Flackern. Test: „LOD beim Fahren“.)
@@ -56,7 +78,8 @@ Schichten heute: `detail` (Hügel 1,5 … 7,5 m). Geplant: `continent`, `regions
 - Sichtbarkeit nur bei Änderung umschalten; Auswahl nur bei Kamerabewegung > 0,25 m oder neuen Kacheln.
 
 ## Zahlen
-~140–150 Kacheln sichtbar (bis 32 km), **1 Draw Call**, ~1,2 Mio. Dreiecke. Terrain wirft keine Schatten.
+~120–160 Kacheln sichtbar (bis 32 km), **1 Draw Call**, ~1,3 Mio. Dreiecke. Terrain wirft keine Schatten.
+Erstaufbau im Gebirge ~1,3 s Rechenzeit, verteilt auf bis zu 4 Kachel-Worker.
 
 ## Später
 - Fern-Physik: gröbere Heightfield-Ringe (Zellweite 2^k · 0,5 m) über `sampleGrid`, eigene Collision-Group
