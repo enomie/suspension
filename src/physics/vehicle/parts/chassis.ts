@@ -1,5 +1,5 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
-import type { ChassisSpec } from '../types';
+import type { ChassisSpec, ColliderPrimitive } from '../types';
 import { CHASSIS_GROUPS } from '../groups';
 import { IDENTITY_ROT } from './context';
 
@@ -16,6 +16,35 @@ export function frameColliderBox(spec: ChassisSpec): { half: [number, number, nu
   const railX = w * 0.25;
   const y = -h / 2 + FRAME_RAIL / 2 + 0.1;
   return { half: [railX + FRAME_RAIL / 2, FRAME_RAIL / 2 + 0.01, l / 2], y };
+}
+
+/** Kollisions-Primitive → Rapier-ColliderDesc (Chassis-lokal) */
+export function primitiveDesc(R: typeof RAPIER, p: ColliderPrimitive): RAPIER.ColliderDesc {
+  const r = p.rounded ?? 0;
+  let d: RAPIER.ColliderDesc;
+  switch (p.shape) {
+    case 'box': {
+      const [x, y, z] = p.size ?? [1, 1, 1];
+      d = r > 0 ? R.ColliderDesc.roundCuboid(x / 2 - r, y / 2 - r, z / 2 - r, r) : R.ColliderDesc.cuboid(x / 2, y / 2, z / 2);
+      break;
+    }
+    case 'sphere':
+      d = R.ColliderDesc.ball(p.radius ?? 0.5);
+      break;
+    case 'capsule':
+      d = R.ColliderDesc.capsule((p.height ?? 1) / 2, p.radius ?? 0.25);
+      break;
+    case 'cylinder': {
+      const h = (p.height ?? 1) / 2;
+      const rad = p.radius ?? 0.5;
+      d = r > 0 ? R.ColliderDesc.roundCylinder(h - r, rad - r, r) : R.ColliderDesc.cylinder(h, rad);
+      break;
+    }
+  }
+  const [x, y, z] = p.position;
+  d.setTranslation(x, y, z).setFriction(p.friction ?? 0.5);
+  if (p.rotation) d.setRotation({ x: p.rotation[0], y: p.rotation[1], z: p.rotation[2], w: p.rotation[3] });
+  return d;
 }
 
 /** Chassis = gefederte Masse. Masse/Trägheit der vollen Box `size`, Kollision = Rahmen. */
@@ -36,6 +65,12 @@ export function createChassis(
     z: (m / 12) * (w * w + h * h),
   };
   const [cx, cy, cz] = spec.comOffset ?? [0, 0, 0];
+  if (spec.colliders?.length) {
+    // Primitives: Masse/Schwerpunkt/Trägheit explizit am Körper, Collider ohne eigene Masse
+    body.setAdditionalMassProperties(m, { x: cx, y: cy, z: cz }, inertia, IDENTITY_ROT, true);
+    for (const p of spec.colliders) world.createCollider(primitiveDesc(R, p).setDensity(0).setCollisionGroups(CHASSIS_GROUPS), body);
+    return body;
+  }
   const { half, y } = frameColliderBox(spec);
   const border = 0.04;
   const desc = R.ColliderDesc.roundCuboid(half[0] - border, half[1] - border, half[2] - border, border)

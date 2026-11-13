@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-/** Schichtgrenzen aus docs/ARCHITECTURE.md – verhindert, dass Physik und Optik wieder verschmelzen. */
+/** Schichtgrenzen aus src/docs/ARCHITECTURE.md – verhindert, dass Physik und Optik wieder verschmelzen. */
 const SOURCES = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true }) as Record<
   string,
   string

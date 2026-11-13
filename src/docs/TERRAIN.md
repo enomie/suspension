@@ -12,15 +12,15 @@ Render-Stufen sind bandbegrenzt (siehe Generator); LOD 0 und Physik sind identis
 
 | Datei | Zuständig |
 |---|---|
-| `src/shared/config.ts` | `CELL`, `TILE_SIZE`, `MAX_LOD`, `VIEW_DISTANCE`, `DETAIL_RANGE`, `lodSplit()`, Physik-Kacheln |
-| `src/shared/terrain/` | **Generator** (rein, ohne three.js/Rapier): Noise, Schichten, Presets – siehe unten |
-| `src/shared/terrainHeight.ts` | `sampleTerrainHeightWorld(x, z)` + `sampleGrid()` des aktiven Terrains – **einziger** Abtaster für Physik und Optik |
-| `src/shared/tileGeometry.ts` | Kachel: Positionen, Normalen, Skirts, Indexpuffer + Morph-Daten (grobe Höhe **und** grobe Normale, Morph-Bereich) |
-| `src/render/terrain/LodTerrain.ts` | Quadtree-Auswahl (Hysterese bei Teilung **und** Sichtweite), Worker-Pool, **ein BatchedMesh** (320 feste Plätze, LRU) |
-| `src/render/terrain/tileWorker.ts` | Kachel-Worker (Transfer ohne Kopie) |
-| `src/physics/terrainColliders.ts` | 3×3 Rapier-Heightfields à 64 m (128 Zellen) um das Fahrzeug |
+| `shared/config.ts` | `CELL`, `TILE_SIZE`, `MAX_LOD`, `VIEW_DISTANCE`, `DETAIL_RANGE`, `lodSplit()`, Physik-Kacheln |
+| `shared/terrain/` | **Generator** (rein, ohne three.js/Rapier): Noise, Schichten, Presets – siehe unten |
+| `shared/terrainHeight.ts` | `sampleTerrainHeightWorld(x, z)` + `sampleGrid()` des aktiven Terrains – **einziger** Abtaster für Physik und Optik |
+| `shared/tileGeometry.ts` | Kachel: Positionen, Normalen, Skirts, Indexpuffer + Morph-Daten (grobe Höhe **und** grobe Normale, Morph-Bereich) |
+| `render/terrain/LodTerrain.ts` | Quadtree-Auswahl (Hysterese bei Teilung **und** Sichtweite), Worker-Pool, **ein BatchedMesh** (320 feste Plätze, LRU) |
+| `render/terrain/tileWorker.ts` | Kachel-Worker (Transfer ohne Kopie) |
+| `physics/terrainColliders.ts` | 3×3 Rapier-Heightfields à 64 m (128 Zellen) um das Fahrzeug |
 
-## Generator (`src/shared/terrain/`)
+## Generator (`shared/terrain/`)
 Unendlich und deterministisch: Höhe = reine Funktion aus Seed + Konfiguration (keine Karte, kein Zustand).
 
 | Datei | Inhalt |

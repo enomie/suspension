@@ -4,12 +4,16 @@ Drei Threads, vier Schichten. Die Ordner trennen strikt, wer was importieren dar
 
 | Ordner | Läuft in | Darf importieren | Inhalt |
 |---|---|---|---|
-| `src/shared/` | überall | nur `shared/` | Konstanten (`config`), Floating Origin (`origin`, `originShifter`), Geländehöhe (`terrainHeight`), Kachel-Geometrie (`tileGeometry`), Takt (`stepClock`), Nachrichten (`protocol`), Snapshot-Format (`snapshot`), Fahrzeug-Typen (`vehicleSpec`, `vehicleLayout`) |
-| `src/physics/` | Physik-Worker | `shared/`, Rapier | `worker.ts` (Einstieg), `Simulation.ts`, `terrainColliders.ts`, `vehicle/` (Aufbau, Aufhängungen, Antrieb, Lenkung, Presets, `layout.ts`) |
-| `src/render/` | Haupt-Thread | `shared/`, three.js | `scene.ts` (Renderer/Kamera/Licht), `CameraRig`, `SunRig`, `terrain/` (LOD + Kachel-Worker), `vehicle/` (Optik aus Layout) |
-| `src/app/` | Haupt-Thread | alles außer `physics/` (Ausnahme: dynamischer Fallback) | `PhysicsClient` (Worker-Anbindung + Interpolation), `keyboard`, `hud`, `debug` |
+| `shared/` | überall | nur `shared/` | Konstanten (`config`), Floating Origin (`origin`, `originShifter`), Geländehöhe (`terrainHeight`), Kachel-Geometrie (`tileGeometry`), Takt (`stepClock`), Nachrichten (`protocol`), Snapshot-Format (`snapshot`), Fahrzeug-Typen (`vehicleSpec`, `vehicleLayout`) |
+| `physics/` | Physik-Worker | `shared/`, Rapier | `worker.ts` (Einstieg), `Simulation.ts`, `terrainColliders.ts`, `vehicle/` (Aufbau, Aufhängungen, Antrieb, Lenkung, Presets, `layout.ts`) |
+| `render/` | Haupt-Thread | `shared/`, three.js | `scene.ts` (Renderer/Kamera/Licht), `CameraRig`, `SunRig`, `terrain/` (LOD + Kachel-Worker), `vehicle/` (Optik aus Layout) |
+| `app/` | Haupt-Thread | alles außer `physics/` (Ausnahme: dynamischer Fallback) | `PhysicsClient` (Worker-Anbindung + Interpolation), `keyboard`, `hud`, `debug` |
 
-`src/main.ts` verdrahtet nur.
+`main.ts` verdrahtet nur.
+
+**Öffentliche Einstiege** (für andere Projekte nur diese importieren): `shared/terrain/index.ts`,
+`physics/vehicle/index.ts`, `render/vehicle/index.ts`, `render/terrain/index.ts`. Übernahme:
+[INTEGRATION_TERRAIN.md](INTEGRATION_TERRAIN.md), [INTEGRATION_VEHICLE.md](INTEGRATION_VEHICLE.md).
 
 ## Datenfluss
 ```
@@ -21,7 +25,7 @@ app/keyboard ──'input' / 'spawn'──▶ physics/worker
   Der Haupt-Thread lädt kein Rapier mehr (außer `?worker=0`).
 - **Snapshot** (`shared/snapshot.ts`): Generation, Zeitstempel, Telemetrie, absolute Posen je Körper-Index.
 
-## Haupt-Thread pro Frame (`src/main.ts`)
+## Haupt-Thread pro Frame (`main.ts`)
 | # | Schritt | Modul |
 |---|---|---|
 | 1 | Hotkeys (1–0 Preset, R Reset) → Worker; Input nur bei Änderung senden | `app/PhysicsClient.ts` |

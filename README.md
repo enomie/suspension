@@ -33,9 +33,13 @@ URL-Parameter: `?x=…&z=…` Startposition (Gebirge: `?x=858000&z=897000`), `?t
 `?debug=shadows,morph,interp` Schalter vorab aus.
 
 ## Doku
+Die Doku liegt **in `src/`**, damit sie beim Kopieren mitwandert: [src/README.md](src/README.md) ist der Wegweiser.
+
 | Datei | Inhalt |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Schichten (`shared` / `physics` / `render` / `app`), Threads, Frame-Ablauf, Debug |
-| [docs/TERRAIN.md](docs/TERRAIN.md) | Zweierpotenz-Raster, LOD-Quadtree, Geomorphing, BatchedMesh, Physik-Kacheln |
-| [docs/VEHICLE_KIT.md](docs/VEHICLE_KIT.md) | Konzept, Benennung, Bauteile, Joints, Rapier-Regeln |
-| [docs/VEHICLE_PLAN.md](docs/VEHICLE_PLAN.md) | Entscheidungen, Stand, nächste Phasen |
+| [src/docs/INTEGRATION_TERRAIN.md](src/docs/INTEGRATION_TERRAIN.md) | Terrain-Technik in ein anderes Projekt übernehmen |
+| [src/docs/INTEGRATION_VEHICLE.md](src/docs/INTEGRATION_VEHICLE.md) | Fahrzeug statt Raycast-Vehicle, Asset-Editor-Anbindung |
+| [src/docs/ARCHITECTURE.md](src/docs/ARCHITECTURE.md) | Schichten, Threads, Frame-Ablauf, Debug |
+| [src/docs/TERRAIN.md](src/docs/TERRAIN.md) | Raster, Generator, LOD, Geomorphing |
+| [src/docs/VEHICLE_KIT.md](src/docs/VEHICLE_KIT.md) | Konzept, Bauteile, Joints, Rapier-Regeln |
+| [src/docs/VEHICLE_PLAN.md](src/docs/VEHICLE_PLAN.md) | Entscheidungen, Stand |

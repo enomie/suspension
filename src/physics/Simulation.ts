@@ -8,7 +8,7 @@ import { sampleTerrainHeightWorld } from '../shared/terrainHeight';
 import { ORIGIN } from '../shared/origin';
 import { OriginShifter } from '../shared/originShifter';
 import { PHYSICS_DT } from '../shared/stepClock';
-import { BODY_STRIDE, CORNER_STRIDE, HEADER, snapshotLength } from '../shared/snapshot';
+import { writeVehicleSnapshot } from './vehicle/snapshot';
 import type { DriverInput } from '../shared/vehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import { setTerrain, type TerrainConfig } from '../shared/terrain';
@@ -82,32 +82,7 @@ export class Simulation {
 
   /** Zustand als Snapshot (Layout: shared/snapshot.ts) */
   snapshot(stamp: number): Float64Array {
-    const v = this.vehicle;
-    const s = new Float64Array(snapshotLength(v.corners.length, this.bodies.length));
-    s[0] = this.gen;
-    s[1] = stamp;
-    s[2] = v.forwardSpeed;
-    let o = HEADER;
-    for (const c of v.corners) {
-      const m = c.telemetry;
-      s[o] = m.travel;
-      s[o + 1] = m.springForce;
-      s[o + 2] = m.wheelOmega;
-      s[o + 3] = m.steerAngle;
-      o += CORNER_STRIDE;
-    }
-    for (const b of this.bodies) {
-      const p = b.translation();
-      const r = b.rotation();
-      s[o] = p.x + ORIGIN.x;
-      s[o + 1] = p.y;
-      s[o + 2] = p.z + ORIGIN.z;
-      s[o + 3] = r.x;
-      s[o + 4] = r.y;
-      s[o + 5] = r.z;
-      s[o + 6] = r.w;
-      o += BODY_STRIDE;
-    }
-    return s;
+    return writeVehicleSnapshot(this.vehicle, this.bodies, { gen: this.gen, stamp, origin: ORIGIN });
   }
+
 }

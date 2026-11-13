@@ -21,8 +21,8 @@ Daraus soll ein **Baukasten** werden: gleiche Bauteile, sauber benannt, beliebig
 | Sattelzug | Zugmaschine + Auflieger | Sattelkupplung (Königszapfen) |
 | Kettenfahrzeug (später) | n Laufrollen | Laufrollen gefedert, Kette als Antriebsmodell |
 
-Code-Struktur: siehe `docs/ARCHITECTURE.md`. Fahrzeug-Physik liegt in `src/physics/vehicle/`
-(nur Rapier, keine Optik); die Optik baut `src/render/vehicle/` aus dem Layout (`physics/vehicle/layout.ts`).
+Code-Struktur: siehe [ARCHITECTURE.md](ARCHITECTURE.md). Fahrzeug-Physik liegt in `physics/vehicle/`
+(nur Rapier, keine Optik); die Optik baut `render/vehicle/` aus dem Layout (`physics/vehicle/layout.ts`).
 - Dev-Server: Port **9897** (`npm run dev`)
 
 ## 2. Steuerung
@@ -65,7 +65,7 @@ und andere Aufhängungen sind nur andere Joint-Topologien aus denselben Bauteile
 
 ## 4. Aufhängungen (umgesetzt, Taste 1–0)
 
-Jede Aufhängung = eine Datei in `src/physics/vehicle/parts/suspension/`, baut eine **ganze Achse** und liefert nur den
+Jede Aufhängung = eine Datei in `physics/vehicle/parts/suspension/`, baut eine **ganze Achse** und liefert nur den
 **Radträger** (`carrier`) + Lenker/Federn. Lenk-Knuckle und Rad hängt `finishCorner()` (common.ts) immer gleich an.
 Federraten werden über die Übersetzung (`leverRatio`, MR) auf die Radmitte umgerechnet → alle Prinzipien gleich hart.
 
@@ -122,7 +122,7 @@ Koordinaten: **Vorwärts = −Z**, oben = +Y, rechts = +X (wie Ocean-Projekt). E
 
 ## 6. Bauteil-Liste
 
-| Bauteil | Datei (unter `src/physics/vehicle/`; *kursiv* = noch nicht umgesetzt) | Rapier-Objekte | Parameter |
+| Bauteil | Datei (unter `physics/vehicle/`; *kursiv* = noch nicht umgesetzt) | Rapier-Objekte | Parameter |
 |---|---|---|---|
 | `Chassis` | `parts/chassis.ts` | dynamic RigidBody, abgerundeter Rahmen-Collider (= sichtbarer Leiterrahmen) | Maße, Masse, Schwerpunkt-Offset, Collision-Group |
 | `Wheel` | `parts/wheel.ts` | dynamic RigidBody, `cylinder`/`roundCylinder` (um Z gedreht) oder `ball` | Radius, Breite, Masse, Reibung, CCD an |

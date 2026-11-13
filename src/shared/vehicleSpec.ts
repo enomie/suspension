@@ -56,9 +56,30 @@ export interface AxleSpec {
   handbrake?: { torque: number };
 }
 
+/**
+ * Kollisions-Primitive (Chassis-lokal), z. B. aus einem Asset-Editor. Rotation als Quaternion [x, y, z, w].
+ *   box: size = volle Kantenlängen · sphere: radius · capsule/cylinder: radius + height (Achse Y)
+ *   rounded: Kantenrundung [m] für box/cylinder (gleitet besser über Terrain-Kanten)
+ */
+export interface ColliderPrimitive {
+  shape: 'box' | 'sphere' | 'capsule' | 'cylinder';
+  position: Vec3;
+  rotation?: [number, number, number, number];
+  size?: Vec3;
+  radius?: number;
+  height?: number;
+  rounded?: number;
+  friction?: number;
+}
+
 export interface ChassisSpec {
-  /** Breite (X), Höhe (Y), Länge (Z) [m] */
+  /** Breite (X), Höhe (Y), Länge (Z) [m] – bestimmt Trägheit (und den Standard-Rahmen) */
   size: Vec3;
+  /**
+   * Kollisionsform aus Primitives. Ohne Angabe: abgerundeter Leiterrahmen (= Standard-Optik).
+   * Wichtig: so nah wie möglich an der sichtbaren Form – ein unsichtbar größerer Collider wirkt wie eine Wand.
+   */
+  colliders?: ColliderPrimitive[];
   mass: number;
   /** Schwerpunkt relativ zum Box-Mittelpunkt */
   comOffset?: Vec3;
