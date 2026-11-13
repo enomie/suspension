@@ -11,6 +11,7 @@ import { PHYSICS_DT } from '../shared/stepClock';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, snapshotLength } from '../shared/snapshot';
 import type { DriverInput } from '../shared/vehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
+import { setTerrain, type TerrainConfig } from '../shared/terrain';
 
 /**
  * Komplette Physik (Rapier-Welt, Boden-Collider, Fahrzeug, eigener Floating Origin).
@@ -29,8 +30,9 @@ export class Simulation {
 
   constructor(
     private R: typeof RAPIER,
-    opts: { preset: number; x: number; z: number },
+    opts: { preset: number; x: number; z: number; terrain?: TerrainConfig },
   ) {
+    if (opts.terrain) setTerrain(opts.terrain);
     ORIGIN.x = opts.x;
     ORIGIN.z = opts.z;
     this.world = createPhysicsWorld(R);
@@ -70,7 +72,7 @@ export class Simulation {
   step(): void {
     const v = this.vehicle;
     const t = v.chassis.translation();
-    this.tiles.update(t.x, t.z);
+    this.tiles.update(t.x, t.z, 1); // höchstens 1 neue Kachel pro Schritt
     v.applyInput(this.input, PHYSICS_DT);
     this.world.step();
     v.updateTelemetry();

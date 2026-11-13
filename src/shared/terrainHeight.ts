@@ -1,59 +1,11 @@
-import { TERRAIN_NOISE } from './config';
+import { terrain } from './terrain';
 
-function hash2D(x: number, y: number, seed: number): number {
-  let h = seed ^ (x * 374761393) ^ (y * 668265263);
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
-}
-
-function smoothstep(t: number): number {
-  return t * t * (3 - 2 * t);
-}
-
-function valueNoise(x: number, y: number, seed: number): number {
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
-  const tx = smoothstep(x - x0);
-  const ty = smoothstep(y - y0);
-  const v00 = hash2D(x0, y0, seed);
-  const v10 = hash2D(x0 + 1, y0, seed);
-  const v01 = hash2D(x0, y0 + 1, seed);
-  const v11 = hash2D(x0 + 1, y0 + 1, seed);
-  const vx0 = v00 + (v10 - v00) * tx;
-  const vx1 = v01 + (v11 - v01) * tx;
-  return vx0 + (vx1 - vx0) * ty;
-}
-
-function fbm(x: number, y: number, seed: number): number {
-  let value = 0;
-  let amplitude = 1;
-  let frequency = TERRAIN_NOISE.baseFrequency;
-  let maxValue = 0;
-  for (let i = 0; i < TERRAIN_NOISE.octaves; i++) {
-    value += valueNoise(x * frequency, y * frequency, seed + i * 9973) * amplitude;
-    maxValue += amplitude;
-    amplitude *= TERRAIN_NOISE.persistence;
-    frequency *= TERRAIN_NOISE.lacunarity;
-  }
-  return value / maxValue;
-}
-
-/** Deterministische Geländehöhe [m] an ABSOLUTER Position – überall gleich (Physik, Optik, Worker). */
-export function sampleTerrainHeightWorld(xM: number, zM: number): number {
-  const n = fbm(xM, zM, TERRAIN_NOISE.seed);
-  const shaped = Math.pow(n, 1.35);
-  return TERRAIN_NOISE.baseElevationM + shaped * TERRAIN_NOISE.amplitudeM;
-}
+/** Geländehöhe [m] an ABSOLUTER Position (volle Auflösung) – aktives Terrain dieses Threads. */
+export const sampleTerrainHeightWorld = (x: number, z: number): number => terrain().height(x, z);
 
 /**
- * EIN Abtaster für alle: (n+1)² Höhen eines Rasters ab absolutem (x0, z0) mit Abstand d, Zeile = Z, Spalte = X
- * (Index j·(n+1)+i), optional mit `border` Punkten Rand. Physik und Optik rufen nur dies auf → identische
- * Abtastpunkte auf allen Zweierpotenz-Stufen.
+ * EIN Abtaster für Physik und Optik: (n+1)² Höhen ab absolutem (x0, z0) mit Abstand d (Index j·W+i, Zeile = Z),
+ * optional mit `border` Punkten Rand. `full` = alle Wellenlängen (Physik); sonst bandbegrenzt auf ≥ 2·d.
  */
-export function sampleGrid(x0: number, z0: number, d: number, n: number, border = 0): Float64Array {
-  const W = n + 1 + 2 * border;
-  const h = new Float64Array(W * W);
-  for (let j = 0; j < W; j++)
-    for (let i = 0; i < W; i++) h[j * W + i] = sampleTerrainHeightWorld(x0 + (i - border) * d, z0 + (j - border) * d);
-  return h;
-}
+export const sampleGrid = (x0: number, z0: number, d: number, n: number, border = 0, full = false): Float64Array =>
+  terrain().sampleGrid(x0, z0, d, n, border, full);

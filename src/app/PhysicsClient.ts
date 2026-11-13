@@ -4,6 +4,7 @@ import type { FromWorker, ToWorker } from '../shared/protocol';
 import { blendSnapshots, wallClock } from '../shared/snapshot';
 import { StepClock } from '../shared/stepClock';
 import type { Simulation } from '../physics/Simulation';
+import { terrain } from '../shared/terrain';
 
 const MAX_BUFFER = 32;
 /** Fenster für die Verzögerungs-Messung [ms] */
@@ -65,7 +66,7 @@ export class PhysicsClient {
             if (first) resolve();
           }
         };
-        c.send({ type: 'init', preset: opts.preset, x: opts.x, z: opts.z });
+        c.send({ type: 'init', preset: opts.preset, x: opts.x, z: opts.z, terrain: terrain().config });
       });
       return c;
     }
@@ -75,7 +76,7 @@ export class PhysicsClient {
       import('../physics/Simulation'),
     ]);
     const c = new PhysicsClient('main');
-    c.local = new Simulation(await initRapier(), opts);
+    c.local = new Simulation(await initRapier(), { ...opts, terrain: terrain().config });
     c.clock = new StepClock(wallClock());
     c.setVehicle(c.local.layout, c.local.gen, c.local.preset);
     return c;

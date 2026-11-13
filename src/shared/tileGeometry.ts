@@ -4,7 +4,7 @@ import { CELL, MAX_LOD, TILE_SEGMENTS, TILE_SIZE, lodSplit } from './config';
 /**
  * Reine Kachel-Berechnung (ohne three.js) – läuft im Kachel-Worker und im Main-Thread (Fallback/Tests).
  * Positionen relativ zur Kachelmitte. Zusätzlich für CDLOD-Geomorphing: Höhe UND Normale der
- * nächstgröberen Stufe (= jeder zweite Punkt dieser Kachel) sowie der Morph-Bereich der Stufe.
+ * nächstgröberen Stufe (exakt wie die Elternkachel sie zeigt, inkl. Bandbegrenzung) sowie der Morph-Bereich.
  */
 export const N = TILE_SEGMENTS;
 export const VERTS = (N + 1) * (N + 1);
@@ -71,10 +71,17 @@ export interface TileArrays {
 export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays {
   const size = tileSize(lod);
   const d = CELL * 2 ** lod;
-  const B = 2; // Rand für grobe Normalen (±2 Punkte)
-  const W = N + 1 + 2 * B;
-  const h = sampleGrid(ix * size, iz * size, d, N, B);
-  const H = (i: number, j: number) => h[(j + B) * W + (i + B)];
+  const x0 = ix * size;
+  const z0 = iz * size;
+  // eigene Stufe (bandbegrenzt auf ≥ 2d), 1 Punkt Rand für Normalen
+  const W = N + 3;
+  const h = sampleGrid(x0, z0, d, N, 1);
+  const H = (i: number, j: number) => h[(j + 1) * W + (i + 1)];
+  // gröbere Stufe = genau das, was die Elternkachel zeigt (Abstand 2d, bandbegrenzt auf ≥ 4d), 1 Punkt Rand
+  const M = N / 2;
+  const CW = M + 3;
+  const hc = sampleGrid(x0, z0, 2 * d, M, 1);
+  const C = (i: number, j: number) => hc[(j + 1) * CW + (i + 1)];
 
   const pos = new Float32Array(TILE_VERTS * 3);
   const nor = new Float32Array(TILE_VERTS * 3);
@@ -84,17 +91,13 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
   const half = size / 2;
 
   const setN = (out: Float32Array, k: number, nx: number, ny: number, nz: number) => {
-    const l = Math.hypot(nx, ny, nz);
+    const l = Math.sqrt(nx * nx + ny * ny + nz * nz);
     out[k * 3] = nx / l;
     out[k * 3 + 1] = ny / l;
     out[k * 3 + 2] = nz / l;
   };
-  // grobe Normale an geraden Punkten: Differenzen über ±2 Punkte (= ±1 Punkt der gröberen Stufe)
-  const coarseN = (i: number, j: number): [number, number, number] => [
-    H(i - 2, j) - H(i + 2, j),
-    4 * d,
-    H(i, j - 2) - H(i, j + 2),
-  ];
+  // grobe Normale an grobem Punkt (ci, cj): zentrale Differenzen im groben Raster
+  const coarseN = (ci: number, cj: number): number[] => [C(ci - 1, cj) - C(ci + 1, cj), 4 * d, C(ci, cj - 1) - C(ci, cj + 1)];
   const add = (a: number[], b: number[]) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
   for (let j = 0; j <= N; j++) {
@@ -105,23 +108,25 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
       pos[k * 3 + 2] = j * d - half;
       setN(nor, k, H(i - 1, j) - H(i + 1, j), 2 * d, H(i, j - 1) - H(i, j + 1));
 
-      // grobe Stufe: gerade Punkte; dazwischen linear entlang Kante bzw. Diagonale (x1,z0)–(x0,z1)
+      // gröbere Stufe an diesem Vertex: grobe Punkte; dazwischen linear entlang Kante bzw. Diagonale (x1,z0)–(x0,z1)
+      const ci = i >> 1;
+      const cj = j >> 1;
       const oi = i & 1;
       const oj = j & 1;
       let coarse: number;
       let cn: number[];
       if (!oi && !oj) {
-        coarse = H(i, j);
-        cn = coarseN(i, j);
+        coarse = C(ci, cj);
+        cn = coarseN(ci, cj);
       } else if (oi && !oj) {
-        coarse = (H(i - 1, j) + H(i + 1, j)) / 2;
-        cn = add(coarseN(i - 1, j), coarseN(i + 1, j));
+        coarse = (C(ci, cj) + C(ci + 1, cj)) / 2;
+        cn = add(coarseN(ci, cj), coarseN(ci + 1, cj));
       } else if (!oi && oj) {
-        coarse = (H(i, j - 1) + H(i, j + 1)) / 2;
-        cn = add(coarseN(i, j - 1), coarseN(i, j + 1));
+        coarse = (C(ci, cj) + C(ci, cj + 1)) / 2;
+        cn = add(coarseN(ci, cj), coarseN(ci, cj + 1));
       } else {
-        coarse = (H(i + 1, j - 1) + H(i - 1, j + 1)) / 2;
-        cn = add(coarseN(i + 1, j - 1), coarseN(i - 1, j + 1));
+        coarse = (C(ci + 1, cj) + C(ci, cj + 1)) / 2;
+        cn = add(coarseN(ci + 1, cj), coarseN(ci, cj + 1));
       }
       morph[k] = coarse - H(i, j);
       setN(mnor, k, cn[0], cn[1], cn[2]);

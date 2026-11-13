@@ -9,7 +9,7 @@ import { CELL, PHYSICS_TILE_RADIUS, PHYSICS_TILE_SEGMENTS, PHYSICS_TILE_SIZE } f
  */
 export function tileHeights(ix: number, iz: number): Float32Array {
   const n = PHYSICS_TILE_SEGMENTS;
-  const g = sampleGrid(ix * PHYSICS_TILE_SIZE, iz * PHYSICS_TILE_SIZE, CELL, n); // Zeile = Z
+  const g = sampleGrid(ix * PHYSICS_TILE_SIZE, iz * PHYSICS_TILE_SIZE, CELL, n, 0, true); // Zeile = Z, volle Auflösung
   const h = new Float32Array((n + 1) * (n + 1));
   for (let col = 0; col <= n; col++) for (let row = 0; row <= n; row++) h[col * (n + 1) + row] = g[row * (n + 1) + col];
   return h;
@@ -32,18 +32,26 @@ export class PhysicsTiles {
     return this.tiles.size;
   }
 
-  /** lokale Position des Fahrzeugs → fehlende Kacheln bauen, ferne entfernen */
-  update(localX: number, localZ: number): void {
+  /**
+   * lokale Position des Fahrzeugs → fehlende Kacheln bauen (höchstens `maxBuild` pro Aufruf, die Kachel unter
+   * dem Fahrzeug immer sofort), ferne entfernen. Verteilt den Bau auf mehrere Physik-Schritte (kein Hänger).
+   */
+  update(localX: number, localZ: number, maxBuild = Infinity): void {
     const cx = Math.floor((localX + ORIGIN.x) / PHYSICS_TILE_SIZE);
     const cz = Math.floor((localZ + ORIGIN.z) / PHYSICS_TILE_SIZE);
     const want = new Set<string>();
     const r = PHYSICS_TILE_RADIUS;
-    for (let dz = -r; dz <= r; dz++) {
-      for (let dx = -r; dx <= r; dx++) {
-        const key = `${cx + dx},${cz + dz}`;
-        want.add(key);
-        if (!this.tiles.has(key)) this.tiles.set(key, this.build(cx + dx, cz + dz));
-      }
+    let built = 0;
+    // mittlere Kachel zuerst, dann die Nachbarn
+    const order: [number, number][] = [[0, 0]];
+    for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) if (dx || dz) order.push([dx, dz]);
+    for (const [dx, dz] of order) {
+      const key = `${cx + dx},${cz + dz}`;
+      want.add(key);
+      if (this.tiles.has(key)) continue;
+      if (built >= maxBuild && (dx || dz)) continue;
+      this.tiles.set(key, this.build(cx + dx, cz + dz));
+      built++;
     }
     for (const [key, body] of this.tiles) {
       if (!want.has(key)) {

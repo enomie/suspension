@@ -1,5 +1,6 @@
 import './style.css';
 import { ORIGIN } from './shared/origin';
+import { setTerrain, TERRAIN_PRESETS } from './shared/terrain';
 import { OriginShifter } from './shared/originShifter';
 import { wallClock } from './shared/snapshot';
 import { createStage } from './render/scene';
@@ -21,6 +22,9 @@ const params = new URLSearchParams(location.search);
 /** ?x=…&z=… = absolute Startposition [m] */
 ORIGIN.x = Number(params.get('x') ?? 0);
 ORIGIN.z = Number(params.get('z') ?? 0);
+/** ?terrain=<preset>&seed=<zahl> – gilt für alle Threads (wird an die Worker weitergegeben) */
+const preset = TERRAIN_PRESETS[params.get('terrain') ?? 'default'] ?? TERRAIN_PRESETS.default;
+setTerrain({ ...preset, seed: Number(params.get('seed') ?? preset.seed) });
 
 /** ?dpr=1 senkt die Auflösung (Fill-Rate) */
 const stage = await createStage(document.querySelector<HTMLDivElement>('#app')!, {

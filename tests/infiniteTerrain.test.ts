@@ -44,6 +44,15 @@ describe('physics tiles', () => {
     });
   }
 
+  it('maxBuild: Kachel unter dem Fahrzeug sofort, Nachbarn verteilt auf mehrere Aufrufe', () => {
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const tiles = new PhysicsTiles(RAPIER, world);
+    tiles.update(0, 0, 1);
+    expect(tiles.count).toBe(1);
+    for (let i = 0; i < 8; i++) tiles.update(0, 0, 1);
+    expect(tiles.count).toBe(9);
+  });
+
   it('stream: far tiles are removed, new ones built', () => {
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     const tiles = new PhysicsTiles(RAPIER, world);

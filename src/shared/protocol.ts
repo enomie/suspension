@@ -1,9 +1,10 @@
 import type { DriverInput } from './vehicleSpec';
 import type { VehicleLayout } from './vehicleLayout';
+import type { TerrainConfig } from './terrain/types';
 
 /** Haupt-Thread → Physik-Worker */
 export type ToWorker =
-  | { type: 'init'; preset: number; x: number; z: number }
+  | { type: 'init'; preset: number; x: number; z: number; terrain: TerrainConfig }
   | { type: 'input'; input: DriverInput }
   | { type: 'spawn'; preset: number };
 

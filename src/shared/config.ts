@@ -1,15 +1,4 @@
-/** Gemeinsame Konstanten (Physik + Optik). 1 Einheit = 1 Meter. */
-
-export const TERRAIN_NOISE = {
-  seed: 421337,
-  baseFrequency: 0.035,
-  octaves: 5,
-  persistence: 0.45,
-  lacunarity: 2.1,
-  /** Max vertical variation in meters — detailed hills, not mountains */
-  amplitudeM: 6,
-  baseElevationM: 1.5,
-} as const;
+/** Gemeinsame Konstanten (Physik + Optik). 1 Einheit = 1 Meter. Terrain-Form: src/shared/terrain/. */
 
 /*
  * Terrain-Raster: alles Zweierpotenzen, damit jede Stufe exakt jeden zweiten Punkt der feineren trifft

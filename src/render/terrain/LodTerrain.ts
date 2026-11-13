@@ -18,7 +18,8 @@ import {
 import { ORIGIN } from '../../shared/origin';
 import { sampleTerrainHeightWorld } from '../../shared/terrainHeight';
 import { buildTileArrays, buildTileIndex, TILE_VERTS, tileSize, type TileArrays } from '../../shared/tileGeometry';
-import type { TileRequest } from './tileWorker';
+import type { TileRequest, TileWorkerMessage } from './tileWorker';
+import { terrain } from '../../shared/terrain';
 import { MAX_LOD, VIEW_DISTANCE, lodSplit } from '../../shared/config';
 
 /** Debug: Geomorphing an (1) / aus (0) */
@@ -108,6 +109,8 @@ export class LodTerrain {
     if (typeof Worker === 'undefined') return;
     for (let i = 0; i < workerCount; i++) {
       const w = new Worker(new URL('./tileWorker.ts', import.meta.url), { type: 'module' });
+      // gleiche Terrain-Konfiguration wie dieser Thread
+      w.postMessage({ type: 'terrain', config: terrain().config } satisfies TileWorkerMessage);
       w.onmessage = (e: MessageEvent<TileRequest & TileArrays>) => {
         const { key, lod, ix, iz } = e.data;
         this.pending.delete(key);
@@ -290,7 +293,7 @@ export class LodTerrain {
         const k = key(q.lod, q.ix, q.iz);
         if (this.pending.has(k)) continue;
         this.pending.add(k);
-        this.idle.pop()!.postMessage({ key: k, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
+        this.idle.pop()!.postMessage({ type: 'tile', key: k, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
         built++;
       }
     } else {
