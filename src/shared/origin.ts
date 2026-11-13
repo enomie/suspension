@@ -17,6 +17,3 @@ export function originShiftFor(localX: number, localZ: number): { dx: number; dz
     dz: Math.round(localZ / ORIGIN_GRID) * ORIGIN_GRID,
   };
 }
-
-export const toAbsX = (localX: number) => localX + ORIGIN.x;
-export const toAbsZ = (localZ: number) => localZ + ORIGIN.z;

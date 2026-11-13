@@ -1,6 +1,6 @@
 # Vehicle Kit – Fahrzeug-Baukasten (Rapier SIMD, Joint-basiert)
 
-> Status: **Notizen / Anforderungen** (Schritt 1 von 3). Nächster Schritt: Planung (`docs/VEHICLE_PLAN.md`), danach Umsetzung.
+> Konzept, Benennung und Bauteile des Fahrzeug-Baukastens. Stand der Umsetzung und nächste Phasen: [VEHICLE_PLAN.md](VEHICLE_PLAN.md).
 
 ## 1. Ziel
 
@@ -33,7 +33,9 @@ Code-Struktur: siehe `docs/ARCHITECTURE.md`. Fahrzeug-Physik liegt in `src/physi
 | `S` | Bremsen, bei Stillstand rückwärts |
 | `A` / `D` | Lenken links / rechts (mit Lenkrate + Rückstellung) |
 | `Space` | **Handbremse – nur Hinterachse(n)** (blockiert Räder) |
-| später | `R` Reset/Aufrichten, `C` Kamera, `1…9` Fahrzeugwahl, `T` Anhänger an-/abkuppeln |
+| `R` | Reset / Aufrichten an aktueller Position |
+| `1…0` | Aufhängungsprinzip wählen (siehe §4) |
+| später | `C` Kamera, Fahrzeugwahl, `T` Anhänger an-/abkuppeln |
 
 ## 3. Grundprinzip (einfachste Variante = „Strut / Schiebe-Federbein“)
 
@@ -120,22 +122,22 @@ Koordinaten: **Vorwärts = −Z**, oben = +Y, rechts = +X (wie Ocean-Projekt). E
 
 ## 6. Bauteil-Liste
 
-| Bauteil | Datei (geplant) | Rapier-Objekte | Parameter |
+| Bauteil | Datei (unter `src/physics/vehicle/`; *kursiv* = noch nicht umgesetzt) | Rapier-Objekte | Parameter |
 |---|---|---|---|
-| `Chassis` | `src/physics/vehicle/parts/chassis.ts` | dynamic RigidBody, cuboid/convexHull Collider | Maße, Masse, Schwerpunkt-Offset, Collision-Group |
+| `Chassis` | `parts/chassis.ts` | dynamic RigidBody, abgerundeter Rahmen-Collider (= sichtbarer Leiterrahmen) | Maße, Masse, Schwerpunkt-Offset, Collision-Group |
 | `Wheel` | `parts/wheel.ts` | dynamic RigidBody, `cylinder`/`roundCylinder` (um Z gedreht) oder `ball` | Radius, Breite, Masse, Reibung, CCD an |
 | `Knuckle` | `parts/knuckle.ts` | kleiner dynamic Body (kein Collider, Masse manuell) | Masse, Trägheit |
 | `Strut` | `parts/strut.ts` | kleiner dynamic Body | Masse |
-| `Spring`/`Damper` | `parts/springDamper.ts` | Motor-Config bzw. `JointData.spring` | k [N/m], c [N·s/m], restLength, Vorspannung |
-| `BumpStop` | in `springDamper.ts` | `setLimits` | min/max Federweg |
-| `AntiRollBar` | `parts/antiRollBar.ts` | Kraft pro Step | kRoll [N/m] |
+| `Spring`/`Damper` | *`parts/springDamper.ts`* | Motor-Config bzw. `JointData.spring` | k [N/m], c [N·s/m], restLength, Vorspannung |
+| `BumpStop` | *in `springDamper.ts`* | `setLimits` | min/max Federweg |
+| `AntiRollBar` | *`parts/antiRollBar.ts`* | Kraft pro Step | kRoll [N/m] |
 | `Steering` | `parts/steering.ts` | Revolute-Y Positions-Motor | maxAngle, rate, Ackermann-Faktor, Modus |
-| `Engine` | `parts/engine.ts` | – (rechnet Moment) | maxTorque, maxRpm, simple Kurve |
-| `Differential` | `parts/differential.ts` | verteilt auf Rad-Motoren | open / locked / limitedSlip |
-| `Brake` | `parts/brake.ts` | Velocity-Motor Ziel 0 + MaxForce | Bremsmoment je Achse |
-| `Handbrake` | in `brake.ts` | wie Brake, nur Hinterachsen | Moment |
-| `Hitch` / `FifthWheel` / `KingPin` | `parts/coupling.ts` | Joint zwischen 2 Vehicles | Typ, Winkel-Limits |
-| `Track` (später) | `parts/track.ts` | Laufrollen + Antriebsmodell | Rollenanzahl, Kettenspannung |
+| `Engine` | *`parts/engine.ts`* | – (rechnet Moment) | maxTorque, maxRpm, simple Kurve |
+| `Differential` | *`parts/differential.ts`* | verteilt auf Rad-Motoren | open / locked / limitedSlip |
+| `Brake` | *`parts/brake.ts`* | Velocity-Motor Ziel 0 + MaxForce | Bremsmoment je Achse |
+| `Handbrake` | *in `brake.ts`* | wie Brake, nur Hinterachsen | Moment |
+| `Hitch` / `FifthWheel` / `KingPin` | *`parts/coupling.ts`* | Joint zwischen 2 Vehicles | Typ, Winkel-Limits |
+| `Track` (später) | *`parts/track.ts`* | Laufrollen + Antriebsmodell | Rollenanzahl, Kettenspannung |
 
 ## 7. Joint-Liste
 
@@ -172,7 +174,8 @@ Allgemein: `joint.setContactsEnabled(false)` zwischen verbundenen Körpern, zus�
 
 ## 9. Physik-Regeln / Fallstricke (Rapier)
 
-- **Fester Timestep**: 1/120 s (ggf. Substeps), Akkumulator in `main.ts` statt variablem `dt`.
+- **Fester Timestep**: 1/120 s im Physik-Worker (Wanduhr-Takt `shared/stepClock.ts`), Optik interpoliert nach Zeit.
+- **Chassis-Collider = sichtbare Form.** Ein unsichtbarer, größerer Collider setzt auf Bodenwellen auf → „unsichtbare Wand“.
 - **Massenverhältnisse**: Rad/Knuckle/Strut nicht zu leicht gegenüber Chassis (Ziel ≤ 1:30), sonst federt/zittert die Joint-Kette.
   Kleine Hilfskörper (Strut, Knuckle) bekommen explizite Masse + Trägheit (`setAdditionalMassProperties`).
 - **Solver**: `world.numSolverIterations` = 8; geschlossene Ketten (McPherson) zusätzlich `setAdditionalSolverIterations` nur auf ihren Körpern, ggf. Joint-Kette als **Multibody** statt Impulse-Joint testen
@@ -184,20 +187,3 @@ Allgemein: `joint.setContactsEnabled(false)` zwischen verbundenen Körpern, zus�
   `roundCylinder` statt `cylinder` für sanfte Kanten; `ball` als einfachster Start.
 - Lenk- und Feder-Motoren immer `MotorModel.ForceBased`, damit k/c physikalische Einheiten haben.
 - Antriebsmoment begrenzen über `setMotorMaxForce` – ohne Limit ist der Velocity-Motor „unendlich stark“.
-
-## 10. Docs / Tests (zu erstellen)
-
-- `docs/VEHICLE_KIT.md` – diese Datei (Konzept, Namen, Bauteile, Joints)
-- `docs/VEHICLE_PLAN.md` – Umsetzungsplan (nächster Schritt)
-- `docs/parts/*.md` oder JSDoc direkt in jeder Bauteil-Datei
-- Tests (vitest, headless Rapier): Fahrzeug steht ruhig (Einfederung ≈ Soll), Federweg-Limits greifen, Handbremse blockiert
-  nur Hinterachse, Lenkwinkel erreicht Soll, Kupplung hält bei Zug.
-- Debug-Overlay: Federweg/Kraft pro Corner, Radgeschwindigkeit, Rapier `debugRender()` umschaltbar.
-
-## 11. Offene Fragen (für die Planung)
-
-1. Impulse-Joints oder Multibody-Joints als Standard?
-2. Rad-Collider: `ball` (einfach, robust) vs. `roundCylinder` (realistischer)?
-3. Getriebe gleich mit rein oder erst nur „Gas = Ziel-Raddrehzahl“?
-4. Terrain bleibt 100×100 m oder größer / Teststrecke mit Rampen, Bodenwellen?
-5. Visuals: nur einfache Boxen/Zylinder (Stilregel: keine Texturen, keine Verläufe, ≤ 100 Draw Calls)?

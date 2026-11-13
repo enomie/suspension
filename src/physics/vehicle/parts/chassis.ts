@@ -3,7 +3,7 @@ import type { ChassisSpec } from '../types';
 import { CHASSIS_GROUPS } from '../groups';
 import { IDENTITY_ROT } from './context';
 
-/** Profil des sichtbaren Leiterrahmens (siehe visual/frameVisual.ts) */
+/** Profil des sichtbaren Leiterrahmens (siehe render/vehicle/frameVisual.ts) */
 export const FRAME_RAIL = 0.1;
 
 /**

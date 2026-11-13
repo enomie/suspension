@@ -1,4 +1,5 @@
 /** Collision-Groups: (membership << 16) | filter. */
+/** Terrain (Heightfields) behält Rapiers Standard-Gruppe; Bit 0x0001 ist dafür reserviert. */
 export const GROUP_TERRAIN = 0x0001;
 export const GROUP_CHASSIS = 0x0002;
 export const GROUP_WHEEL = 0x0004;

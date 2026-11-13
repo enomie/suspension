@@ -12,11 +12,6 @@ export function dampingCoeff(stiffness: number, massKg: number, ratio: number): 
   return 2 * ratio * Math.sqrt(stiffness * massKg);
 }
 
-/** Vorspannung so, dass die Feder im Stand die Last trägt und das Rad in Konstruktionslage steht. */
-export function preloadOffset(massKg: number, stiffness: number): number {
-  return (massKg * G) / stiffness;
-}
-
 /**
  * Statische Last je Achse (Anteil der gefederten Masse).
  * 2 Achsen: Hebelgesetz über Schwerpunkt; sonst gleichmäßig (Tandem/Bogie gleicht aus).

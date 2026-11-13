@@ -7,6 +7,3 @@ export function cornerId(vehicle: string, axle: number, side: Side): string {
 export function partId(corner: string, part: string): string {
   return `${corner}.${part}`;
 }
-export function jointId(corner: string, joint: string): string {
-  return `${corner}.j.${joint}`;
-}
