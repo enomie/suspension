@@ -1,22 +1,37 @@
-# Frame-Ablauf (`src/main.ts`)
+# Frame-Ablauf
 
+## Threads
+| Thread | Datei | Aufgabe |
+|---|---|---|
+| Physik-Worker | `src/sim/physicsWorker.ts` → `src/sim/Simulation.ts` | Rapier-Welt, Boden-Heightfields, Fahrzeug, eigener Floating Origin; **eigener 120-Hz-Takt** (Wanduhr, `StepClock`), Snapshot pro Schritt |
+| Terrain-Worker (≤ 4) | `src/terrain/terrainWorker.ts` | LOD-Kacheln (Höhen, Normalen, Morph) |
+| Haupt-Thread | `src/main.ts` | Input, Interpolation, Kamera, LOD-Auswahl, Rendern (`renderer.setAnimationLoop`) |
+
+Fallback ohne Worker: `?worker=0` (gleiche Snapshot-Strecke, Physik im Haupt-Thread – zum Vergleichen).
+
+## Haupt-Thread pro Frame (`src/main.ts`)
 | # | Schritt | Modul |
 |---|---|---|
-| 1 | Hotkeys (1–0 Aufhängung, R Reset) | `main.ts` |
-| 2 | Physik-Kacheln um das Fahrzeug nachladen | `terrain/physicsTiles.ts` |
-| 3 | Fester Physik-Takt 120 Hz (max. 4 Schritte/Frame): Input → Motoren, Posen merken, `world.step()` | `app/fixedStep.ts` |
-| 4 | Telemetrie (Federweg, Kräfte, Raddrehzahl) | `vehicle/Vehicle.ts` |
-| 5 | Floating-Origin-Shift (ab 1 km) | `world/originShift.ts` |
-| 6 | Visuals **interpoliert** zwischen den letzten zwei Physik-Schritten (alpha) | `vehicle/interpolation.ts` |
-| 7 | Kamera folgt (Orbit frei), Sonne folgt (auf Shadow-Texel gerastert, Bias) | `app/cameraRig.ts`, `app/sunRig.ts` |
-| 8 | LOD-Terrain (Worker-Pool) | `terrain/lodTerrain.ts` |
-| 9 | HUD + Render (Reversed-Z-Tiefenpuffer) | `debug/telemetry.ts` |
+| 1 | Hotkeys (1–0 Preset, R Reset) → Worker; Input nur bei Änderung senden | `sim/PhysicsClient.ts` |
+| 2 | Snapshot bei **`now − delay`** zeitlich interpolieren (zwei umgebende Physik-Schritte) | `sim/PhysicsClient.ts`, `sim/snapshot.ts` |
+| 3 | Meshes setzen (absolute Posen − ORIGIN) | `sim/VehicleView.ts` |
+| 4 | Floating-Origin-Shift (Haupt-Thread, unabhängig vom Worker) | `world/originShift.ts` |
+| 5 | Kamera + Sonne folgen | `app/cameraRig.ts`, `app/sunRig.ts` |
+| 6 | LOD-Terrain (Auswahl nur bei Kamerabewegung/neuen Kacheln) | `terrain/lodTerrain.ts` |
+| 7 | HUD + Render (Reversed-Z) | `debug/telemetry.ts` |
 
-## Gegen Flackern (geprüft 2026-11-13)
-- Render-Interpolation: ohne sie springt das Fahrzeug bei 100–144 fps bis 55 mm/Frame, mit ihr < 0,1 mm.
-- Fahrzeug im Bild bei Fahrt + Origin-Shift: 0,00 px Versatz (Messung im Browser).
-- Reversed-Z statt logarithmischer Tiefe; Federn als geschlossene Zylinder; Rahmen-Teile ohne deckungsgleiche Flächen.
-- LOD-Hysterese (+15 %), Schatten auf Texel gerastert + `bias`/`normalBias`.
-- Antrieb mit Schlupfbegrenzung (`MAX_SLIP_SPEED` in `parts/drive.ts`), sonst dreht ein entlastetes Rad bis vMax hoch.
+## Snapshots / Interpolation
+- Snapshot = `Float64Array` per Transfer: Generation, Zeitstempel, Telemetrie, **absolute** Posen aller Körper.
+- `VehicleView` baut dasselbe Fahrzeug in einer leeren Rapier-Welt → gleiche Körper-Reihenfolge wie im Worker (`poseBodies`).
+- `delay` = beobachteter Abstand zum neuesten Snapshot (langsam abklingendes Maximum, ~8–12 ms):
+  es liegt immer ein neuerer Snapshot vor → nie Extrapolation, nie Rückwärtssprung.
+- Generation wechselt bei Respawn/Preset: Snapshots des alten Fahrzeugs werden verworfen (keine „alten Frames“).
+- HUD zeigt Modus, ms pro Physik-Schritt und aktuelle Interpolations-Verzögerung.
 
-Debug: `__dbg` (world, terrain, physicsTiles, origin, ORIGIN, camera, controls, renderer, scene, sun, vehicle).
+## Gegen Flackern / Stöße
+- Fahrzeug unsichtbar bis zum ersten Snapshot seiner Generation.
+- Chassis-Collider = sichtbarer Leiterrahmen (abgerundet). Früher volle unsichtbare Box → setzte auf Wellen auf,
+  verhakte an Dreieckskanten („unsichtbare Wand“, bis −1000 m/s²). Test: `tests/invisibleWall.test.ts`.
+- Reversed-Z, LOD-Hysterese (+15 %), CDLOD-Geomorphing, Schatten auf Texel gerastert.
+
+Debug: `__dbg` (physics, terrain, origin, ORIGIN, camera, controls, renderer, scene, sun, vehicle).

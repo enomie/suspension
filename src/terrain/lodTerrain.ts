@@ -1,11 +1,6 @@
-import {
-  BufferAttribute,
-  BufferGeometry,
-  DoubleSide,
-  Group,
-  Mesh,
-  MeshStandardMaterial,
-} from 'three';
+import { BufferAttribute, BufferGeometry, DoubleSide, Group, Mesh } from 'three';
+import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { attribute, cameraPosition, distance, float, modelWorldMatrix, positionLocal, smoothstep, vec3, vec4 } from 'three/tsl';
 import { ORIGIN } from '../world/origin';
 import { sampleTerrainHeightWorld } from './generateHeights';
 import { buildTileArrays, buildTileIndex, type TileArrays } from './tileGeometry';
@@ -30,9 +25,26 @@ interface Chunk {
 
 const INDEX = new BufferAttribute(buildTileIndex(), 1);
 
+/**
+ * CDLOD-Geomorphing im Vertex-Shader: ab ~1,2 Kachelkanten Abstand blendet jeder Vertex zur Höhe der
+ * nächstgröberen Stufe; spätestens beim Zusammenfassen (Hysterese-Grenze) ist er vollständig dort.
+ * Beim Teilen sehen die Kinder zunächst exakt wie der Elternteil aus → kein sichtbares Umschalten.
+ */
+function morphMaterial(lod: number): MeshStandardNodeMaterial {
+  const m = new MeshStandardNodeMaterial({ color: 0x4a6741, roughness: 0.92, metalness: 0.02, side: DoubleSide });
+  const size = TILE_SIZE * 2 ** lod;
+  const end = LOD_SPLIT * 2 * size;
+  const start = end * 0.65;
+  const wp = modelWorldMatrix.mul(vec4(positionLocal, 1)).xyz;
+  const k = smoothstep(float(start), float(end), distance(wp, cameraPosition));
+  m.positionNode = positionLocal.add(vec3(0, attribute('morph', 'float').mul(k), 0));
+  return m;
+}
+
 export class LodTerrain {
   readonly root = new Group();
-  readonly material = new MeshStandardMaterial({ color: 0x4a6741, roughness: 0.92, metalness: 0.02, side: DoubleSide });
+  /** ein Material je LOD-Stufe (Morph-Bereich als Konstante im Shader) */
+  readonly materials = Array.from({ length: MAX_LOD + 1 }, (_, lod) => morphMaterial(lod));
   private cache = new Map<string, Chunk>();
   private queue: { lod: number; ix: number; iz: number; d: number }[] = [];
   private queued = new Set<string>();
@@ -68,6 +80,7 @@ export class LodTerrain {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(a.position, 3));
     g.setAttribute('normal', new BufferAttribute(a.normal, 3));
+    g.setAttribute('morph', new BufferAttribute(a.morph, 1));
     g.setIndex(INDEX);
     g.computeBoundingSphere();
     return g;
@@ -79,8 +92,10 @@ export class LodTerrain {
   }
 
   private addChunk(key: string, lod: number, ix: number, iz: number, geo: BufferGeometry): void {
-    const mesh = new Mesh(geo, this.material);
+    const mesh = new Mesh(geo, this.materials[lod]);
     mesh.receiveShadow = true;
+    // Terrain-Kacheln bewegen sich nur beim Origin-Shift → Matrix nur dann neu
+    mesh.matrixAutoUpdate = false;
     const c: Chunk = { key, lod, ix, iz, mesh, lastUsed: this.frame };
     this.place(c);
     this.cache.set(key, c);
@@ -89,12 +104,15 @@ export class LodTerrain {
   dispose(): void {
     for (const w of this.workers) w.terminate();
     for (const c of this.cache.values()) c.mesh.geometry.dispose();
+    for (const m of this.materials) m.dispose();
     this.cache.clear();
   }
 
   private place(c: Chunk): void {
     const size = TILE_SIZE * 2 ** c.lod;
     c.mesh.position.set((c.ix + 0.5) * size - ORIGIN.x, 0, (c.iz + 0.5) * size - ORIGIN.z);
+    c.mesh.updateMatrix();
+    this.dirty = true;
   }
 
   /** nach Floating-Origin-Shift alle Kacheln neu platzieren */
@@ -102,9 +120,23 @@ export class LodTerrain {
     for (const c of this.cache.values()) this.place(c);
   }
 
+  /** neue Kachel / Origin-Shift seit der letzten Auswahl */
+  private dirty = true;
+  private lastCam = { x: NaN, y: NaN, z: NaN };
+  private attached = new Set<Chunk>();
+
   /** Kamera (lokal) → Kacheln wählen, bauen (Budget), sichtbar schalten. */
   update(camX: number, camY: number, camZ: number): void {
     this.frame++;
+    // Auswahl nur neu, wenn sich etwas geändert hat (spart den Quadtree-Lauf bei stehender Kamera)
+    const moved = Math.abs(camX - this.lastCam.x) + Math.abs(camY - this.lastCam.y) + Math.abs(camZ - this.lastCam.z);
+    if (!this.dirty && moved < 0.25 && this.queue.length === 0 && this.pending.size === 0) {
+      if (this.frame % 60 === 0) for (const c of this.attached) c.lastUsed = this.frame;
+      this.stats.built = 0;
+      return;
+    }
+    this.dirty = false;
+    this.lastCam = { x: camX, y: camY, z: camZ };
     const ax = camX + ORIGIN.x;
     const az = camZ + ORIGIN.z;
     const groundY = sampleTerrainHeightWorld(ax, az);
@@ -211,12 +243,14 @@ export class LodTerrain {
       }
     }
 
-    // Sichtbarkeit + Aufräumen (Kacheln, die 300 Frames ungenutzt sind)
-    this.root.clear();
+    // Sichtbarkeit: nur Änderungen in den Szenengraph (kein clear/add je Frame)
+    for (const c of this.attached) if (!visible.has(c)) this.root.remove(c.mesh);
     for (const c of visible) {
       c.lastUsed = this.frame;
-      this.root.add(c.mesh);
+      if (!this.attached.has(c)) this.root.add(c.mesh);
     }
+    this.attached = visible;
+    // Aufräumen (Kacheln, die 300 Frames ungenutzt sind)
     for (const [key, c] of this.cache) {
       if (this.frame - c.lastUsed > 300) {
         c.mesh.geometry.dispose();

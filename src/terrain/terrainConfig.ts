@@ -29,11 +29,11 @@ export const GRID_SPACING = 0.78125;
 export const TILE_SEGMENTS = 64;
 /** Kantenlänge LOD 0 / Physik-Kachel [m] = 64 · 0,78125 */
 export const TILE_SIZE = TILE_SEGMENTS * GRID_SPACING;
-/** gröbste LOD-Stufe (Kante = 50 m · 2^MAX_LOD) */
-export const MAX_LOD = 8;
+/** gröbste LOD-Stufe (Kante = 50 m · 2^MAX_LOD = 51,2 km) */
+export const MAX_LOD = 10;
 /** Kachel wird geteilt, wenn Kamera näher als SPLIT · Kante */
-export const LOD_SPLIT = 0.7;
-/** Kacheln jenseits dieser Entfernung (Nebel-Ende) werden nicht geladen [m] */
-export const VIEW_DISTANCE = 9500;
+export const LOD_SPLIT = 0.9;
+/** Sichtweite = Nebel-Ende; Kacheln dahinter werden nicht geladen [m] */
+export const VIEW_DISTANCE = 30000;
 /** Physik-Kacheln: (2r+1)² um das Fahrzeug */
 export const PHYSICS_TILE_RADIUS = 1;

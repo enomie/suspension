@@ -17,7 +17,9 @@ export class CameraRig {
       this.camera.position.copy(target).add(this.offset);
       this.initialized = true;
     } else {
-      this.camera.position.add(target.clone().sub(this.last));
+      this.camera.position.x += target.x - this.last.x;
+      this.camera.position.y += target.y - this.last.y;
+      this.camera.position.z += target.z - this.last.z;
     }
     this.controls.target.copy(target);
     this.last.copy(target);

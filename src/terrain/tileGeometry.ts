@@ -45,6 +45,11 @@ export function buildTileIndex(): Uint32Array {
 export interface TileArrays {
   position: Float32Array;
   normal: Float32Array;
+  /**
+   * CDLOD-Geomorphing: Höhe der nächstgröberen Stufe (halbe Auflösung, gleiche Diagonale) minus eigene Höhe.
+   * Der Shader blendet damit kurz vor dem Zusammenfassen stufenlos zur groben Form → kein Popping.
+   */
+  morph: Float32Array;
 }
 
 export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays {
@@ -76,6 +81,22 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
       nor[k * 3 + 2] = nz / l;
     }
   }
+  // Grobe Stufe: Gitterpunkte mit geraden Indizes; dazwischen linear entlang Kante bzw. Diagonale (x1,z0)–(x0,z1)
+  const morph = new Float32Array(VERTS + SKIRT_VERTS);
+  const H = (i: number, j: number) => h[(j + 1) * W + (i + 1)];
+  for (let j = 0; j <= N; j++) {
+    for (let i = 0; i <= N; i++) {
+      const oi = i & 1;
+      const oj = j & 1;
+      let coarse: number;
+      if (!oi && !oj) coarse = H(i, j);
+      else if (oi && !oj) coarse = (H(i - 1, j) + H(i + 1, j)) / 2;
+      else if (!oi && oj) coarse = (H(i, j - 1) + H(i, j + 1)) / 2;
+      else coarse = (H(i + 1, j - 1) + H(i - 1, j + 1)) / 2;
+      morph[j * (N + 1) + i] = coarse - H(i, j);
+    }
+  }
+
   const skirt = d * 2 + 0.5 * 2 ** lod;
   RING.forEach((src, r) => {
     const k = VERTS + r;
@@ -83,6 +104,7 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     pos[k * 3 + 1] = pos[src * 3 + 1] - skirt;
     pos[k * 3 + 2] = pos[src * 3 + 2];
     nor.copyWithin(k * 3, src * 3, src * 3 + 3);
+    morph[k] = morph[src];
   });
-  return { position: pos, normal: nor };
+  return { position: pos, normal: nor, morph };
 }

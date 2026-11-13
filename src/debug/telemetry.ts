@@ -1,4 +1,12 @@
-import type { Vehicle } from '../vehicle/Vehicle';
+import type { CornerTelemetry, VehicleSpec } from '../vehicle/types';
+
+export interface TelemetrySource {
+  spec: VehicleSpec;
+  forwardSpeed: number;
+  corners: { id: string; telemetry: CornerTelemetry }[];
+  /** absolute Chassis-Position */
+  absPos: { x: number; z: number };
+}
 
 /** HUD: Geschwindigkeit + pro Corner Federweg, Federkraft, Raddrehzahl, Lenkwinkel. */
 export class TelemetryHud {
@@ -12,11 +20,12 @@ export class TelemetryHud {
   }
 
   update(
-    v: Vehicle,
+    v: TelemetrySource,
     dt: number,
     fps: number,
     terrain?: { visible: number; cached: number; queue: number },
     origin?: { x: number; z: number },
+    physics?: { mode: string; stepMs: number; delayMs: number },
   ): void {
     this.acc += dt;
     if (this.acc < 0.1) return;
@@ -36,13 +45,16 @@ export class TelemetryHud {
       );
     }
     if (terrain && origin) {
-      const t = v.chassis.translation();
       lines.push(
         '',
-        `pos abs  x ${(t.x + origin.x).toFixed(0)}  z ${(t.z + origin.z).toFixed(0)}   origin ${origin.x}, ${origin.z}`,
+        `pos abs  x ${v.absPos.x.toFixed(0)}  z ${v.absPos.z.toFixed(0)}   origin ${origin.x}, ${origin.z}`,
         `terrain  ${terrain.visible} Kacheln sichtbar · ${terrain.cached} im Cache · ${terrain.queue} in Warteschlange`,
       );
     }
+    if (physics)
+      lines.push(
+        `physik   ${physics.mode === 'worker' ? 'Worker' : 'Haupt-Thread'} · ${physics.stepMs.toFixed(2)} ms/Schritt · Interp.-Verzögerung ${physics.delayMs.toFixed(1)} ms`,
+      );
     lines.push('', '1–0 Aufhängung · W/S Gas/Bremse · A/D Lenken · Space Handbremse · R Reset');
     this.el.textContent = lines.join('\n');
   }

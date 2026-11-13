@@ -12,7 +12,8 @@ export class OriginShifter {
   private listeners: ShiftListener[] = [];
   shifts = 0;
 
-  constructor(private world: RAPIER.World) {}
+  /** world = null: nur ORIGIN + Teilnehmer (Haupt-Thread, wenn die Physik im Worker läuft) */
+  constructor(private world: RAPIER.World | null) {}
 
   /** Teilnehmer registrieren; gibt Abmelde-Funktion zurück */
   on(fn: ShiftListener): () => void {
@@ -31,7 +32,7 @@ export class OriginShifter {
   apply(dx: number, dz: number): void {
     ORIGIN.x += dx;
     ORIGIN.z += dz;
-    this.world.forEachRigidBody((b) => {
+    this.world?.forEachRigidBody((b) => {
       const p = b.translation();
       b.setTranslation({ x: p.x - dx, y: p.y, z: p.z - dz }, false);
     });

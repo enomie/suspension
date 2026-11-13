@@ -11,6 +11,14 @@ const _qi = new Quaternion();
 const _v = new Vector3();
 const _w = new Vector3();
 
+/**
+ * Alle Körper mit sichtbarer Pose, in fester Reihenfolge. Physik-Worker und Haupt-Thread bauen
+ * dasselbe Fahrzeug → gleiche Reihenfolge → Index i im Snapshot = Körper i hier.
+ */
+export function poseBodies(built: BuiltVehicle): RAPIER.RigidBody[] {
+  return [...new Set([built.chassis, ...built.corners.flatMap((c) => [c.carrier, ...c.bodies])])];
+}
+
 /** Laufzeit-Fahrzeug: Input → Motoren, Visual-Sync, Telemetrie. */
 export class Vehicle {
   readonly built: BuiltVehicle;
@@ -26,9 +34,7 @@ export class Vehicle {
   ) {
     this.built = buildVehicle(R, world, spec, pos);
     this.steering = new Steering(spec.steering, spec);
-    this.poses = new PoseInterpolator([
-      ...new Set([this.built.chassis, ...this.built.corners.flatMap((c) => [c.carrier, ...c.bodies])]),
-    ]);
+    this.poses = new PoseInterpolator(poseBodies(this.built));
   }
 
   /** Render-Interpolation (vor jedem world.step `poses.capture()`) */
