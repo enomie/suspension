@@ -47,7 +47,7 @@ Regeln:
 | Schicht | Datei | Wirkung | Masken |
 |---|---|---|---|
 | `continent` | `layers/continent.ts` | Land/Meer aus Rauschen mit 160 km Wellenlänge; Schwelle −0,06 → ~60 % Land. Land 0 … 300 m (flache Küsten), Schelf −150 m, Tiefsee bis −1500 m | `land`, `coast`, `inland` |
-| `mountains` | `layers/mountains.ts` | Gebirgszüge: Maske (90 km) × `inland`, Grate = ridged multifractal (9 km, 9 Oktaven), Domain Warp 6 km, entlang 30° gestreckt; bis +3000 m. Grate nur, wo die Maske > 0 | `mountain` |
+| `mountains` | `layers/mountains.ts` | Gebirgszüge: Maske (90 km) × `inland`, quadratisch auslaufend (Vorberge). Form = 30 % glatte Masse (25 km) + 70 % Grate (5 gerundete ridged-Oktaven ab 12 km, Kamm-Rundung 0,12) + schwache Felsstruktur nur an Kämmen; Warp 1,5 km, Streckung 1,3; bis 3000 m | `mountain` |
 | `detail` | `layers/detail.ts` | Bodenwellen (50 m, 5 Oktaven) | – |
 
 Grenzen (`limits`): Gipfel weich bis 3000 m (asymptotisch ab 2700), Meeresboden hart bei −1500 m.
@@ -59,7 +59,11 @@ Grenzen (`limits`): Gipfel weich bis 3000 m (asymptotisch ab 2700), Meeresboden 
 | `hills` | nur Hügel 1,5 … 7,5 m – Fahrwerks-, Physik- und LOD-Tests (`tests/setup.ts`) |
 
 Start: ohne `?x/?z` sucht `findLand(0, 0)` den nächsten ebenen Landpunkt (5 … 400 m, Gefälle < 15 %).
-Gebirge zum Anschauen: `?x=858000&z=897000`.
+Gebirge zum Anschauen: `?x=858000&z=897000` (~2460 m).
+
+Gebirge-Gestaltung (Lehren): viele scharfe Grat-Oktaven (`1 − |n|`) ergeben Zacken; starke Streckung/Warp ergibt
+Riefen; ungedämpfte Feinform wirkt wie zerknülltes Papier. Deshalb: wenige gerundete Grate, glatte Flanken,
+Feinform nur an Kämmen.
 
 Geplant: `regions` (Ebene, Hügelland, Alpin, Badlands, Fremdartig), `hills`, ortsabhängiges `detail`, `materials`.
 
