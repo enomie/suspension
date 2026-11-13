@@ -38,6 +38,7 @@ Die Doku liegt **in `src/`**, damit sie beim Kopieren mitwandert: [src/README.md
 | Datei | Inhalt |
 |---|---|
 | [src/docs/INTEGRATION_TERRAIN.md](src/docs/INTEGRATION_TERRAIN.md) | Terrain-Technik in ein anderes Projekt übernehmen |
+| [src/docs/INTEGRATION_APOKALYPTO.md](src/docs/INTEGRATION_APOKALYPTO.md) | Umsetzung im Projekt apokalypto: Stand, Zuordnung, nächste Schritte |
 | [src/docs/INTEGRATION_VEHICLE.md](src/docs/INTEGRATION_VEHICLE.md) | Fahrzeug statt Raycast-Vehicle, Asset-Editor-Anbindung |
 | [src/docs/ARCHITECTURE.md](src/docs/ARCHITECTURE.md) | Schichten, Threads, Frame-Ablauf, Debug |
 | [src/docs/TERRAIN.md](src/docs/TERRAIN.md) | Raster, Generator, LOD, Geomorphing |

@@ -19,6 +19,7 @@ Dieser Ordner ist **selbsterklärend kopierbar**: Code und Doku liegen zusammen.
 | Ziel | Anleitung |
 |---|---|
 | Terrain-Technik (unendlich, LOD, Physik-Kacheln, Floating Origin) | [docs/INTEGRATION_TERRAIN.md](docs/INTEGRATION_TERRAIN.md) |
+| Terrain in **apokalypto** (Stand, Datei-Zuordnung, nächste Schritte) | [docs/INTEGRATION_APOKALYPTO.md](docs/INTEGRATION_APOKALYPTO.md) |
 | Fahrzeug statt Raycast-Vehicle, Anbindung an einen Asset-Editor | [docs/INTEGRATION_VEHICLE.md](docs/INTEGRATION_VEHICLE.md) |
 
 Öffentliche Einstiege (nur diese importieren):
