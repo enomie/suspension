@@ -20,6 +20,10 @@ grobe Stufe = feine Stufe ohne die ungeraden Punkte. Origin-Shift im 64-m-Raster
 | `src/physics/terrainColliders.ts` | 3×3 Rapier-Heightfields à 64 m (128 Zellen) um das Fahrzeug |
 
 ## Gegen Flackern / Popping
+- **Verfeinern Ebene für Ebene:** eine Kachel wird nur durch ihre 4 Kinder ersetzt, wenn diese fertig sind; fehlt eins,
+  bleibt nur diese Kachel stehen. (Früher musste der ganze Teilbaum bis LOD 0 fertig sein – beim Fahren fiel dann
+  regelmäßig ein großer Bereich bis auf die 32-km-Wurzel zurück → starkes Flackern. Test: „LOD beim Fahren“.)
+- Gerade gebrauchte Kacheln (sichtbar + Kinder in Vorbereitung) werden nicht aus dem Cache verdrängt.
 - **CDLOD-Geomorphing** im Vertex-Shader: zwischen `morphRange` (0,65·end … end, end = Teilungsabstand des Elternteils)
   gleiten Höhe und Normale zur gröberen Stufe. Beim Teilen sehen die Kinder exakt wie der Elternteil aus, beim
   Zusammenfassen ebenso → weder Geometrie- noch Licht-Sprung.

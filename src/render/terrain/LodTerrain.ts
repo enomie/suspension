@@ -235,36 +235,30 @@ export class LodTerrain {
     };
     const children = (lod: number, ix: number, iz: number) =>
       [0, 1, 2, 3].map((k) => [lod - 1, ix * 2 + (k & 1), iz * 2 + (k >> 1)] as const);
-    /** true, wenn der Bereich vollständig mit fertigen Kacheln abgedeckt werden kann */
-    const covered = (lod: number, ix: number, iz: number): boolean => {
-      if (outOfView(lod, ix, iz)) return true;
-      if (!split(lod, ix, iz)) return ready(lod, ix, iz);
-      return children(lod, ix, iz).every(([l, x, z]) => covered(l, x, z));
-    };
     const request = (lod: number, ix: number, iz: number) => {
       if (!ready(lod, ix, iz)) want.push({ lod, ix, iz, d: dist(lod, ix, iz) });
     };
-    const requestTree = (lod: number, ix: number, iz: number): void => {
-      if (outOfView(lod, ix, iz)) return;
-      if (split(lod, ix, iz)) for (const [l, x, z] of children(lod, ix, iz)) requestTree(l, x, z);
-      else request(lod, ix, iz);
-    };
-    /** Teilen, sobald alle Kinder fertig abdeckbar sind; bis dahin die eigene Kachel zeigen */
+    /**
+     * Verfeinern Ebene für Ebene: eine Kachel wird nur durch ihre 4 Kinder ersetzt, wenn diese 4 fertig sind.
+     * Fehlt ein Kind, bleibt NUR diese Kachel stehen (nicht der ganze Teilbaum bis zur Wurzel) und die Kinder
+     * werden angefordert. So fehlt beim Fahren höchstens kurz eine Stufe Detail – nichts springt großflächig.
+     */
     const select = (lod: number, ix: number, iz: number): void => {
       if (outOfView(lod, ix, iz)) return;
-      const kids = split(lod, ix, iz) ? children(lod, ix, iz) : null;
-      if (kids && kids.every(([l, x, z]) => covered(l, x, z))) {
-        for (const [l, x, z] of kids) select(l, x, z);
-        return;
-      }
       const c = this.cache.get(key(lod, ix, iz));
-      if (c) {
-        visible.add(c);
-        if (kids) for (const [l, x, z] of kids) requestTree(l, x, z);
-        return;
+      if (!c) return request(lod, ix, iz); // Elternteil bleibt sichtbar (siehe unten)
+      c.lastUsed = this.frame;
+      if (split(lod, ix, iz)) {
+        const kids = children(lod, ix, iz).filter(([l, x, z]) => !outOfView(l, x, z));
+        const kidChunks = kids.map(([l, x, z]) => this.cache.get(key(l, x, z)));
+        for (const k of kidChunks) if (k) k.lastUsed = this.frame; // gebraucht → nicht verdrängen
+        if (kidChunks.every((k) => k)) {
+          for (const [l, x, z] of kids) select(l, x, z);
+          return;
+        }
+        for (const [l, x, z] of kids) request(l, x, z);
       }
-      request(lod, ix, iz);
-      if (kids) for (const [l, x, z] of kids) select(l, x, z);
+      visible.add(c);
     };
     // alle Wurzel-Kacheln, die die Sichtweite berühren (kein festes 3×3-Fenster → kein Springen an Wurzelgrenzen)
     const R = VIEW_DISTANCE * 1.05;

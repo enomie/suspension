@@ -158,8 +158,8 @@ describe('LOD stability (no flicker)', () => {
     // Kamera in 0,5-m-Schritten über mehrere LOD-Grenzen schieben, an jeder Stelle ±0,3 m zittern
     for (let x = 0; x < 120; x += 0.5) {
       const at = (dx: number) => {
-        t.update(x + dx, 8, 20);
-        t.update(x + dx, 8, 20);
+        // Verfeinerung geht eine Ebene pro Durchlauf → bis zum eingeschwungenen Zustand laufen lassen
+        for (let i = 0; i < 14; i++) t.update(x + dx + i * 1e-3, 8, 20);
         return visibleKeys(t);
       };
       at(0.3);
@@ -167,5 +167,32 @@ describe('LOD stability (no flicker)', () => {
       if (at(0.3) !== at(-0.3)) toggling++;
     }
     expect(toggling).toBe(0);
+  });
+});
+
+describe('LOD beim Fahren (Kacheln kommen verzögert wie aus dem Worker)', () => {
+  it('kein Hin-und-her-Schalten zwischen grob und fein', () => {
+    const t = new LodTerrain();
+    t.budgetMs = 1e9;
+    for (let i = 0; i < 20; i++) t.update(0, 10, 0);
+    t.budgetMs = 0; // ~1 Kachel pro Frame
+    const hist = new Map<string, number[]>();
+    let prev = new Set(t.visibleKeys());
+    let flips = 0;
+    for (let f = 0; f < 2000; f++) {
+      const z = -f * 0.2 + 9; // 24 m/s bei 120 fps
+      t.update(6, sampleTerrainHeightWorld(6, z) + 4, z);
+      const cur = new Set(t.visibleKeys());
+      for (const k of new Set([...cur, ...prev]))
+        if (cur.has(k) !== prev.has(k)) {
+          const h = hist.get(k) ?? [];
+          h.push(f);
+          hist.set(k, h);
+          // dieselbe Kachel innerhalb von 60 Frames an → aus → an = Flackern
+          if (h.length >= 3 && h[h.length - 1] - h[h.length - 3] < 60) flips++;
+        }
+      prev = cur;
+    }
+    expect(flips).toBe(0);
   });
 });
