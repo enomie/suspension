@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
-import { FixedStep } from '../src/app/fixedStep';
-import { OriginShifter } from '../src/world/originShift';
-import { ORIGIN } from '../src/world/origin';
+import { StepClock } from '../src/shared/stepClock';
+import { Simulation } from '../src/physics/Simulation';
+import { OriginShifter } from '../src/shared/originShifter';
+import { ORIGIN } from '../src/shared/origin';
 
 await RAPIER.init();
 afterEach(() => {
@@ -10,44 +11,54 @@ afterEach(() => {
   ORIGIN.z = 0;
 });
 
-describe('FixedStep', () => {
-  it('runs whole steps and returns the remainder as alpha', () => {
-    const s = new FixedStep(1 / 120, 4);
-    let n = 0;
-    const a = s.advance(1 / 100, () => n++);
-    expect(n).toBe(1);
-    expect(a).toBeCloseTo((1 / 100 - 1 / 120) * 120, 6);
+describe('StepClock', () => {
+  it('liefert fällige Schritte nach Wanduhr', () => {
+    const c = new StepClock(0, 1000 / 120);
+    expect(c.due(5)).toBe(0);
+    expect(c.due(17)).toBe(2);
+    c.stampNext();
+    c.stampNext();
+    expect(c.due(17)).toBe(0);
   });
-  it('caps steps after a hitch', () => {
-    const s = new FixedStep(1 / 120, 4);
-    let n = 0;
-    s.advance(1, () => n++);
-    expect(n).toBe(4);
+  it('zieht nach einem Hänger die Uhr nach statt aufzuholen', () => {
+    const c = new StepClock(0, 1000 / 120, 6);
+    expect(c.due(1000)).toBe(6);
   });
-  it('same total steps regardless of frame rate', () => {
-    for (const fps of [30, 60, 100, 144, 240]) {
-      const s = new FixedStep(1 / 120, 8);
+  it('gleiche Schrittzahl unabhängig von der Abfragerate', () => {
+    for (const fps of [30, 60, 144, 240]) {
+      const c = new StepClock(0, 1000 / 120, 100);
       let n = 0;
-      for (let i = 0; i < fps * 2; i++) s.advance(1 / fps, () => n++);
+      for (let f = 1; f <= fps * 2; f++) {
+        const k = c.due((f * 1000) / fps);
+        for (let i = 0; i < k; i++) c.stampNext(), n++;
+      }
       expect(Math.abs(n - 240)).toBeLessThanOrEqual(1);
     }
   });
 });
 
 describe('OriginShifter', () => {
-  it('moves ORIGIN, all bodies and notifies listeners; absolute positions unchanged', () => {
-    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
-    const b = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(1200, 3, -40));
-    const f = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(1150, 0, 0));
-    const o = new OriginShifter(world);
+  it('moves ORIGIN and notifies listeners only beyond the threshold', () => {
+    const o = new OriginShifter();
     const got: number[][] = [];
     o.on((dx, dz) => got.push([dx, dz]));
     expect(o.update(500, 0)).toBe(false);
     expect(o.update(1200, -40)).toBe(true);
     expect(ORIGIN).toEqual({ x: 1200, z: -50 });
     expect(got).toEqual([[1200, -50]]);
-    expect(b.translation().x + ORIGIN.x).toBeCloseTo(1200, 6);
-    expect(b.translation().z + ORIGIN.z).toBeCloseTo(-40, 6);
-    expect(f.translation().x + ORIGIN.x).toBeCloseTo(1150, 6);
+  });
+
+  it('Simulation: Shift verschiebt alle Rapier-Körper, absolute Positionen bleiben', () => {
+    const sim = new Simulation(RAPIER, { preset: 0, x: 0, z: 0 });
+    const before: number[][] = [];
+    sim.world.forEachRigidBody((b) => before.push([b.translation().x + ORIGIN.x, b.translation().z + ORIGIN.z]));
+    sim.origin.apply(1200, -50);
+    const after: number[][] = [];
+    sim.world.forEachRigidBody((b) => after.push([b.translation().x + ORIGIN.x, b.translation().z + ORIGIN.z]));
+    expect(after.length).toBe(before.length);
+    after.forEach((p, i) => {
+      expect(p[0]).toBeCloseTo(before[i][0], 3);
+      expect(p[1]).toBeCloseTo(before[i][1], 3);
+    });
   });
 });

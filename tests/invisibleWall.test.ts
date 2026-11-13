@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
-import { PhysicsTiles } from '../src/terrain/physicsTiles';
-import { sampleTerrainHeightWorld } from '../src/terrain/generateHeights';
-import { Vehicle } from '../src/vehicle/Vehicle';
-import { PRESETS } from '../src/vehicle/presets';
+import { PhysicsTiles } from '../src/physics/terrainColliders';
+import { sampleTerrainHeightWorld } from '../src/shared/terrainHeight';
+import { Vehicle } from '../src/physics/vehicle/Vehicle';
+import { PRESETS } from '../src/physics/vehicle/presets';
 
 await RAPIER.init();
 

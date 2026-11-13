@@ -21,11 +21,8 @@ Daraus soll ein **Baukasten** werden: gleiche Bauteile, sauber benannt, beliebig
 | Sattelzug | Zugmaschine + Auflieger | Sattelkupplung (Königszapfen) |
 | Kettenfahrzeug (später) | n Laufrollen | Laufrollen gefedert, Kette als Antriebsmodell |
 
-Bestehender Code (Ausgangslage):
-- `src/physics/rapierWorld.ts` – Rapier-Init, Welt mit g = −9,81
-- `src/physics/createHeightfieldCollider.ts` – Heightfield 100×100 m (Reibung 0,95)
-- `src/terrain/*` – deterministisches Terrain (fbm), Mesh + Collider synchron
-- `src/main.ts` – WebGPU-Renderer, OrbitControls, Test-Kugeln, variabler Physik-Timestep (→ wird fix)
+Code-Struktur: siehe `docs/ARCHITECTURE.md`. Fahrzeug-Physik liegt in `src/physics/vehicle/`
+(nur Rapier, keine Optik); die Optik baut `src/render/vehicle/` aus dem Layout (`physics/vehicle/layout.ts`).
 - Dev-Server: Port **9897** (`npm run dev`)
 
 ## 2. Steuerung
@@ -66,7 +63,7 @@ und andere Aufhängungen sind nur andere Joint-Topologien aus denselben Bauteile
 
 ## 4. Aufhängungen (umgesetzt, Taste 1–0)
 
-Jede Aufhängung = eine Datei in `src/vehicle/parts/suspension/`, baut eine **ganze Achse** und liefert nur den
+Jede Aufhängung = eine Datei in `src/physics/vehicle/parts/suspension/`, baut eine **ganze Achse** und liefert nur den
 **Radträger** (`carrier`) + Lenker/Federn. Lenk-Knuckle und Rad hängt `finishCorner()` (common.ts) immer gleich an.
 Federraten werden über die Übersetzung (`leverRatio`, MR) auf die Radmitte umgerechnet → alle Prinzipien gleich hart.
 
@@ -125,7 +122,7 @@ Koordinaten: **Vorwärts = −Z**, oben = +Y, rechts = +X (wie Ocean-Projekt). E
 
 | Bauteil | Datei (geplant) | Rapier-Objekte | Parameter |
 |---|---|---|---|
-| `Chassis` | `src/vehicle/parts/chassis.ts` | dynamic RigidBody, cuboid/convexHull Collider | Maße, Masse, Schwerpunkt-Offset, Collision-Group |
+| `Chassis` | `src/physics/vehicle/parts/chassis.ts` | dynamic RigidBody, cuboid/convexHull Collider | Maße, Masse, Schwerpunkt-Offset, Collision-Group |
 | `Wheel` | `parts/wheel.ts` | dynamic RigidBody, `cylinder`/`roundCylinder` (um Z gedreht) oder `ball` | Radius, Breite, Masse, Reibung, CCD an |
 | `Knuckle` | `parts/knuckle.ts` | kleiner dynamic Body (kein Collider, Masse manuell) | Masse, Trägheit |
 | `Strut` | `parts/strut.ts` | kleiner dynamic Body | Masse |

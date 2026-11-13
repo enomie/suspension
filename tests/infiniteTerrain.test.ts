@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
-import { PhysicsTiles } from '../src/terrain/physicsTiles';
-import { LodTerrain } from '../src/terrain/lodTerrain';
-import { sampleTerrainHeightWorld } from '../src/terrain/generateHeights';
-import { TILE_SIZE } from '../src/terrain/terrainConfig';
-import { ORIGIN, originShiftFor } from '../src/world/origin';
-import { Vehicle } from '../src/vehicle/Vehicle';
-import { car } from '../src/vehicle/presets/car';
+import { PhysicsTiles } from '../src/physics/terrainColliders';
+import { LodTerrain } from '../src/render/terrain/LodTerrain';
+import { sampleTerrainHeightWorld } from '../src/shared/terrainHeight';
+import { TILE_SIZE } from '../src/shared/config';
+import { ORIGIN, originShiftFor } from '../src/shared/origin';
+import { Vehicle } from '../src/physics/vehicle/Vehicle';
+import { car } from '../src/physics/vehicle/presets/car';
 
 await RAPIER.init();
 
