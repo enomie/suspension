@@ -5,9 +5,9 @@
 export const ORIGIN = { x: 0, z: 0 };
 
 /** Ab dieser lokalen Entfernung wird verschoben [m] */
-export const ORIGIN_SHIFT_THRESHOLD = 1000;
-/** Verschiebung immer im Raster (hält Kachelraster ganzzahlig) [m] */
-export const ORIGIN_GRID = 50;
+export const ORIGIN_SHIFT_THRESHOLD = 1024;
+/** Verschiebung immer im Raster einer Physik-Kachel (hält alle Kachelraster ganzzahlig) [m] */
+export const ORIGIN_GRID = 64;
 
 /** Wieviel muss verschoben werden, damit (x, z) lokal wieder nahe 0 liegt? null = nicht nötig. */
 export function originShiftFor(localX: number, localZ: number): { dx: number; dz: number } | null {

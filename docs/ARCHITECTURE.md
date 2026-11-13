@@ -29,6 +29,8 @@ app/keyboard ──'input' / 'spawn'──▶ physics/worker
 | F3 | Fahrzeug-Interpolation an/aus (aus = immer neuester Snapshot) | Auto-Aufblitzen durch Interpolation? |
 | F4 | LOD-Auswahl einfrieren | Terrain-Flackern durch Kachelwechsel? |
 | F5 | Terrain-Drahtgitter | Kachelgrenzen / Skirts sichtbar machen |
+| F6 | Sonne einfrieren (folgt dem Auto nicht) | Schatten-Blitzen durch Mitführen der Schattenkamera? |
+| F7 | Schattenfilter durchschalten (PCF → weich → VSM → hart) | Schatten-Blitzen durch Filter/Bias? |
 
 Vorab abschalten per URL: `?debug=shadows,morph,interp`. HUD zählt Frame-Ausreißer (> 2× Mittel).
 Weitere URL-Parameter: `?worker=0`, `?dpr=1`, `?x=…&z=…`.

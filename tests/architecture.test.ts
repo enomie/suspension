@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 
 /** Schichtgrenzen aus docs/ARCHITECTURE.md – verhindert, dass Physik und Optik wieder verschmelzen. */
+const SOURCES = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true }) as Record<
+  string,
+  string
+>;
 const files = (dir: string): string[] =>
-  readdirSync(dir).flatMap((f) => {
-    const p = join(dir, f);
-    return statSync(p).isDirectory() ? files(p) : p.endsWith('.ts') ? [p] : [];
-  });
+  Object.keys(SOURCES)
+    .map((k) => k.replace('../', ''))
+    .filter((p) => p.startsWith(dir + '/') || p === dir);
 const staticImports = (p: string) =>
-  [...readFileSync(p, 'utf8').matchAll(/^import\s[^;]*?from\s+'([^']+)'/gms)]
+  [...SOURCES['../' + p].matchAll(/^import\s[^;]*?from\s+'([^']+)'/gms)]
     .filter((m) => !/^import\s+type\s/.test(m[0]))
     .map((m) => m[1]);
 
 describe('Schichtgrenzen', () => {
+  it('findet die Quellen', () => {
+    for (const d of ['src/shared', 'src/physics', 'src/render', 'src/app']) expect(files(d).length).toBeGreaterThan(2);
+  });
   it('shared/ ist rein (kein three, kein Rapier, keine anderen Schichten)', () => {
     for (const f of files('src/shared'))
       for (const i of staticImports(f)) expect(`${f}: ${i}`).not.toMatch(/: (three|@dimforge|\.\.\/(physics|render|app))/);

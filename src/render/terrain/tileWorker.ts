@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { buildTileArrays } from '../../shared/tileGeometry';
 
-/** Worker: Kachel berechnen, Puffer ohne Kopie (transfer) zurückgeben. */
+/** Kachel-Worker: Kachel berechnen, Puffer ohne Kopie (transfer) zurückgeben. */
 export interface TileRequest {
   key: string;
   lod: number;
@@ -11,10 +11,12 @@ export interface TileRequest {
 
 self.onmessage = (e: MessageEvent<TileRequest>) => {
   const { key, lod, ix, iz } = e.data;
-  const { position, normal, morph } = buildTileArrays(lod, ix, iz);
-  (self as unknown as Worker).postMessage({ key, lod, ix, iz, position, normal, morph }, [
-    position.buffer,
-    normal.buffer,
-    morph.buffer,
+  const a = buildTileArrays(lod, ix, iz);
+  (self as unknown as Worker).postMessage({ key, lod, ix, iz, ...a }, [
+    a.position.buffer,
+    a.normal.buffer,
+    a.morph.buffer,
+    a.morphNormal.buffer,
+    a.morphRange.buffer,
   ]);
 };

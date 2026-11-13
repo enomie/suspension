@@ -1,13 +1,15 @@
-import { sampleTerrainHeightWorld } from './terrainHeight';
-import { TILE_SEGMENTS, TILE_SIZE } from './config';
+import { sampleGrid } from './terrainHeight';
+import { CELL, MAX_LOD, TILE_SEGMENTS, TILE_SIZE, lodSplit } from './config';
 
 /**
- * Reine Kachel-Berechnung (ohne three.js) – läuft im Worker und im Main-Thread (Fallback/Tests).
- * Positionen relativ zur Kachelmitte, Normalen aus Höhenraster mit 1 Vertex Rand.
+ * Reine Kachel-Berechnung (ohne three.js) – läuft im Kachel-Worker und im Main-Thread (Fallback/Tests).
+ * Positionen relativ zur Kachelmitte. Zusätzlich für CDLOD-Geomorphing: Höhe UND Normale der
+ * nächstgröberen Stufe (= jeder zweite Punkt dieser Kachel) sowie der Morph-Bereich der Stufe.
  */
 export const N = TILE_SEGMENTS;
 export const VERTS = (N + 1) * (N + 1);
 export const SKIRT_VERTS = 4 * (N + 1);
+export const TILE_VERTS = VERTS + SKIRT_VERTS;
 
 /** Randring (entlang der 4 Kanten) – Quelle der Skirt-Vertices */
 export const RING: number[] = (() => {
@@ -42,58 +44,87 @@ export function buildTileIndex(): Uint32Array {
   return new Uint32Array(idx);
 }
 
+export const tileSize = (lod: number) => TILE_SIZE * 2 ** lod;
+
+/**
+ * Morph-Bereich [start, end] (Abstand Vertex–Kamera): bei `end` sieht die Kachel exakt wie ihr Elternteil aus.
+ * end = Teilungs-Abstand des Elternteils → beim Teilen sind die Kinder voll gemorpht (= Elternform),
+ * beim Zusammenfassen (Hysterese ≥ end) ebenfalls → kein sichtbarer Wechsel.
+ */
+export function morphRange(lod: number): [number, number] {
+  if (lod >= MAX_LOD) return [1e9, 2e9];
+  const end = lodSplit(lod + 1) * tileSize(lod + 1);
+  return [end * 0.65, end];
+}
+
 export interface TileArrays {
   position: Float32Array;
   normal: Float32Array;
-  /**
-   * CDLOD-Geomorphing: Höhe der nächstgröberen Stufe (halbe Auflösung, gleiche Diagonale) minus eigene Höhe.
-   * Der Shader blendet damit kurz vor dem Zusammenfassen stufenlos zur groben Form → kein Popping.
-   */
+  /** Höhe der gröberen Stufe minus eigene Höhe */
   morph: Float32Array;
+  /** Normale der gröberen Stufe */
+  morphNormal: Float32Array;
+  /** [start, end] je Vertex (konstant je Kachel) */
+  morphRange: Float32Array;
 }
 
 export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays {
-  const size = TILE_SIZE * 2 ** lod;
-  const d = size / N;
-  const x0 = ix * size;
-  const z0 = iz * size;
-  const W = N + 3;
-  const h = new Float64Array(W * W);
-  for (let j = 0; j < W; j++)
-    for (let i = 0; i < W; i++) h[j * W + i] = sampleTerrainHeightWorld(x0 + (i - 1) * d, z0 + (j - 1) * d);
+  const size = tileSize(lod);
+  const d = CELL * 2 ** lod;
+  const B = 2; // Rand für grobe Normalen (±2 Punkte)
+  const W = N + 1 + 2 * B;
+  const h = sampleGrid(ix * size, iz * size, d, N, B);
+  const H = (i: number, j: number) => h[(j + B) * W + (i + B)];
 
-  const pos = new Float32Array((VERTS + SKIRT_VERTS) * 3);
-  const nor = new Float32Array((VERTS + SKIRT_VERTS) * 3);
+  const pos = new Float32Array(TILE_VERTS * 3);
+  const nor = new Float32Array(TILE_VERTS * 3);
+  const morph = new Float32Array(TILE_VERTS);
+  const mnor = new Float32Array(TILE_VERTS * 3);
+  const range = new Float32Array(TILE_VERTS * 2);
   const half = size / 2;
+
+  const setN = (out: Float32Array, k: number, nx: number, ny: number, nz: number) => {
+    const l = Math.hypot(nx, ny, nz);
+    out[k * 3] = nx / l;
+    out[k * 3 + 1] = ny / l;
+    out[k * 3 + 2] = nz / l;
+  };
+  // grobe Normale an geraden Punkten: Differenzen über ±2 Punkte (= ±1 Punkt der gröberen Stufe)
+  const coarseN = (i: number, j: number): [number, number, number] => [
+    H(i - 2, j) - H(i + 2, j),
+    4 * d,
+    H(i, j - 2) - H(i, j + 2),
+  ];
+  const add = (a: number[], b: number[]) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+
   for (let j = 0; j <= N; j++) {
     for (let i = 0; i <= N; i++) {
       const k = j * (N + 1) + i;
-      const c = (j + 1) * W + (i + 1);
       pos[k * 3] = i * d - half;
-      pos[k * 3 + 1] = h[c];
+      pos[k * 3 + 1] = H(i, j);
       pos[k * 3 + 2] = j * d - half;
-      const nx = h[c - 1] - h[c + 1];
-      const nz = h[c - W] - h[c + W];
-      const ny = 2 * d;
-      const l = Math.hypot(nx, ny, nz);
-      nor[k * 3] = nx / l;
-      nor[k * 3 + 1] = ny / l;
-      nor[k * 3 + 2] = nz / l;
-    }
-  }
-  // Grobe Stufe: Gitterpunkte mit geraden Indizes; dazwischen linear entlang Kante bzw. Diagonale (x1,z0)–(x0,z1)
-  const morph = new Float32Array(VERTS + SKIRT_VERTS);
-  const H = (i: number, j: number) => h[(j + 1) * W + (i + 1)];
-  for (let j = 0; j <= N; j++) {
-    for (let i = 0; i <= N; i++) {
+      setN(nor, k, H(i - 1, j) - H(i + 1, j), 2 * d, H(i, j - 1) - H(i, j + 1));
+
+      // grobe Stufe: gerade Punkte; dazwischen linear entlang Kante bzw. Diagonale (x1,z0)–(x0,z1)
       const oi = i & 1;
       const oj = j & 1;
       let coarse: number;
-      if (!oi && !oj) coarse = H(i, j);
-      else if (oi && !oj) coarse = (H(i - 1, j) + H(i + 1, j)) / 2;
-      else if (!oi && oj) coarse = (H(i, j - 1) + H(i, j + 1)) / 2;
-      else coarse = (H(i + 1, j - 1) + H(i - 1, j + 1)) / 2;
-      morph[j * (N + 1) + i] = coarse - H(i, j);
+      let cn: number[];
+      if (!oi && !oj) {
+        coarse = H(i, j);
+        cn = coarseN(i, j);
+      } else if (oi && !oj) {
+        coarse = (H(i - 1, j) + H(i + 1, j)) / 2;
+        cn = add(coarseN(i - 1, j), coarseN(i + 1, j));
+      } else if (!oi && oj) {
+        coarse = (H(i, j - 1) + H(i, j + 1)) / 2;
+        cn = add(coarseN(i, j - 1), coarseN(i, j + 1));
+      } else {
+        coarse = (H(i + 1, j - 1) + H(i - 1, j + 1)) / 2;
+        cn = add(coarseN(i + 1, j - 1), coarseN(i - 1, j + 1));
+      }
+      morph[k] = coarse - H(i, j);
+      setN(mnor, k, cn[0], cn[1], cn[2]);
     }
   }
 
@@ -104,7 +135,13 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     pos[k * 3 + 1] = pos[src * 3 + 1] - skirt;
     pos[k * 3 + 2] = pos[src * 3 + 2];
     nor.copyWithin(k * 3, src * 3, src * 3 + 3);
+    mnor.copyWithin(k * 3, src * 3, src * 3 + 3);
     morph[k] = morph[src];
   });
-  return { position: pos, normal: nor, morph };
+  const [r0, r1] = morphRange(lod);
+  for (let k = 0; k < TILE_VERTS; k++) {
+    range[k * 2] = r0;
+    range[k * 2 + 1] = r1;
+  }
+  return { position: pos, normal: nor, morph, morphNormal: mnor, morphRange: range };
 }

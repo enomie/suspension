@@ -44,3 +44,16 @@ export function sampleTerrainHeightWorld(xM: number, zM: number): number {
   const shaped = Math.pow(n, 1.35);
   return TERRAIN_NOISE.baseElevationM + shaped * TERRAIN_NOISE.amplitudeM;
 }
+
+/**
+ * EIN Abtaster für alle: (n+1)² Höhen eines Rasters ab absolutem (x0, z0) mit Abstand d, Zeile = Z, Spalte = X
+ * (Index j·(n+1)+i), optional mit `border` Punkten Rand. Physik und Optik rufen nur dies auf → identische
+ * Abtastpunkte auf allen Zweierpotenz-Stufen.
+ */
+export function sampleGrid(x0: number, z0: number, d: number, n: number, border = 0): Float64Array {
+  const W = n + 1 + 2 * border;
+  const h = new Float64Array(W * W);
+  for (let j = 0; j < W; j++)
+    for (let i = 0; i < W; i++) h[j * W + i] = sampleTerrainHeightWorld(x0 + (i - border) * d, z0 + (j - border) * d);
+  return h;
+}

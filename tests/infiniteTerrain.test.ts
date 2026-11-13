@@ -92,9 +92,9 @@ describe('LOD 0 mesh = physics (same grid + diagonal)', () => {
 });
 
 describe('floating origin', () => {
-  it('shift only beyond threshold, on 50 m grid', () => {
-    expect(originShiftFor(999, -999)).toBeNull();
-    expect(originShiftFor(1020, 10)).toEqual({ dx: 1000, dz: 0 });
+  it('shift only beyond threshold, on 64 m grid', () => {
+    expect(originShiftFor(1023, -1023)).toBeNull();
+    expect(originShiftFor(1030, 10)).toEqual({ dx: 1024, dz: 0 });
   });
 
   it('vehicle keeps driving smoothly through an origin shift', () => {
@@ -136,8 +136,7 @@ describe('LOD stability (no flicker)', () => {
     t.budgetMs = 1e9;
     for (let i = 0; i < 20; i++) t.update(x, y, z);
   };
-  const visibleKeys = (t: LodTerrain) =>
-    t.root.children.map((m) => `${m.position.x},${m.position.z}`).sort().join('|');
+  const visibleKeys = (t: LodTerrain) => t.visibleKeys().join('|');
 
   it('static camera: nothing rebuilt or evicted over 700 frames', () => {
     const t = new LodTerrain();

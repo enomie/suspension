@@ -8,8 +8,8 @@ export class Keyboard {
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
-      // Space/Pfeile scrollen nicht; F1–F5 sind Debug-Schalter (statt Hilfe/Neu laden)
-      if (e.code === 'Space' || e.code.startsWith('Arrow') || /^F[1-5]$/.test(e.code)) e.preventDefault();
+      // Space/Pfeile scrollen nicht; F1–F7 sind Debug-Schalter (statt Hilfe/Neu laden)
+      if (e.code === 'Space' || e.code.startsWith('Arrow') || /^F[1-7]$/.test(e.code)) e.preventDefault();
       if (!this.down.has(e.code)) this.pressed.add(e.code);
       this.down.add(e.code);
     });

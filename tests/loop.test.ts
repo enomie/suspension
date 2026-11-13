@@ -44,8 +44,8 @@ describe('OriginShifter', () => {
     o.on((dx, dz) => got.push([dx, dz]));
     expect(o.update(500, 0)).toBe(false);
     expect(o.update(1200, -40)).toBe(true);
-    expect(ORIGIN).toEqual({ x: 1200, z: -50 });
-    expect(got).toEqual([[1200, -50]]);
+    expect(ORIGIN).toEqual({ x: 1216, z: -64 });
+    expect(got).toEqual([[1216, -64]]);
   });
 
   it('Simulation: Shift verschiebt alle Rapier-Körper, absolute Positionen bleiben', () => {

@@ -49,7 +49,7 @@ export class TelemetryHud {
       lines.push(
         '',
         `pos abs  x ${v.absPos.x.toFixed(0)}  z ${v.absPos.z.toFixed(0)}   origin ${origin.x}, ${origin.z}`,
-        `terrain  ${terrain.visible} Kacheln sichtbar · ${terrain.cached} im Cache · ${terrain.queue} in Warteschlange`,
+        `terrain  ${terrain.visible} Kacheln sichtbar (1 Draw Call) · ${terrain.cached} im Cache · ${terrain.queue} in Warteschlange`,
       );
     }
     if (physics)

@@ -1,70 +1,110 @@
-import { BufferAttribute, BufferGeometry, DoubleSide, Group, Mesh } from 'three';
+import { BatchedMesh, BufferAttribute, BufferGeometry, Matrix4 } from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
-import { attribute, cameraPosition, distance, float, modelWorldMatrix, positionLocal, smoothstep, uniform, vec3, vec4 } from 'three/tsl';
-
-/** Debug: Geomorphing an (1) / aus (0) – für alle Terrain-Materialien */
-export const morphEnabled = uniform(1);
+import {
+  attribute,
+  cameraPosition,
+  distance,
+  mix,
+  modelWorldMatrix,
+  normalLocal,
+  positionLocal,
+  smoothstep,
+  transformNormalToView,
+  uniform,
+  varying,
+  vec3,
+  vec4,
+} from 'three/tsl';
 import { ORIGIN } from '../../shared/origin';
 import { sampleTerrainHeightWorld } from '../../shared/terrainHeight';
-import { buildTileArrays, buildTileIndex, type TileArrays } from '../../shared/tileGeometry';
+import { buildTileArrays, buildTileIndex, TILE_VERTS, tileSize, type TileArrays } from '../../shared/tileGeometry';
 import type { TileRequest } from './tileWorker';
-import { LOD_SPLIT, MAX_LOD, TILE_SIZE, VIEW_DISTANCE } from '../../shared/config';
+import { MAX_LOD, VIEW_DISTANCE, lodSplit } from '../../shared/config';
+
+/** Debug: Geomorphing an (1) / aus (0) */
+export const morphEnabled = uniform(1);
+
+/** Kachel-Plätze im BatchedMesh (sichtbar ~150, Rest = Cache) */
+const SLOTS = 320;
+const INDEX = buildTileIndex();
 
 /**
- * Unendliches LOD-Terrain (Quadtree aus Kacheln mit je 64×64 Segmenten).
- * LOD 0 = 50 m Kachel, 0,78 m Raster = exakt das Physik-Raster (gleiche Dreiecks-Diagonale wie Rapier).
- * LOD k = 50 m · 2^k. Risse zwischen Stufen verdecken Schürzen (Skirts) an den Kachelrändern.
- * Kacheln werden in einem Worker-Pool berechnet (grob zuerst, nah zuerst) und gecacht;
- * ohne Worker (Node/Tests) synchron mit Zeitbudget.
+ * Ein Material für alle Kacheln. CDLOD-Geomorphing im Vertex-Shader: zwischen morphRange.x und .y
+ * (Abstand Vertex–Kamera) gleiten Höhe UND Normale zur nächstgröberen Stufe → weder Geometrie- noch
+ * Licht-Sprung beim Kachelwechsel.
  */
+function terrainMaterial(): MeshStandardNodeMaterial {
+  const m = new MeshStandardNodeMaterial({ color: 0x4a6741, roughness: 0.92, metalness: 0.02 });
+  const range = attribute('morphRange', 'vec2');
+  // positionLocal enthält hier bereits die Kachel-Position (BatchedMesh)
+  const wp = modelWorldMatrix.mul(vec4(positionLocal, 1)).xyz;
+  const k = varying(smoothstep(range.x, range.y, distance(wp, cameraPosition)).mul(morphEnabled));
+  m.positionNode = positionLocal.add(vec3(0, attribute('morph', 'float').mul(k), 0));
+  m.normalNode = transformNormalToView(mix(normalLocal, attribute('morphNormal', 'vec3'), k)).normalize();
+  return m;
+}
+
 interface Chunk {
   key: string;
   lod: number;
   ix: number;
   iz: number;
-  mesh: Mesh;
+  /** Platz im BatchedMesh (Geometrie- = Instanz-Index) */
+  slot: number;
   lastUsed: number;
 }
 
-const INDEX = new BufferAttribute(buildTileIndex(), 1);
-
 /**
- * CDLOD-Geomorphing im Vertex-Shader: ab ~1,2 Kachelkanten Abstand blendet jeder Vertex zur Höhe der
- * nächstgröberen Stufe; spätestens beim Zusammenfassen (Hysterese-Grenze) ist er vollständig dort.
- * Beim Teilen sehen die Kinder zunächst exakt wie der Elternteil aus → kein sichtbares Umschalten.
+ * Unendliches LOD-Terrain: Quadtree aus Kacheln mit je 64×64 Segmenten, Kanten 32 m · 2^k.
+ * LOD 0 = 0,5-m-Raster = Physik-Raster (gleiche Punkte, gleiche Diagonale). Fein bis ~2 km
+ * (`lodSplit`), dahinter grob bis 32 km. ALLE Kacheln liegen in EINEM BatchedMesh → 1 Draw Call.
+ * Kacheln werden im Worker-Pool berechnet (grob zuerst, nah zuerst); ohne Worker synchron mit Zeitbudget.
  */
-function morphMaterial(lod: number): MeshStandardNodeMaterial {
-  const m = new MeshStandardNodeMaterial({ color: 0x4a6741, roughness: 0.92, metalness: 0.02, side: DoubleSide });
-  const size = TILE_SIZE * 2 ** lod;
-  const end = LOD_SPLIT * 2 * size;
-  const start = end * 0.65;
-  const wp = modelWorldMatrix.mul(vec4(positionLocal, 1)).xyz;
-  const k = smoothstep(float(start), float(end), distance(wp, cameraPosition));
-  m.positionNode = positionLocal.add(vec3(0, attribute('morph', 'float').mul(k).mul(morphEnabled), 0));
-  return m;
-}
-
 export class LodTerrain {
-  readonly root = new Group();
-  /** ein Material je LOD-Stufe (Morph-Bereich als Konstante im Shader) */
-  readonly materials = Array.from({ length: MAX_LOD + 1 }, (_, lod) => morphMaterial(lod));
+  readonly material = terrainMaterial();
+  readonly mesh: BatchedMesh;
+  /** Szenen-Wurzel (= das BatchedMesh) */
+  get root(): BatchedMesh {
+    return this.mesh;
+  }
   private cache = new Map<string, Chunk>();
+  private freeSlots: number[] = [];
   private queue: { lod: number; ix: number; iz: number; d: number }[] = [];
-  private queued = new Set<string>();
   private frame = 0;
-  /** im letzten Frame geteilte Knoten (für Hysterese) */
+  /** im letzten Durchlauf geteilte Knoten (für Hysterese) */
   private splitSet = new Set<string>();
-  /** Bau-Budget pro Frame [ms] */
+  private inView = new Set<string>();
+  /** Bau-Budget pro Frame [ms] (nur ohne Worker) */
   budgetMs = 3;
-  stats = { visible: 0, cached: 0, built: 0, queue: 0 };
+  stats = { visible: 0, cached: 0, built: 0, queue: 0, drawCalls: 1 };
+  /** Debug: Auswahl einfrieren */
+  frozen = false;
 
-  /** Worker-Pool (leer in Umgebungen ohne Worker) */
   private workers: Worker[] = [];
   private idle: Worker[] = [];
-  /** in Arbeit befindliche Kacheln */
   private pending = new Set<string>();
+  private dirty = true;
+  private lastCam = { x: NaN, y: NaN, z: NaN };
+  private visible = new Set<Chunk>();
+  private _m = new Matrix4();
 
   constructor(workerCount = Math.max(1, Math.min(4, (globalThis.navigator?.hardwareConcurrency ?? 2) - 1))) {
+    const idx = INDEX.length;
+    this.mesh = new BatchedMesh(SLOTS, SLOTS * TILE_VERTS, SLOTS * idx, this.material);
+    this.mesh.receiveShadow = true;
+    this.mesh.frustumCulled = false; // Gesamt-Hülle ändert sich laufend; pro Kachel wird gecullt
+    this.mesh.perObjectFrustumCulled = true;
+    this.mesh.sortObjects = false;
+    // Plätze einmal reservieren (Neu-Hinzufügen würde Puffer-Speicher verbrauchen), dann nur überschreiben
+    const blank = this.geometryFrom(buildTileArrays(MAX_LOD, 1e6, 1e6));
+    for (let s = 0; s < SLOTS; s++) {
+      const g = this.mesh.addGeometry(blank, TILE_VERTS, idx);
+      const i = this.mesh.addInstance(g);
+      this.mesh.setVisibleAt(i, false);
+      this.freeSlots.push(s);
+    }
+    blank.dispose();
+
     if (typeof Worker === 'undefined') return;
     for (let i = 0; i < workerCount; i++) {
       const w = new Worker(new URL('./tileWorker.ts', import.meta.url), { type: 'module' });
@@ -72,7 +112,7 @@ export class LodTerrain {
         const { key, lod, ix, iz } = e.data;
         this.pending.delete(key);
         this.idle.push(w);
-        this.addChunk(key, lod, ix, iz, this.geometryFrom(e.data));
+        this.addChunk(key, lod, ix, iz, e.data);
       };
       this.workers.push(w);
       this.idle.push(w);
@@ -84,70 +124,77 @@ export class LodTerrain {
     g.setAttribute('position', new BufferAttribute(a.position, 3));
     g.setAttribute('normal', new BufferAttribute(a.normal, 3));
     g.setAttribute('morph', new BufferAttribute(a.morph, 1));
-    g.setIndex(INDEX);
-    g.computeBoundingSphere();
+    g.setAttribute('morphNormal', new BufferAttribute(a.morphNormal, 3));
+    g.setAttribute('morphRange', new BufferAttribute(a.morphRange, 2));
+    g.setIndex(new BufferAttribute(INDEX, 1));
     return g;
   }
 
-  /** Kachel synchron bauen (Tests / Fallback) */
+  /** Kachel als eigene Geometrie (Tests / Analyse) */
   buildGeometry(lod: number, ix: number, iz: number): BufferGeometry {
     return this.geometryFrom(buildTileArrays(lod, ix, iz));
   }
 
-  private addChunk(key: string, lod: number, ix: number, iz: number, geo: BufferGeometry): void {
-    const mesh = new Mesh(geo, this.materials[lod]);
-    mesh.receiveShadow = true;
-    // Terrain-Kacheln bewegen sich nur beim Origin-Shift → Matrix nur dann neu
-    mesh.matrixAutoUpdate = false;
-    const c: Chunk = { key, lod, ix, iz, mesh, lastUsed: this.frame };
+  /** Platz holen: frei, sonst die am längsten unbenutzte unsichtbare Kachel verdrängen */
+  private takeSlot(): number | null {
+    if (this.freeSlots.length) return this.freeSlots.pop()!;
+    let oldest: Chunk | null = null;
+    for (const c of this.cache.values())
+      if (!this.visible.has(c) && (!oldest || c.lastUsed < oldest.lastUsed)) oldest = c;
+    if (!oldest) return null;
+    this.cache.delete(oldest.key);
+    return oldest.slot;
+  }
+
+  private addChunk(key: string, lod: number, ix: number, iz: number, a: TileArrays): void {
+    if (this.cache.has(key)) return;
+    const slot = this.takeSlot();
+    if (slot === null) return; // voll – kommt beim nächsten Durchlauf wieder
+    const g = this.geometryFrom(a);
+    this.mesh.setGeometryAt(slot, g);
+    g.dispose();
+    this.mesh.setVisibleAt(slot, false);
+    const c: Chunk = { key, lod, ix, iz, slot, lastUsed: this.frame };
     this.place(c);
     this.cache.set(key, c);
+    this.dirty = true;
   }
 
   dispose(): void {
     for (const w of this.workers) w.terminate();
-    for (const c of this.cache.values()) c.mesh.geometry.dispose();
-    for (const m of this.materials) m.dispose();
+    this.mesh.dispose();
+    this.material.dispose();
     this.cache.clear();
   }
 
   private place(c: Chunk): void {
-    const size = TILE_SIZE * 2 ** c.lod;
-    c.mesh.position.set((c.ix + 0.5) * size - ORIGIN.x, 0, (c.iz + 0.5) * size - ORIGIN.z);
-    c.mesh.updateMatrix();
-    this.dirty = true;
+    const size = tileSize(c.lod);
+    this._m.makeTranslation((c.ix + 0.5) * size - ORIGIN.x, 0, (c.iz + 0.5) * size - ORIGIN.z);
+    this.mesh.setMatrixAt(c.slot, this._m);
   }
 
   /** nach Floating-Origin-Shift alle Kacheln neu platzieren */
   onOriginShift(): void {
     for (const c of this.cache.values()) this.place(c);
+    this.dirty = true;
   }
 
   /** Debug: Drahtgitter */
   set wireframe(on: boolean) {
-    for (const m of this.materials) m.wireframe = on;
+    this.material.wireframe = on;
   }
 
-  /** neue Kachel / Origin-Shift seit der letzten Auswahl */
-  private dirty = true;
-  private lastCam = { x: NaN, y: NaN, z: NaN };
-  private attached = new Set<Chunk>();
+  /** sichtbare Kacheln als "lod,ix,iz" (Tests / Debug) */
+  visibleKeys(): string[] {
+    return [...this.visible].map((c) => c.key).sort();
+  }
 
-  /** Kamera (lokal) → Kacheln wählen, bauen (Budget), sichtbar schalten. */
-  /** Debug: Auswahl einfrieren (zeigt, ob Flackern vom LOD-Wechsel kommt) */
-  frozen = false;
-
+  /** Kamera (lokal) → Kacheln wählen, bauen, sichtbar schalten. */
   update(camX: number, camY: number, camZ: number): void {
     this.frame++;
-    if (this.frozen) {
-      for (const c of this.attached) c.lastUsed = this.frame;
-      this.stats.built = 0;
-      return;
-    }
-    // Auswahl nur neu, wenn sich etwas geändert hat (spart den Quadtree-Lauf bei stehender Kamera)
     const moved = Math.abs(camX - this.lastCam.x) + Math.abs(camY - this.lastCam.y) + Math.abs(camZ - this.lastCam.z);
-    if (!this.dirty && moved < 0.25 && this.queue.length === 0 && this.pending.size === 0) {
-      if (this.frame % 60 === 0) for (const c of this.attached) c.lastUsed = this.frame;
+    if (this.frozen || (!this.dirty && moved < 0.25 && this.queue.length === 0 && this.pending.size === 0)) {
+      if (this.frame % 60 === 0) for (const c of this.visible) c.lastUsed = this.frame;
       this.stats.built = 0;
       return;
     }
@@ -155,57 +202,62 @@ export class LodTerrain {
     this.lastCam = { x: camX, y: camY, z: camZ };
     const ax = camX + ORIGIN.x;
     const az = camZ + ORIGIN.z;
-    const groundY = sampleTerrainHeightWorld(ax, az);
-    const camH = Math.max(0, camY - groundY);
-    const rootSize = TILE_SIZE * 2 ** MAX_LOD;
-    const rx = Math.floor(ax / rootSize);
-    const rz = Math.floor(az / rootSize);
+    const camH = Math.max(0, camY - sampleTerrainHeightWorld(ax, az));
+    const rootSize = tileSize(MAX_LOD);
 
     const visible = new Set<Chunk>();
     const want: { lod: number; ix: number; iz: number; d: number }[] = [];
-
-    const ready = (lod: number, ix: number, iz: number) => this.cache.has(`${lod},${ix},${iz}`);
+    const key = (lod: number, ix: number, iz: number) => `${lod},${ix},${iz}`;
+    const ready = (lod: number, ix: number, iz: number) => this.cache.has(key(lod, ix, iz));
     const dist = (lod: number, ix: number, iz: number) => {
-      const s = TILE_SIZE * 2 ** lod;
-      const cx = (ix + 0.5) * s;
-      const cz = (iz + 0.5) * s;
-      // Abstand zur Kachel (0 innerhalb), Kamerahöhe zählt mit
-      const dx = Math.max(0, Math.abs(ax - cx) - s / 2);
-      const dz = Math.max(0, Math.abs(az - cz) - s / 2);
+      const s = tileSize(lod);
+      const dx = Math.max(0, Math.abs(ax - (ix + 0.5) * s) - s / 2);
+      const dz = Math.max(0, Math.abs(az - (iz + 0.5) * s) - s / 2);
       return Math.hypot(dx, dz, camH);
     };
-    /** Teilen mit Hysterese: einmal geteilt erst bei +15 % Abstand wieder zusammenfassen (kein Pendeln) */
+    /** Sichtweiten-Grenze ebenfalls mit Hysterese (sonst Pendeln am Nebel-Ende) */
+    const nextInView = new Set<string>();
+    const outOfView = (lod: number, ix: number, iz: number) => {
+      const k = key(lod, ix, iz);
+      const out = dist(lod, ix, iz) > VIEW_DISTANCE * (this.inView.has(k) ? 1.05 : 1);
+      if (!out) nextInView.add(k);
+      return out;
+    };
+    /** Teilen mit Hysterese: einmal geteilt erst bei +15 % Abstand wieder zusammenfassen */
     const nextSplit = new Set<string>();
     const split = (lod: number, ix: number, iz: number) => {
       if (lod === 0) return false;
-      const key = `${lod},${ix},${iz}`;
-      const f = this.splitSet.has(key) ? 1.15 : 1;
-      const yes = dist(lod, ix, iz) < LOD_SPLIT * f * TILE_SIZE * 2 ** lod;
-      if (yes) nextSplit.add(key);
+      const k = key(lod, ix, iz);
+      const f = this.splitSet.has(k) ? 1.15 : 1;
+      const yes = dist(lod, ix, iz) < lodSplit(lod) * f * tileSize(lod);
+      if (yes) nextSplit.add(k);
       return yes;
-    };
-
-    /** true, wenn der Bereich vollständig mit fertigen Kacheln abgedeckt werden kann */
-    const covered = (lod: number, ix: number, iz: number): boolean => {
-      if (dist(lod, ix, iz) > VIEW_DISTANCE) return true; // wird ohnehin nicht gezeichnet
-      if (!split(lod, ix, iz)) return ready(lod, ix, iz);
-      for (let k = 0; k < 4; k++) if (!covered(lod - 1, ix * 2 + (k & 1), iz * 2 + (k >> 1))) return false;
-      return true;
     };
     const children = (lod: number, ix: number, iz: number) =>
       [0, 1, 2, 3].map((k) => [lod - 1, ix * 2 + (k & 1), iz * 2 + (k >> 1)] as const);
-    /**
-     * Teilen, sobald alle Kinder fertig abdeckbar sind; bis dahin die eigene Kachel zeigen
-     * (falls fertig) und die Kinder anfordern. Ist auch die eigene nicht fertig: zeigen, was da ist.
-     */
+    /** true, wenn der Bereich vollständig mit fertigen Kacheln abgedeckt werden kann */
+    const covered = (lod: number, ix: number, iz: number): boolean => {
+      if (outOfView(lod, ix, iz)) return true;
+      if (!split(lod, ix, iz)) return ready(lod, ix, iz);
+      return children(lod, ix, iz).every(([l, x, z]) => covered(l, x, z));
+    };
+    const request = (lod: number, ix: number, iz: number) => {
+      if (!ready(lod, ix, iz)) want.push({ lod, ix, iz, d: dist(lod, ix, iz) });
+    };
+    const requestTree = (lod: number, ix: number, iz: number): void => {
+      if (outOfView(lod, ix, iz)) return;
+      if (split(lod, ix, iz)) for (const [l, x, z] of children(lod, ix, iz)) requestTree(l, x, z);
+      else request(lod, ix, iz);
+    };
+    /** Teilen, sobald alle Kinder fertig abdeckbar sind; bis dahin die eigene Kachel zeigen */
     const select = (lod: number, ix: number, iz: number): void => {
-      if (dist(lod, ix, iz) > VIEW_DISTANCE) return;
+      if (outOfView(lod, ix, iz)) return;
       const kids = split(lod, ix, iz) ? children(lod, ix, iz) : null;
       if (kids && kids.every(([l, x, z]) => covered(l, x, z))) {
         for (const [l, x, z] of kids) select(l, x, z);
         return;
       }
-      const c = this.cache.get(`${lod},${ix},${iz}`);
+      const c = this.cache.get(key(lod, ix, iz));
       if (c) {
         visible.add(c);
         if (kids) for (const [l, x, z] of kids) requestTree(l, x, z);
@@ -214,65 +266,48 @@ export class LodTerrain {
       request(lod, ix, iz);
       if (kids) for (const [l, x, z] of kids) select(l, x, z);
     };
-    const request = (lod: number, ix: number, iz: number) => {
-      if (!ready(lod, ix, iz)) want.push({ lod, ix, iz, d: dist(lod, ix, iz) });
-    };
-    /** alle Kacheln anfordern, die für die Ziel-Aufteilung unter diesem Knoten nötig sind */
-    const requestTree = (lod: number, ix: number, iz: number): void => {
-      if (dist(lod, ix, iz) > VIEW_DISTANCE) return;
-      if (split(lod, ix, iz)) for (const [l, x, z] of children(lod, ix, iz)) requestTree(l, x, z);
-      else request(lod, ix, iz);
-    };
-
-    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) select(MAX_LOD, rx + dx, rz + dz);
-
+    // alle Wurzel-Kacheln, die die Sichtweite berühren (kein festes 3×3-Fenster → kein Springen an Wurzelgrenzen)
+    const R = VIEW_DISTANCE * 1.05;
+    for (let z = Math.floor((az - R) / rootSize); z <= Math.floor((az + R) / rootSize); z++)
+      for (let x = Math.floor((ax - R) / rootSize); x <= Math.floor((ax + R) / rootSize); x++)
+        select(MAX_LOD, x, z);
     this.splitSet = nextSplit;
+    this.inView = nextInView;
+
+    // Sichtbarkeit nur bei Änderung umschalten (vor dem Bauen, damit sichtbare nicht verdrängt werden)
+    for (const c of this.visible) if (!visible.has(c) && this.cache.get(c.key) === c) this.mesh.setVisibleAt(c.slot, false);
+    for (const c of visible) {
+      c.lastUsed = this.frame;
+      if (!this.visible.has(c)) this.mesh.setVisibleAt(c.slot, true);
+    }
+    this.visible = visible;
 
     // Bau-Warteschlange: grob vor fein, nah vor fern
-    this.queue = [];
-    this.queued.clear();
-    for (const w of want) {
-      const key = `${w.lod},${w.ix},${w.iz}`;
-      if (this.queued.has(key)) continue;
-      this.queued.add(key);
-      this.queue.push(w);
-    }
+    const seen = new Set<string>();
+    this.queue = want.filter((w) => {
+      const k = key(w.lod, w.ix, w.iz);
+      return seen.has(k) ? false : (seen.add(k), true);
+    });
     this.queue.sort((a, b) => b.lod - a.lod || a.d - b.d);
     let built = 0;
     if (this.workers.length) {
-      // an freie Worker verteilen (bereits laufende überspringen)
       for (const q of this.queue) {
         if (!this.idle.length) break;
-        const key = `${q.lod},${q.ix},${q.iz}`;
-        if (this.pending.has(key)) continue;
-        this.pending.add(key);
-        this.idle.pop()!.postMessage({ key, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
+        const k = key(q.lod, q.ix, q.iz);
+        if (this.pending.has(k)) continue;
+        this.pending.add(k);
+        this.idle.pop()!.postMessage({ key: k, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
         built++;
       }
     } else {
       const t0 = performance.now();
       while (this.queue.length && (built === 0 || performance.now() - t0 < this.budgetMs)) {
         const q = this.queue.shift()!;
-        const key = `${q.lod},${q.ix},${q.iz}`;
-        this.addChunk(key, q.lod, q.ix, q.iz, this.buildGeometry(q.lod, q.ix, q.iz));
+        this.addChunk(key(q.lod, q.ix, q.iz), q.lod, q.ix, q.iz, buildTileArrays(q.lod, q.ix, q.iz));
         built++;
       }
+      if (built) this.dirty = true;
     }
-
-    // Sichtbarkeit: nur Änderungen in den Szenengraph (kein clear/add je Frame)
-    for (const c of this.attached) if (!visible.has(c)) this.root.remove(c.mesh);
-    for (const c of visible) {
-      c.lastUsed = this.frame;
-      if (!this.attached.has(c)) this.root.add(c.mesh);
-    }
-    this.attached = visible;
-    // Aufräumen (Kacheln, die 300 Frames ungenutzt sind)
-    for (const [key, c] of this.cache) {
-      if (this.frame - c.lastUsed > 300) {
-        c.mesh.geometry.dispose();
-        this.cache.delete(key);
-      }
-    }
-    this.stats = { visible: visible.size, cached: this.cache.size, built, queue: this.queue.length };
+    this.stats = { visible: visible.size, cached: this.cache.size, built, queue: this.queue.length, drawCalls: 1 };
   }
 }

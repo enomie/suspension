@@ -1,19 +1,24 @@
 import { DirectionalLight, Vector3 } from 'three';
+import { ORIGIN } from '../shared/origin';
 
-const SHADOW_EXTENT = 60; // ±m um das Fahrzeug
+const SHADOW_EXTENT = 64; // ±m um das Fahrzeug
 const SHADOW_MAP = 2048;
 
 /**
  * Sonne mit Schatten, die dem Fahrzeug folgt – im Licht-Raum auf ganze Shadow-Texel gerastert,
- * damit Schattenkanten nicht „schwimmen“. Bias gegen Schatten-Akne.
+ * damit Schattenkanten nicht „schwimmen“. Gerastert wird in ABSOLUTEN Koordinaten, sonst springt
+ * das Raster bei jedem Floating-Origin-Shift. Bias gegen Schatten-Akne.
  */
 export class SunRig {
   readonly light = new DirectionalLight(0xfff4e0, 1.4);
+  /** Debug: Sonne folgt nicht mehr */
+  frozen = false;
   private dir: Vector3;
   private right = new Vector3();
   private up = new Vector3();
   private texel = (SHADOW_EXTENT * 2) / SHADOW_MAP;
-  private tmp = new Vector3();
+  private abs = new Vector3();
+  private snapped = new Vector3();
 
   constructor(private offset = new Vector3(60, 90, 40)) {
     const l = this.light;
@@ -21,7 +26,7 @@ export class SunRig {
     l.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
     const c = l.shadow.camera;
     c.near = 1;
-    c.far = offset.length() + 80;
+    c.far = offset.length() + 120;
     c.left = c.bottom = -SHADOW_EXTENT;
     c.right = c.top = SHADOW_EXTENT;
     l.shadow.bias = -0.0005;
@@ -31,15 +36,22 @@ export class SunRig {
     this.up.crossVectors(this.dir, this.right).normalize();
   }
 
+  /** target = lokale Position (Render-Koordinaten) */
   follow(target: Vector3): void {
-    const r = Math.round(target.dot(this.right) / this.texel) * this.texel;
-    const u = Math.round(target.dot(this.up) / this.texel) * this.texel;
-    const p = this.tmp
+    if (this.frozen) return;
+    const a = this.abs.set(target.x + ORIGIN.x, target.y, target.z + ORIGIN.z);
+    const r = Math.round(a.dot(this.right) / this.texel) * this.texel;
+    const u = Math.round(a.dot(this.up) / this.texel) * this.texel;
+    const p = this.snapped
       .set(0, 0, 0)
       .addScaledVector(this.right, r)
       .addScaledVector(this.up, u)
-      .addScaledVector(this.dir, target.dot(this.dir));
+      .addScaledVector(this.dir, a.dot(this.dir));
+    p.x -= ORIGIN.x;
+    p.z -= ORIGIN.z;
     this.light.target.position.copy(p);
     this.light.position.copy(p).add(this.offset);
+    this.light.target.updateMatrixWorld();
+    this.light.updateMatrixWorld();
   }
 }
