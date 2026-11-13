@@ -54,6 +54,44 @@ Generationen gegen „alte Frames“ und das Layout per Nachricht schon gelöst,
 Der Editor baut Fahrzeuge aus Primitives. Hier werden Fahrzeuge aus einer **`VehicleSpec`** gebaut
 (`shared/vehicleSpec.ts`, reine Daten). Die Brücke ist also eine Funktion `editorAsset → VehicleSpec`.
 
+### 4.0 Editor mit Raycast-Radpunkten (nur „hier ist ein Rad“): `specFromWheelPoints()`
+Ein Punkt pro Rad reicht. Daraus entsteht die komplette Spec (`physics/vehicle/fromWheelPoints.ts`, getestet in
+`tests/integration.test.ts`):
+```ts
+const { spec, warnings } = specFromWheelPoints(
+  editorWheels.map((w) => ({ position: [w.x, w.y, w.z], radius: w.radius, width: w.width })),
+  {
+    name: 'buggy',
+    pointIs: 'suspensionTop', // Raycast-Startpunkt am Chassis …
+    restLength: 0.25,         // … Radmitte liegt so weit darunter (= Ruhelänge des Raycasts)
+    suspension: ['doubleWishbone', 'multiLink'], // je Achse, Standard 'strut'
+    // steer: [0], drive: [1], handbrake: [1]     // Standard: vorn lenkt, hinten treibt + Handbremse
+    chassis: { mass: 900, size: [1.7, 0.5, 3.8], colliders: editorColliders },
+  },
+);
+```
+| Schritt | Regel |
+|---|---|
+| Achsen bilden | Punkte mit gleicher Längsposition z (± `axleTolerance`, 0,25 m) = eine Achse; vorn = kleinstes z |
+| Spurweite | Abstand linkes ↔ rechtes Rad in X; 1 Punkt = Einzelrad mittig (`track 0`) |
+| Höhe | Radmitte = Punkt (`wheelCenter`) bzw. Punkt − `restLength` (`suspensionTop`, typisch beim Raycast) |
+| Rollen | vorderste Achse lenkt, hinterste treibt an + Handbremse; mehrere Antriebsachsen teilen das Moment gleich |
+| Federn, Bremsen, Lenkung, Antrieb | Werte wie `makeCar()`, über `options` bzw. danach an `spec` änderbar |
+| Unsauberes Modell | asymmetrische Achse, ungleiche Höhen, > 2 Räder pro Achse → Mittelwerte + Eintrag in `warnings` |
+
+Umrechnung typischer Raycast-Parameter:
+| Raycast-Vehicle | hier |
+|---|---|
+| `suspensionRestLength` | `restLength` (nur für die Radmitte) + `spring.travel` (Ein-/Ausfederweg) |
+| `suspensionStiffness` (oft „pro Masse“) | `spring.frequencyHz` (1,2–2 Hz) – Rate wird aus der Achslast berechnet |
+| `dampingCompression/Relaxation` | `spring.dampingRatio` (ζ 0,3–0,5, symmetrisch) |
+| `frictionSlip` | `wheel.friction` (Coulomb-Reibung, ~1,0–1,2) |
+| `maxSuspensionForce` | entfällt (Anschläge über `travel`) |
+| `rollInfluence` | entfällt – echte Kinematik; Stabilisator ist geplant (VEHICLE_PLAN Phase 2) |
+| Motorkraft je Rad | `drive.maxTorque` (gesamt) × `drive.share` (je Achse) |
+
+Hinweis Einzelräder (Motorrad): baut korrekt, fällt aber ohne Balance-Regler um (VEHICLE_PLAN Phase 4).
+
 ### 4.1 Was der Editor liefern muss → wohin es gehört
 | Im Editor | in `VehicleSpec` | Bemerkung |
 |---|---|---|

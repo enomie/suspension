@@ -12,6 +12,7 @@ export { describeLayout, poseBodies } from './layout';
 export { writeVehicleSnapshot } from './snapshot';
 export { PRESETS } from './presets';
 export { car, makeCar } from './presets/car';
+export { specFromWheelPoints, type WheelPoint, type WheelPointOptions } from './fromWheelPoints';
 export { SUSPENSIONS } from './parts/suspension';
 export { CHASSIS_GROUPS, WHEEL_GROUPS, GROUP_TERRAIN, GROUP_CHASSIS, GROUP_WHEEL, groups } from './groups';
 export type * from '../../shared/vehicleSpec';
