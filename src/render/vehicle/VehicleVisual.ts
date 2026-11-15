@@ -13,6 +13,8 @@ const rimMat = new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.4, metal
 const discMat = new MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.35, metalness: 0.7 });
 const DISC_RADIUS = 0.45; // × Reifenradius (Innenradius des Reifens = 0,6)
 const DISC_THICKNESS = 0.025; // [m]
+const HUB_DIAMETER = 0.12;
+const HUB_LENGTH = 0.08;
 
 /**
  * Rad = hohler Reifen (Unit-Hohlzylinder um X) + Bremsscheibe (Unit-Zylinder) + Speiche (macht Drehung sichtbar).
@@ -33,7 +35,13 @@ function createWheelMesh(spec: WheelSpec): Group {
   disc.castShadow = true;
   const spoke = new Mesh(UNIT_BOX_GEOMETRY, rimMat);
   spoke.scale.set(spec.width * 1.02, spec.radius * 0.9, spec.radius * 0.25);
-  g.add(tire, disc, spoke);
+  // Nabe: von knapp außerhalb der Scheibe bis zum Achsschenkel; Seite wird in `placeHubs` gesetzt
+  const hub = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
+  hub.name = 'hub';
+  hub.scale.set(HUB_DIAMETER, HUB_LENGTH, HUB_DIAMETER);
+  hub.rotation.z = Math.PI / 2;
+  hub.castShadow = true;
+  g.add(tire, disc, spoke, hub);
   return g;
 }
 
@@ -55,6 +63,7 @@ export class VehicleVisual implements BodyPoses {
   private links: LinkRenderer;
   private state: Float64Array | null = null;
   private q0: number;
+  private inboardPlaced = false;
 
   constructor(readonly layout: VehicleLayout) {
     this.spec = layout.spec;
@@ -76,6 +85,20 @@ export class VehicleVisual implements BodyPoses {
     this.root.visible = false; // bis der erste Snapshot da ist
   }
 
+  /** Einmalig nach dem ersten Snapshot: Seite jedes Rads (zum Chassis hin = innen) → Nabe + Achsschenkel nach innen */
+  private placeInboard(): void {
+    const L = this.layout;
+    const q = this.rotation(L.chassis, new Quaternion()).invert();
+    const c = this.position(L.chassis, new Vector3());
+    const signs = L.corners.map((k) => {
+      const local = this.position(k.wheel, new Vector3()).sub(c).applyQuaternion(q);
+      return local.x > 0 ? -1 : 1;
+    });
+    signs.forEach((s, i) => this.wheels[i].getObjectByName('hub')!.position.x = s * (HUB_LENGTH / 2 - 0.02));
+    this.links.setInboard(signs);
+    this.inboardPlaced = true;
+  }
+
   /** Snapshot (absolut) übernehmen und alle Meshes setzen */
   apply(s: Float64Array): void {
     this.state = s;
@@ -92,6 +115,7 @@ export class VehicleVisual implements BodyPoses {
     const L = this.layout;
     const co = this.q0 + L.chassis * BODY_STRIDE;
     this.absPos.set(s[co], s[co + 1], s[co + 2]);
+    if (!this.inboardPlaced) this.placeInboard();
     this.position(L.chassis, this.chassis.position);
     this.rotation(L.chassis, this.chassis.quaternion);
     L.corners.forEach((c, i) => {
