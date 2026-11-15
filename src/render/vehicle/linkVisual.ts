@@ -20,6 +20,8 @@ const _t = new Vector3();
 /** Durchmesser bzw. Boxmaße [m] der Teile; Länge kommt aus den Endpunkten */
 const SIZE = { rod: 0.044, beam: 0.08, spring: 0.13, tube: 0.064, piston: 0.028 };
 const KNUCKLE: [number, number, number] = [0.07, 0.24, 0.12];
+/** Achsschenkel-Box sitzt so weit nach innen (Knuckle-lokal X) versetzt, dass sie hinter der Bremsscheibe steht [m] */
+export const KNUCKLE_INBOARD = 0.05;
 const DAMPER_TUBE = 0.2;
 
 function world(poses: BodyPoses, at: BodyPoint, out: Vector3): Vector3 {
@@ -63,7 +65,7 @@ export class LinkRenderer {
   readonly root = new Group();
   /** Je Link: Instanz-Indizes in `rod`/`beam`/`spring`/`tube`/`piston` (Damper = tube + piston) */
   private items: { v: VehicleLayout['links'][number]; main: InstancedMesh; i: number; piston?: number; kind: 'rod' | 'beam' | 'spring' }[] = [];
-  private knuckles: { body: number; i: number }[] = [];
+  private knuckles: { body: number; i: number; inboard: number }[] = [];
   private readonly rods: InstancedMesh;
   private readonly beams: InstancedMesh;
   private readonly springs: InstancedMesh;
@@ -91,8 +93,13 @@ export class LinkRenderer {
       const i = used[group]++;
       this.items.push({ v, main, i, piston: group === 'damper' ? i : undefined, kind: group === 'damper' ? 'rod' : group });
     }
-    layout.corners.forEach((c, i) => this.knuckles.push({ body: c.knuckle, i }));
+    layout.corners.forEach((c, i) => this.knuckles.push({ body: c.knuckle, i, inboard: 0 }));
     this.root.add(this.rods, this.beams, this.springs, this.tubes, this.pistons, this.knuckleMesh);
+  }
+
+  /** Seite je Rad: +1 / −1 = Richtung zum Chassis in Rad-lokal X (setzt `VehicleVisual` einmal) */
+  setInboard(signs: number[]): void {
+    signs.forEach((s, i) => (this.knuckles[i].inboard = s));
   }
 
   sync(poses: BodyPoses): void {
@@ -110,9 +117,10 @@ export class LinkRenderer {
         stretch(main, i, _a, _b, SIZE[kind]);
       }
     }
-    for (const { body, i } of this.knuckles) {
+    for (const { body, i, inboard } of this.knuckles) {
       poses.position(body, _p);
       poses.rotation(body, _q);
+      _p.add(_t.set(inboard * KNUCKLE_INBOARD, 0, 0).applyQuaternion(_q));
       this.knuckleMesh.setMatrixAt(i, _mat.compose(_p, _q, _s.set(...KNUCKLE)));
     }
     for (const m of [this.rods, this.beams, this.springs, this.tubes, this.pistons, this.knuckleMesh]) {
