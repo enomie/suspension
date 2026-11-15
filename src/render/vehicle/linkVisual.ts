@@ -67,7 +67,7 @@ export class LinkRenderer {
   readonly root = new Group();
   /** Je Link: Instanz-Indizes in `rod`/`beam`/`spring`/`tube`/`piston` (Damper = tube + piston) */
   private items: { v: VehicleLayout['links'][number]; main: InstancedMesh; i: number; piston?: number; kind: 'rod' | 'beam' | 'spring' }[] = [];
-  private knuckles: { body: number; i: number; inboard: number }[] = [];
+  private knuckles: { body: number; wheel: number; i: number; inboard: number }[] = [];
   private readonly rods: InstancedMesh;
   private readonly beams: InstancedMesh;
   private readonly springs: InstancedMesh;
@@ -98,7 +98,7 @@ export class LinkRenderer {
       const i = used[group]++;
       this.items.push({ v, main, i, piston: group === 'damper' ? i : undefined, kind: group === 'damper' ? 'rod' : group });
     }
-    layout.corners.forEach((c, i) => this.knuckles.push({ body: c.knuckle, i, inboard: 0 }));
+    layout.corners.forEach((c, i) => this.knuckles.push({ body: c.knuckle, wheel: c.wheel, i, inboard: 0 }));
     this.root.add(this.rods, this.beams, this.springs, this.seats, this.tubes, this.pistons, this.knuckleMesh);
   }
 
@@ -127,8 +127,9 @@ export class LinkRenderer {
         }
       }
     }
-    for (const { body, i, inboard } of this.knuckles) {
-      poses.position(body, _p);
+    for (const { body, wheel, i, inboard } of this.knuckles) {
+      // Ort = Radmitte, Ausrichtung = Radträger (beim Tandempendel trägt EIN Körper zwei Räder, sein Ursprung liegt dazwischen)
+      poses.position(wheel, _p);
       poses.rotation(body, _q);
       _p.add(_t.set(inboard * KNUCKLE_INBOARD, 0, 0).applyQuaternion(_q));
       this.knuckleMesh.setMatrixAt(i, _mat.compose(_p, _q, _s.set(...KNUCKLE)));
