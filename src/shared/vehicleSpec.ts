@@ -129,6 +129,8 @@ export interface DriverInput {
   brake: number; // 0…1
   steer: number; // −1 (rechts) … +1 (links)
   handbrake: boolean;
+  /** Boost (Shift): doubles drive torque and top speed */
+  boost?: boolean;
 }
 
 export interface CornerTelemetry {

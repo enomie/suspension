@@ -109,7 +109,7 @@ export class PhysicsClient {
   }
 
   setInput(input: DriverInput): void {
-    const key = `${input.throttle},${input.brake},${input.steer},${input.handbrake}`;
+    const key = `${input.throttle},${input.brake},${input.steer},${input.handbrake},${input.boost}`;
     if (key === this.lastInput) return;
     this.lastInput = key;
     if (this.worker) this.send({ type: 'input', input });
