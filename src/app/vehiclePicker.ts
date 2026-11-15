@@ -5,7 +5,7 @@ export class VehiclePicker {
   readonly select: HTMLSelectElement;
   private syncing = false;
 
-  constructor(parent: HTMLElement, onSelect: (preset: number) => void) {
+  constructor(parent: HTMLElement, onSelect: (preset: number) => void, onFrame: (visible: boolean) => void) {
     const wrap = document.createElement('div');
     wrap.id = 'vehicle-picker';
     const label = document.createElement('label');
@@ -23,7 +23,13 @@ export class VehiclePicker {
       if (this.syncing) return;
       onSelect(Number(this.select.value));
     });
-    wrap.append(label, this.select);
+    const frame = document.createElement('label');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = true;
+    box.addEventListener('change', () => onFrame(box.checked));
+    frame.append(box, ' Leiterrahmen');
+    wrap.append(label, this.select, frame);
     parent.appendChild(wrap);
   }
 
