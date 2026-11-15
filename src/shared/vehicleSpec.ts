@@ -11,7 +11,8 @@ export type SuspensionType =
   | 'solidAxle' //        7 Starrachse
   | 'twistBeam' //        8 Verbundlenker
   | 'multiLink' //        9 Mehrlenker (5 Stäbe)
-  | 'bogie'; //           0 Tandem-Pendel (Wippe mit 2 Rädern je Seite)
+  | 'bogie' //            0 Tandem-Pendel (Wippe mit 2 Rädern je Seite)
+  | 'fourLink'; //        4-link solid axle (2 lower trailing arms + 2 triangulated upper links)
 export type Vec3 = [number, number, number];
 
 export interface SpringDamperSpec {
@@ -25,6 +26,8 @@ export interface SpringDamperSpec {
   damping?: number;
   /** Federweg relativ zur Konstruktionslage [m]: [−Einfedern, +Ausfedern] */
   travel: [number, number];
+  /** Length of the spring/damper unit at design height [m] (default 0.45) */
+  length?: number;
 }
 
 export interface WheelSpec {
@@ -47,6 +50,8 @@ export interface AxleSpec {
   wheel: WheelSpec;
   /** lenkbar: maxAngle [rad] */
   steer?: { maxAngle: number };
+  /** Double wishbone: horizontal reach of the lower arm from the ball joint to the chassis pivot [m] (default 0.45) */
+  armSpan?: number;
   /** Tandem-Pendel: Radabstand längs [m] */
   bogieSpacing?: number;
   /** angetrieben: Anteil am Gesamtmoment */

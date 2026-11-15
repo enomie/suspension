@@ -15,9 +15,11 @@ export const buildDoubleWishbone: AxleBuilder = (ctx, axle, i) =>
     const wl = wheelLocal(axle, side);
     const wc = W(ctx, wl);
     const rate = wheelRate(ctx, axle, i, sidesOf(axle).length);
-    const lowIn = add(wc, v(-s * 0.55, -0.12, 0));
+    // `armSpan` stretches the arms for long-travel setups; the defaults give the original 0.55 / 0.42 inner offsets
+    const reach = axle.armSpan ?? 0.45;
+    const lowIn = add(wc, v(-s * (0.1 + reach), -0.12, 0));
     const lowOut = add(wc, v(-s * 0.1, -0.12, 0));
-    const upIn = add(wc, v(-s * 0.42, 0.2, 0));
+    const upIn = add(wc, v(-s * (0.14 + reach * (0.28 / 0.45)), 0.2, 0));
     const upOut = add(wc, v(-s * 0.14, 0.2, 0));
 
     const lower = helper(ctx, axle, lerp(lowIn, lowOut, 0.5), partId(id, 'lowerArm'));
@@ -33,7 +35,7 @@ export const buildDoubleWishbone: AxleBuilder = (ctx, axle, i) =>
     // Feder-Dämpfer-Einheit 12 cm in Fahrtrichtung versetzt, damit sie am oberen Lenker vorbeiläuft statt hindurchzugehen.
     // Hebelverhältnis und Ruhelänge bleiben gleich (Achse Z, beide Enden um dasselbe z verschoben).
     const sp = add(lerp(lowIn, lowOut, 0.75), v(0, 0, 0.12));
-    const top = add(sp, v(0, 0.45, 0));
+    const top = add(sp, v(0, axle.spring.length ?? 0.45, 0));
     springJoint(ctx, ctx.chassis, top, lower, sp, springFor(rate, leverRatio(AX.Z, lowIn, sp, wc)));
 
     const visuals = [

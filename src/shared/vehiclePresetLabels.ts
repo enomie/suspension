@@ -1,4 +1,4 @@
-/** Anzeigenamen für Preset-Index 0…9 (Reihenfolge = physics/vehicle/presets). */
+/** Anzeigenamen für preset index 0…10 (Reihenfolge = physics/vehicle/presets). */
 export const VEHICLE_PRESET_LABELS = [
   'Schiebe-Federbein',
   'Doppelquerlenker',
@@ -10,4 +10,5 @@ export const VEHICLE_PRESET_LABELS = [
   'Verbundlenker (hinten)',
   'Mehrlenker',
   'Tandem-Pendel (hinten)',
+  'Trophy Truck',
 ] as const;

@@ -9,6 +9,7 @@ import { buildSolidAxle } from './solidAxle';
 import { buildTwistBeam } from './twistBeam';
 import { buildMultiLink } from './multiLink';
 import { buildBogie } from './bogie';
+import { buildFourLink } from './fourLink';
 
 /** SuspensionType → Achs-Builder */
 export const SUSPENSIONS: Record<SuspensionType, AxleBuilder> = {
@@ -22,4 +23,5 @@ export const SUSPENSIONS: Record<SuspensionType, AxleBuilder> = {
   twistBeam: buildTwistBeam,
   multiLink: buildMultiLink,
   bogie: buildBogie,
+  fourLink: buildFourLink,
 };
