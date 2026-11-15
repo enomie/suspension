@@ -39,5 +39,7 @@ export interface SampleContext {
 /** Eine Schicht: verändert ctx.height (und ggf. Masken). Muss deterministisch sein. */
 export interface Layer {
   readonly name: string;
+  /** Names of the masks this layer writes (lets `sampleMask` stop early) */
+  readonly provides?: readonly string[];
   apply(ctx: SampleContext): void;
 }

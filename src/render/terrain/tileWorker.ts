@@ -24,6 +24,7 @@ self.onmessage = (e: MessageEvent<TileWorkerMessage>) => {
     a.morph.buffer,
     a.morphNormal.buffer,
     a.morphRange.buffer,
+    a.road.buffer,
     a.bounds.buffer,
   ]);
 };

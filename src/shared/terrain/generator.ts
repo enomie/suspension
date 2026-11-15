@@ -24,6 +24,11 @@ export interface Terrain {
    * Nächster ebener Landpunkt (Höhe minHeight … maxHeight, Gefälle < maxSlope) ab (x, z), Suche spiralförmig im
    * Raster `step`. Deterministisch. Ergebnis liegt auf dem Raster.
    */
+  /**
+   * (n+1)² values of mask `name` (0…1) from absolute (x0, z0) with spacing d (index j·W+i); band-limited to ≥ 2·d.
+   * Only runs the layers up to the last one that provides the mask.
+   */
+  sampleMask(name: string, x0: number, z0: number, d: number, n: number): Float32Array;
   findLand(x: number, z: number, opts?: { minHeight?: number; maxHeight?: number; maxSlope?: number; step?: number }): { x: number; z: number };
 }
 
@@ -54,6 +59,26 @@ export function createTerrain(config: TerrainConfig): Terrain {
       for (let j = 0; j < W; j++)
         for (let i = 0; i < W; i++) h[j * W + i] = run(x0 + (i - border) * d, z0 + (j - border) * d, minWl);
       return h;
+    },
+    sampleMask(name, x0, z0, d, n) {
+      let last = -1;
+      layers.forEach((l, i) => {
+        if (l.provides?.includes(name)) last = i;
+      });
+      const W = n + 1;
+      const out = new Float32Array(W * W);
+      if (last < 0) return out;
+      for (let j = 0; j < W; j++)
+        for (let i = 0; i < W; i++) {
+          ctx.x = x0 + i * d;
+          ctx.z = z0 + j * d;
+          ctx.height = 0;
+          ctx.minWavelength = 2 * d;
+          for (const k in ctx.masks) ctx.masks[k] = 0;
+          for (let l = 0; l <= last; l++) layers[l].apply(ctx);
+          out[j * W + i] = ctx.masks[name] ?? 0;
+        }
+      return out;
     },
     findLand(x, z, opts = {}) {
       const { minHeight = 5, maxHeight = 400, maxSlope = 0.15, step = 256 } = opts;

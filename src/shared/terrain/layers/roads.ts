@@ -25,6 +25,7 @@ export function roadsLayer(cfg: RoadsLayerConfig, seed: number): Layer {
   const U = 1 / 4294967296;
   return {
     name,
+    provides: ['road', 'roadVis'],
     apply(ctx: SampleContext) {
       const gx = ctx.x * inv;
       const gz = ctx.z * inv;
@@ -63,7 +64,10 @@ export function roadsLayer(cfg: RoadsLayerConfig, seed: number): Layer {
         const e = (d2 - d1) / (2 * Math.sqrt(len2));
         if (e < edge) edge = e;
       }
-      ctx.masks.road = 1 - smoothstep(half, half + cfg.blend, edge);
+      const road = 1 - smoothstep(half, half + cfg.blend, edge);
+      ctx.masks.road = road;
+      // for rendering only: band-limited, fades out once the mesh spacing can no longer resolve the road
+      ctx.masks.roadVis = road * (1 - smoothstep(cfg.width * 0.5, cfg.width * 2, ctx.minWavelength));
     },
   };
 }

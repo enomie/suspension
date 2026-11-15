@@ -25,6 +25,8 @@ export const morphEnabled = uniform(1);
  */
 export function terrainMaterial(): MeshStandardNodeMaterial {
   const m = new MeshStandardNodeMaterial({ color: 0x4a6741, roughness: 0.92, metalness: 0.02 });
+  // grass → road colour by per-vertex road coverage
+  m.colorNode = mix(vec3(0.29, 0.4, 0.25), vec3(0.34, 0.32, 0.29), varying(attribute('road', 'float')));
   const range = attribute('morphRange', 'vec2');
   // positionLocal enthält hier bereits die Kachel-Position (BatchedMesh)
   const wp = modelWorldMatrix.mul(vec4(positionLocal, 1)).xyz;

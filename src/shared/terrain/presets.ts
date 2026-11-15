@@ -15,6 +15,7 @@ export const WORLD_TERRAIN: TerrainConfig = {
   limits: { min: -50, max: 500, knee: 60 },
   layers: [
     { type: 'calm', x: 0, z: 0, radius: 400, falloff: 1200 },
+    { type: 'roads', cellSize: 400, width: 10, blend: 6 },
     {
       type: 'mountains',
       maxHeight: 480,
@@ -30,7 +31,6 @@ export const WORLD_TERRAIN: TerrainConfig = {
       stretch: 1.3,
       warp: 500,
     },
-    { type: 'roads', cellSize: 400, width: 10, blend: 6 },
     { type: 'detail', base: 7, amplitude: 6, wavelength: 50, octaves: 5, gain: 0.4, calmAmplitude: 1 },
   ],
 };

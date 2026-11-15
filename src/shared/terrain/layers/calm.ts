@@ -17,6 +17,7 @@ export interface CalmLayerConfig {
 export function calmLayer(cfg: CalmLayerConfig): Layer {
   return {
     name: cfg.name ?? 'calm',
+    provides: ['spawn'],
     apply(ctx: SampleContext) {
       const dx = ctx.x - cfg.x;
       const dz = ctx.z - cfg.z;

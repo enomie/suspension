@@ -1,3 +1,4 @@
+import { terrain } from './terrain';
 import { sampleGrid } from './terrainHeight';
 import { CELL, MAX_LOD, TILE_SEGMENTS, TILE_SIZE, lodSplit } from './config';
 
@@ -64,6 +65,8 @@ export interface TileArrays {
   morph: Float32Array;
   /** Normale der gröberen Stufe */
   morphNormal: Float32Array;
+  /** Road coverage 0…1 per vertex (render only: colours the road) */
+  road: Float32Array;
   /** [start, end] je Vertex (konstant je Kachel) */
   morphRange: Float32Array;
   /** [min, max] Höhe der Kachel inkl. Morph-Ziel (für LOD-Abstand in 3D) */
@@ -90,6 +93,8 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
   const morph = new Float32Array(TILE_VERTS);
   const mnor = new Float32Array(TILE_VERTS * 3);
   const range = new Float32Array(TILE_VERTS * 2);
+  const road = new Float32Array(TILE_VERTS);
+  road.set(terrain().sampleMask('roadVis', x0, z0, d, N));
   const half = size / 2;
 
   const setN = (out: Float32Array, k: number, nx: number, ny: number, nz: number) => {
@@ -155,6 +160,7 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     nor.copyWithin(k * 3, src * 3, src * 3 + 3);
     mnor.copyWithin(k * 3, src * 3, src * 3 + 3);
     morph[k] = morph[src];
+    road[k] = road[src];
   });
   const [r0, r1] = morphRange(lod);
   for (let k = 0; k < TILE_VERTS; k++) {
@@ -167,6 +173,7 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     morph,
     morphNormal: mnor,
     morphRange: range,
+    road,
     bounds: new Float32Array([minY - skirt, maxY]),
   };
 }

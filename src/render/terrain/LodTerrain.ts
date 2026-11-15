@@ -115,6 +115,7 @@ export class LodTerrain {
     g.setAttribute('morph', new BufferAttribute(a.morph, 1));
     g.setAttribute('morphNormal', new BufferAttribute(a.morphNormal, 3));
     g.setAttribute('morphRange', new BufferAttribute(a.morphRange, 2));
+    g.setAttribute('road', new BufferAttribute(a.road, 1));
     g.setIndex(new BufferAttribute(INDEX, 1));
     return g;
   }
