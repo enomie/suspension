@@ -35,7 +35,9 @@ export const WORLD_TERRAIN: TerrainConfig = {
       // off-road test hills: domes in a ring (radius 200 m) around the spawn point, flank slopes 10 … 100 %
       type: 'testHills',
       height: 8,
-      round: 1.5,
+      round: 2,
+      crestBase: 3,
+      crestRel: 0.1,
       hills: [
         { x: 0, z: -200, slope: 0.1 },
         { x: 156.5, z: -124.5, slope: 0.2 },

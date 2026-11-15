@@ -104,20 +104,21 @@ describe('World: mountains, roads, calm spawn', () => {
     }
     expect(on).toBeGreaterThan(50);
   });
-  it('test hills: dome with constant flank slope, smooth crest', () => {
+  it('test hills: smooth dome, flank slope close to the nominal one', () => {
     const hills = (WORLD_TERRAIN.layers.find((l) => l.type === 'testHills') as { hills: { x: number; z: number; slope: number }[] }).hills;
     for (const { x, z, slope: s } of hills) {
-      expect(w.height(x, z) - 10).toBeGreaterThan(7); // crest ~7.6 m above the ground (±0.5 m ground bumps)
+      expect(w.height(x, z) - 10).toBeGreaterThan(7); // crest ~8 m above the ground (±0.5 m ground bumps)
       const reach = 8 / s;
-      const r1 = reach - 2.5 / s;
-      const r2 = reach - 5.5 / s;
-      const slope = (w.height(x + r2, z) - w.height(x + r1, z)) / (r1 - r2);
-      expect(Math.abs(slope - s)).toBeLessThan(0.08);
-      // no abrupt kink: the slope changes smoothly across the crest (neighbouring 1 m slopes differ by < 0.5)
+      const r1 = 0.5 * reach;
+      const r2 = 0.8 * reach;
+      const slope = (w.height(x + r1, z) - w.height(x + r2, z)) / (r2 - r1);
+      expect(slope).toBeGreaterThan(0.8 * s);
+      expect(slope).toBeLessThan(1.08 * s);
+      // no kink at the crest: slope changes by < 0.3 between neighbouring metres
       let prev = 0;
       for (let r = 0; r < 12; r++) {
-        const sl = (w.height(x + r + 1, z) - w.height(x + r, z));
-        if (r > 0) expect(Math.abs(sl - prev)).toBeLessThan(0.5);
+        const sl = w.height(x + r + 1, z) - w.height(x + r, z);
+        if (r > 0) expect(Math.abs(sl - prev)).toBeLessThan(0.3);
         prev = sl;
       }
     }
