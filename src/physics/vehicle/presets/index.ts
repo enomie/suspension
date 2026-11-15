@@ -1,6 +1,7 @@
 import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
 import type { VehicleSpec } from '../types';
 import { car, makeCar } from './car';
+import { trophyTruck } from './trophyTruck';
 
 /** Preset-Index → Aufhängungsprinzip (gleicher Testträger). */
 export const PRESETS: VehicleSpec[] = [
@@ -14,4 +15,5 @@ export const PRESETS: VehicleSpec[] = [
   makeCar('twist', VEHICLE_PRESET_LABELS[7], 'twistBeam'),
   makeCar('multilink', VEHICLE_PRESET_LABELS[8], 'multiLink'),
   makeCar('bogie', VEHICLE_PRESET_LABELS[9], 'bogie'),
+  trophyTruck,
 ];
