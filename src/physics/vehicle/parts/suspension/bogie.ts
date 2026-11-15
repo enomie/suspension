@@ -19,10 +19,12 @@ export const buildBogie: AxleBuilder = (ctx, axle, i) => {
     const beam = helper(ctx, axle, wc, partId(id, 'walkingBeam'), 1);
     const pj = prismatic(ctx, ctx.chassis, carrier, wc, AX.DOWN);
     prismaticSpring(ctx, pj, springFor(rate, 1), axle.spring.travel);
-    const rj = revolute(ctx, carrier, beam, wc, AX.X);
+    // The walking beam is drawn inboard of the wheels; put the hinge there too. Moving the anchor along the
+    // hinge axis (X) does not change the dynamics, it only places the joint marker on the beam.
+    const inb = -s * (axle.wheel.width / 2 + 0.12);
+    const rj = revolute(ctx, carrier, beam, add(wc, v(inb, 0, 0)), AX.X);
     rj.setLimits(-0.3, 0.3);
 
-    const inb = -s * (axle.wheel.width / 2 + 0.12);
     const top = add(wc, v(inb, 0.42, 0));
     const bot = add(wc, v(inb, 0, 0));
     const f = W(ctx, wheelLocal(axle, side, -spacing / 2));
