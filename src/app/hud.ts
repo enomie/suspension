@@ -57,7 +57,7 @@ export class TelemetryHud {
         `physik   ${physics.mode === 'worker' ? 'Worker' : 'Haupt-Thread'} · ${physics.stepMs.toFixed(2)} ms/Schritt · Interp.-Verzögerung ${physics.delayMs.toFixed(1)} ms`,
       );
     if (debugLine) lines.push(debugLine);
-    lines.push('', '1–0 Aufhängung · W/S Gas/Bremse · A/D Lenken · Space Handbremse · R Reset');
+    lines.push('', 'Fahrzeug oben rechts · W/S Gas/Bremse · A/D Lenken · Space Handbremse · R Reset');
     this.el.textContent = lines.join('\n');
   }
 }

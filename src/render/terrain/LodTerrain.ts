@@ -1,4 +1,5 @@
-import { BatchedMesh, BufferAttribute, BufferGeometry, Matrix4 } from 'three';
+import { BatchedMesh, BufferAttribute, BufferGeometry, Matrix4, type Camera, type Material, type PerspectiveCamera } from 'three';
+import type { WebGPURenderer } from 'three/webgpu';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import {
   attribute,
@@ -95,9 +96,10 @@ export class LodTerrain {
   constructor(workerCount = Math.max(1, Math.min(4, (globalThis.navigator?.hardwareConcurrency ?? 2) - 1))) {
     const idx = INDEX.length;
     this.mesh = new BatchedMesh(SLOTS, SLOTS * TILE_VERTS, SLOTS * idx, this.material);
-    this.mesh.receiveShadow = true;
+    // receiveShadow + BatchedMesh + WebGPURenderer: Culling aus Shadow-Pass kann Hauptbild leeren (three.js #34822)
+    this.mesh.receiveShadow = false;
     this.mesh.frustumCulled = false; // Gesamt-Hülle ändert sich laufend; pro Kachel wird gecullt
-    this.mesh.perObjectFrustumCulled = true;
+    this.mesh.perObjectFrustumCulled = false;
     this.mesh.sortObjects = false;
     // Plätze einmal reservieren (Neu-Hinzufügen würde Puffer-Speicher verbrauchen), dann nur überschreiben
     const blank = this.geometryFrom(buildTileArrays(MAX_LOD, 1e6, 1e6));
@@ -193,6 +195,19 @@ export class LodTerrain {
   /** sichtbare Kacheln als "lod,ix,iz" (Tests / Debug) */
   visibleKeys(): string[] {
     return [...this.visible].map((c) => c.key).sort();
+  }
+
+  /**
+   * WebGPURenderer-Fallback auf WebGL2: BatchedMesh aktualisiert Draw-Listen sonst nicht
+   * (isWebGPURenderer bleibt true) → Terrain unsichtbar in Chrome ohne natives WebGPU.
+   */
+  beforeRender(renderer: WebGPURenderer, camera: PerspectiveCamera): void {
+    const backend = renderer.backend as { isWebGPUBackend?: boolean };
+    if (backend.isWebGPUBackend) return;
+    type Draw = BatchedMesh & {
+      _updateDrawParameters(camera: Camera, geometry: BufferGeometry, material: Material): void;
+    };
+    (this.mesh as Draw)._updateDrawParameters(camera, this.mesh.geometry, this.material);
   }
 
   /** Kamera (lokal) → Kacheln wählen, bauen, sichtbar schalten. */

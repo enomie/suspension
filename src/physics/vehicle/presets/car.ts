@@ -1,3 +1,4 @@
+import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
 import type { AxleSpec, SuspensionType, VehicleSpec, WheelSpec } from '../types';
 
 const wheel: WheelSpec = { radius: 0.33, width: 0.22, mass: 20, friction: 1.1, shape: 'ball' };
@@ -46,4 +47,4 @@ export function makeCar(name: string, label: string, type: SuspensionType): Vehi
 }
 
 /** Standard-PKW (Schiebe-Federbein) */
-export const car = makeCar('car', 'Schiebe-Federbein', 'strut');
+export const car = makeCar('car', VEHICLE_PRESET_LABELS[0], 'strut');

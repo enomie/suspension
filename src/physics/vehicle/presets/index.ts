@@ -1,16 +1,17 @@
+import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
 import type { VehicleSpec } from '../types';
 import { car, makeCar } from './car';
 
-/** Taste 1…9, 0 → Aufhängungsprinzip (gleicher Testträger). */
+/** Preset-Index → Aufhängungsprinzip (gleicher Testträger). */
 export const PRESETS: VehicleSpec[] = [
-  car, //                                                                          1
-  makeCar('wishbone', 'Doppelquerlenker', 'doubleWishbone'), //                    2
-  makeCar('macpherson', 'McPherson', 'macPherson'), //                             3
-  makeCar('trailing', 'Längslenker (hinten)', 'trailingArm'), //                   4
-  makeCar('semitrailing', 'Schräglenker (hinten)', 'semiTrailingArm'), //          5
-  makeCar('swing', 'Pendelachse', 'swingAxle'), //                                 6
-  makeCar('solid', 'Starrachse', 'solidAxle'), //                                  7
-  makeCar('twist', 'Verbundlenker (hinten)', 'twistBeam'), //                      8
-  makeCar('multilink', 'Mehrlenker', 'multiLink'), //                              9
-  makeCar('bogie', 'Tandem-Pendel (hinten)', 'bogie'), //                          0
+  car,
+  makeCar('wishbone', VEHICLE_PRESET_LABELS[1], 'doubleWishbone'),
+  makeCar('macpherson', VEHICLE_PRESET_LABELS[2], 'macPherson'),
+  makeCar('trailing', VEHICLE_PRESET_LABELS[3], 'trailingArm'),
+  makeCar('semitrailing', VEHICLE_PRESET_LABELS[4], 'semiTrailingArm'),
+  makeCar('swing', VEHICLE_PRESET_LABELS[5], 'swingAxle'),
+  makeCar('solid', VEHICLE_PRESET_LABELS[6], 'solidAxle'),
+  makeCar('twist', VEHICLE_PRESET_LABELS[7], 'twistBeam'),
+  makeCar('multilink', VEHICLE_PRESET_LABELS[8], 'multiLink'),
+  makeCar('bogie', VEHICLE_PRESET_LABELS[9], 'bogie'),
 ];

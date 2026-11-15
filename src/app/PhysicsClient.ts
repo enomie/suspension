@@ -54,7 +54,13 @@ export class PhysicsClient {
       const c = new PhysicsClient('worker');
       const w = new Worker(new URL('../physics/worker.ts', import.meta.url), { type: 'module' });
       c.worker = w;
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
+        const fail = (msg: string) => {
+          w.terminate();
+          reject(new Error(msg));
+        };
+        w.onerror = () => fail('Physik-Worker konnte nicht starten (siehe Konsole)');
+        w.onmessageerror = () => fail('Physik-Worker: ungültige Nachricht');
         w.onmessage = (e: MessageEvent<FromWorker>) => {
           const m = e.data;
           if (m.type === 'snapshots') {

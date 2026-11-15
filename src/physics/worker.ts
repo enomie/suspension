@@ -25,7 +25,10 @@ scope.onmessage = (e: MessageEvent<ToWorker>) => {
 
 async function handle(m: ToWorker): Promise<void> {
   if (m.type === 'init') {
-    const R = await initRapier();
+    const R = await initRapier().catch((err) => {
+      console.error('[physics worker] Rapier init', err);
+      throw err;
+    });
     sim = new Simulation(R, m);
     clock = new StepClock(wallClock());
     announce(sim);

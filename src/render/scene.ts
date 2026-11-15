@@ -38,3 +38,8 @@ export async function createStage(container: HTMLElement, opts: { dpr: number })
 }
 
 export type Stage = Awaited<ReturnType<typeof createStage>>;
+
+/** Anzeige: natives WebGPU oder WebGPURenderer-WebGL-Fallback (Chrome ohne WebGPU). */
+export function gpuBackendLabel(renderer: WebGPURenderer): string {
+  return (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL-Fallback';
+}

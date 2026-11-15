@@ -3,13 +3,14 @@ import { ORIGIN } from './shared/origin';
 import { setTerrain, TERRAIN_PRESETS } from './shared/terrain';
 import { OriginShifter } from './shared/originShifter';
 import { wallClock } from './shared/snapshot';
-import { createStage } from './render/scene';
+import { createStage, gpuBackendLabel } from './render/scene';
 import { LodTerrain } from './render/terrain/LodTerrain';
 import { VehicleVisual } from './render/vehicle/VehicleVisual';
 import { PhysicsClient } from './app/PhysicsClient';
 import { Keyboard } from './app/keyboard';
 import { TelemetryHud } from './app/hud';
 import { DebugToggles } from './app/debug';
+import { VehiclePicker } from './app/vehiclePicker';
 
 /*
  * Haupt-Thread. Physik läuft im Worker (src/physics/worker.ts), Terrain-Kacheln in Terrain-Workern.
@@ -32,6 +33,7 @@ if (!params.has('x') && !params.has('z')) {
   ORIGIN.z = p.z;
 }
 
+async function boot(): Promise<void> {
 /** ?dpr=1 senkt die Auflösung (Fill-Rate) */
 const stage = await createStage(document.querySelector<HTMLDivElement>('#app')!, {
   dpr: Number(params.get('dpr') ?? 2),
@@ -49,10 +51,13 @@ const physics = await PhysicsClient.create({
   z: ORIGIN.z,
   useWorker: params.get('worker') !== '0',
 });
+const vehiclePickerHost = document.querySelector<HTMLDivElement>('#vehicle-picker-host')!;
+const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.spawn(preset));
 const showVehicle = () => {
   vehicle?.dispose();
   vehicle = new VehicleVisual(physics.layout);
   scene.add(vehicle.root);
+  vehiclePicker.setPreset(physics.preset);
 };
 physics.onVehicle = showVehicle;
 showVehicle();
@@ -72,7 +77,6 @@ Object.assign(window, {
 
 function handleHotkeys(): void {
   if (keyboard.consume('KeyR')) physics.spawn(physics.preset);
-  for (let i = 0; i < 10; i++) if (keyboard.consume(`Digit${(i + 1) % 10}`)) physics.spawn(i);
 }
 
 // ── Loop ─────────────────────────────────────────────────────────
@@ -101,9 +105,17 @@ renderer.setAnimationLoop((now: number) => {
   terrain.update(camera.position.x, camera.position.y, camera.position.z);
 
   hud.update(v, dt, fps, terrain.stats, ORIGIN, physics, debug.summary);
+  terrain.beforeRender(renderer, camera);
   renderer.render(scene, camera);
 });
 
 const label = document.querySelector('#hud-label');
 if (label)
-  label.textContent = `WebGPU · Rapier SIMD (${physics.mode === 'worker' ? 'Worker' : 'Main'}) · ${import.meta.env.DEV ? 'dev' : 'build'}`;
+  label.textContent = `${gpuBackendLabel(renderer)} · Rapier SIMD (${physics.mode === 'worker' ? 'Worker' : 'Main'}) · ${import.meta.env.DEV ? 'dev' : 'build'}`;
+}
+
+boot().catch((err) => {
+  console.error(err);
+  const label = document.querySelector('#hud-label');
+  if (label) label.textContent = `Start fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`;
+});
