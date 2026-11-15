@@ -33,7 +33,8 @@ export const buildTwistBeam: AxleBuilder = (ctx, axle, i) => {
   }
   // Torsion: Drehung der Lenker gegeneinander um die gemeinsame Schwenkachse
   const mid = lerp(pivots.L, pivots.R, 0.5);
-  const tj = revolute(ctx, arms.L, arms.R, mid, AX.X);
+  // No joint marker (marks = []): on a real twist beam this is the profile twisting, not a hinge
+  const tj = revolute(ctx, arms.L, arms.R, mid, AX.X, []);
   const kRoll = 0.6 * rate.kWheel * ARM_LENGTH * ARM_LENGTH; // N·m/rad
   tj.configureMotorModel(ctx.R.MotorModel.ForceBased);
   tj.configureMotorPosition(0, kRoll, kRoll * 0.05);
