@@ -1,5 +1,5 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
-import type { Corner, VehicleSpec } from './types';
+import type { Corner, JointVisual, VehicleSpec } from './types';
 import type { BuildContext } from './parts/context';
 import { createChassis } from './parts/chassis';
 import { SUSPENSIONS } from './parts/suspension';
@@ -8,6 +8,7 @@ import { axleLoadShares } from './tuning';
 export interface BuiltVehicle {
   chassis: RAPIER.RigidBody;
   corners: Corner[];
+  joints: JointVisual[];
   names: Map<number, string>;
 }
 
@@ -30,10 +31,11 @@ export function buildVehicle(
     origin: pos,
     chassis,
     axleSprungMass: shares.map((s) => s * spec.chassis.mass),
+    joints: [],
     names,
   };
 
   const corners: Corner[] = [];
   spec.axles.forEach((axle, i) => corners.push(...SUSPENSIONS[axle.suspension](ctx, axle, i)));
-  return { chassis, corners, names };
+  return { chassis, corners, joints: ctx.joints, names };
 }

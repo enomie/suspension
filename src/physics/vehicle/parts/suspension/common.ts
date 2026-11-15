@@ -76,9 +76,11 @@ function create<T extends Joint>(ctx: BuildContext, data: RAPIER.JointData, b1: 
 }
 
 export function revolute(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P, axis: P) {
+  ctx.joints.push({ kind: 'revolute', body: b2, local: toVec3(localOn(b2, w)), axis: toVec3(axis) });
   return create<RAPIER.RevoluteImpulseJoint>(ctx, ctx.R.JointData.revolute(localOn(b1, w), localOn(b2, w), axis), b1, b2);
 }
 export function spherical(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P) {
+  ctx.joints.push({ kind: 'spherical', body: b2, local: toVec3(localOn(b2, w)), axis: [0, 1, 0] });
   return create<RAPIER.SphericalImpulseJoint>(ctx, ctx.R.JointData.spherical(localOn(b1, w), localOn(b2, w)), b1, b2);
 }
 export function prismatic(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P, axis: P) {

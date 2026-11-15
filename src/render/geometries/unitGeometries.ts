@@ -1,4 +1,4 @@
-import { BoxGeometry, BufferGeometry, CylinderGeometry, Float32BufferAttribute, RingGeometry } from 'three';
+import { BoxGeometry, BufferGeometry, CylinderGeometry, Float32BufferAttribute, IcosahedronGeometry, RingGeometry } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
@@ -73,3 +73,6 @@ export const UNIT_HELIX_GEOMETRY = (() => {
   g.computeVertexNormals();
   return g;
 })();
+
+/** Unit sphere, same as apokalypto (`unit-sphere-geometry.ts`): diameter 1 */
+export const UNIT_SPHERE_GEOMETRY = new IcosahedronGeometry(0.5, 3);

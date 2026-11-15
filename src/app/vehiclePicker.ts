@@ -5,12 +5,12 @@ export class VehiclePicker {
   readonly select: HTMLSelectElement;
   private syncing = false;
 
-  constructor(parent: HTMLElement, onSelect: (preset: number) => void, onFrame: (visible: boolean) => void) {
+  constructor(parent: HTMLElement, onSelect: (preset: number) => void, onFrame: (visible: boolean) => void, onJoints: (visible: boolean) => void) {
     const wrap = document.createElement('div');
     wrap.id = 'vehicle-picker';
     const label = document.createElement('label');
     label.htmlFor = 'vehicle-preset';
-    label.textContent = 'Fahrzeug';
+    label.textContent = 'Vehicle';
     this.select = document.createElement('select');
     this.select.id = 'vehicle-preset';
     for (const [i, label] of VEHICLE_PRESET_LABELS.entries()) {
@@ -23,13 +23,16 @@ export class VehiclePicker {
       if (this.syncing) return;
       onSelect(Number(this.select.value));
     });
-    const frame = document.createElement('label');
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.checked = true;
-    box.addEventListener('change', () => onFrame(box.checked));
-    frame.append(box, ' Leiterrahmen');
-    wrap.append(label, this.select, frame);
+    const toggle = (text: string, on: (visible: boolean) => void) => {
+      const l = document.createElement('label');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = true;
+      box.addEventListener('change', () => on(box.checked));
+      l.append(box, ` ${text}`);
+      return l;
+    };
+    wrap.append(label, this.select, toggle('Ladder frame', onFrame), toggle('Joints', onJoints));
     parent.appendChild(wrap);
   }
 

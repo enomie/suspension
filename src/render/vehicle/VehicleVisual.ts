@@ -6,6 +6,7 @@ import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/sna
 import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO } from '../geometries/unitGeometries';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
+import { JointRenderer } from './jointVisual';
 
 const tireMat = new MeshStandardMaterial({ color: 0x202226, roughness: 0.9 });
 const rimMat = new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.4, metalness: 0.3 });
@@ -64,6 +65,7 @@ export class VehicleVisual implements BodyPoses {
   private wheels: Group[];
   private frame: Mesh;
   private links: LinkRenderer;
+  private joints: JointRenderer;
   private state: Float64Array | null = null;
   private q0: number;
   private inboardPlaced = false;
@@ -84,7 +86,8 @@ export class VehicleVisual implements BodyPoses {
       return w;
     });
     this.links = new LinkRenderer(layout);
-    this.root.add(this.chassis, ...this.wheels, this.links.root);
+    this.joints = new JointRenderer(layout);
+    this.root.add(this.chassis, ...this.wheels, this.links.root, this.joints.root);
     this.root.visible = false; // bis der erste Snapshot da ist
   }
 
@@ -127,6 +130,7 @@ export class VehicleVisual implements BodyPoses {
       this.rotation(c.wheel, this.wheels[i].quaternion);
     });
     this.links.sync(this);
+    this.joints.sync(this);
     this.root.visible = true;
   }
 
@@ -146,6 +150,11 @@ export class VehicleVisual implements BodyPoses {
   /** Leiterrahmen ein-/ausblenden (Aufhängung und Räder bleiben sichtbar) */
   setFrameVisible(on: boolean): void {
     this.frame.visible = on;
+  }
+
+  /** Show or hide the joint markers (balls and hinge cylinders) */
+  setJointsVisible(on: boolean): void {
+    this.joints.root.visible = on;
   }
 
   dispose(): void {
