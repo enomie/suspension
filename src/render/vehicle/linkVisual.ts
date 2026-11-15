@@ -1,6 +1,6 @@
 import { BufferGeometry, Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import type { BodyPoint, VehicleLayout } from '../../shared/vehicleLayout';
-import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY } from '../geometries/unitGeometries';
+import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HELIX_GEOMETRY } from '../geometries/unitGeometries';
 import { MAT } from './materials';
 
 /** Posen der Körper (Render-lokal), adressiert über den Snapshot-Index */
@@ -19,6 +19,8 @@ const _t = new Vector3();
 
 /** Durchmesser bzw. Boxmaße [m] der Teile; Länge kommt aus den Endpunkten */
 const SIZE = { rod: 0.044, beam: 0.08, spring: 0.13, tube: 0.064, piston: 0.028 };
+const SEAT_DIAMETER = 0.15;
+const SEAT_THICKNESS = 0.012;
 const KNUCKLE: [number, number, number] = [0.07, 0.24, 0.12];
 /** Achsschenkel-Box sitzt so weit nach innen (Knuckle-lokal X) versetzt, dass sie hinter der Bremsscheibe steht [m] */
 export const KNUCKLE_INBOARD = 0.05;
@@ -69,6 +71,8 @@ export class LinkRenderer {
   private readonly rods: InstancedMesh;
   private readonly beams: InstancedMesh;
   private readonly springs: InstancedMesh;
+  /** Federteller oben + unten (je Feder 2 Instanzen) */
+  private readonly seats: InstancedMesh;
   private readonly tubes: InstancedMesh;
   private readonly pistons: InstancedMesh;
   private readonly knuckleMesh: InstancedMesh;
@@ -81,7 +85,8 @@ export class LinkRenderer {
     const nRod = layout.links.length - nDamper - nSpring - nBeam;
     this.rods = batch(UNIT_CYLINDER_GEOMETRY, MAT.hub, nRod);
     this.beams = batch(UNIT_CYLINDER_GEOMETRY, MAT.frame, nBeam);
-    this.springs = batch(UNIT_CYLINDER_GEOMETRY, MAT.spring, nSpring);
+    this.springs = batch(UNIT_HELIX_GEOMETRY, MAT.spring, nSpring);
+    this.seats = batch(UNIT_CYLINDER_GEOMETRY, MAT.frame, nSpring * 2);
     this.tubes = batch(UNIT_CYLINDER_GEOMETRY, MAT.damper, nDamper);
     this.pistons = batch(UNIT_CYLINDER_GEOMETRY, MAT.rod, nDamper);
     this.knuckleMesh = batch(UNIT_BOX_GEOMETRY, MAT.knuckle, layout.corners.length);
@@ -94,7 +99,7 @@ export class LinkRenderer {
       this.items.push({ v, main, i, piston: group === 'damper' ? i : undefined, kind: group === 'damper' ? 'rod' : group });
     }
     layout.corners.forEach((c, i) => this.knuckles.push({ body: c.knuckle, i, inboard: 0 }));
-    this.root.add(this.rods, this.beams, this.springs, this.tubes, this.pistons, this.knuckleMesh);
+    this.root.add(this.rods, this.beams, this.springs, this.seats, this.tubes, this.pistons, this.knuckleMesh);
   }
 
   /** Seite je Rad: +1 / −1 = Richtung zum Chassis in Rad-lokal X (setzt `VehicleVisual` einmal) */
@@ -115,6 +120,11 @@ export class LinkRenderer {
         stretch(this.pistons, piston, _t, _b, SIZE.piston);
       } else {
         stretch(main, i, _a, _b, SIZE[kind]);
+        if (main === this.springs) {
+          // Federteller an beiden Enden, gleiche Ausrichtung wie die Feder (`_q` stammt aus `stretch`)
+          this.seats.setMatrixAt(2 * i, _mat.compose(_a, _q, _s.set(SEAT_DIAMETER, SEAT_THICKNESS, SEAT_DIAMETER)));
+          this.seats.setMatrixAt(2 * i + 1, _mat.compose(_b, _q, _s));
+        }
       }
     }
     for (const { body, i, inboard } of this.knuckles) {
@@ -123,7 +133,7 @@ export class LinkRenderer {
       _p.add(_t.set(inboard * KNUCKLE_INBOARD, 0, 0).applyQuaternion(_q));
       this.knuckleMesh.setMatrixAt(i, _mat.compose(_p, _q, _s.set(...KNUCKLE)));
     }
-    for (const m of [this.rods, this.beams, this.springs, this.tubes, this.pistons, this.knuckleMesh]) {
+    for (const m of [this.rods, this.beams, this.springs, this.seats, this.tubes, this.pistons, this.knuckleMesh]) {
       m.instanceMatrix.needsUpdate = true;
     }
   }
