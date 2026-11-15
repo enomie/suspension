@@ -39,7 +39,8 @@ export const buildMacPherson: AxleBuilder = (ctx, axle, i) =>
     const rate = wheelRate(ctx, axle, i, sidesOf(axle).length);
 
     const top = add(wc, v(-s * 0.24, 0.55, 0));
-    const strutBot = add(wc, v(-s * 0.12, 0.05, 0));
+    // Fuß 17 cm neben der Radmitte: Feder (Teller-Radius 7,5 cm) bleibt frei von Achsschenkel und Nabe
+    const strutBot = add(wc, v(-s * 0.17, 0.05, 0));
     const lowIn = add(wc, v(-s * 0.5, -0.15, 0));
     const lowOut = add(wc, v(-s * 0.08, -0.15, 0));
     const axis = norm(sub(strutBot, top)); // zeigt nach unten = Ausfedern
@@ -59,7 +60,8 @@ export const buildMacPherson: AxleBuilder = (ctx, axle, i) =>
     revolute(ctx, lower, upright, lowOut, AX.Z);
 
     const visuals = [
-      ...coilover(dome, top, upright, strutBot),
+      // Reihenfolge Fuß → Dom: Dämpferrohr sitzt unten am Radträger, Kolbenstange kommt oben heraus
+      ...coilover(upright, strutBot, dome, top),
       link('rod', lower, lowIn, lower, lowOut),
       link('beam', upright, lowOut, upright, strutBot),
     ];
