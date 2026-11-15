@@ -30,7 +30,9 @@ export const buildDoubleWishbone: AxleBuilder = (ctx, axle, i) =>
     spherical(ctx, upper, upright, upOut);
     armLimits(jl, AX.Z, lowIn, wc, axle.spring.travel);
 
-    const sp = lerp(lowIn, lowOut, 0.75);
+    // Feder-Dämpfer-Einheit 12 cm in Fahrtrichtung versetzt, damit sie am oberen Lenker vorbeiläuft statt hindurchzugehen.
+    // Hebelverhältnis und Ruhelänge bleiben gleich (Achse Z, beide Enden um dasselbe z verschoben).
+    const sp = add(lerp(lowIn, lowOut, 0.75), v(0, 0, 0.12));
     const top = add(sp, v(0, 0.45, 0));
     springJoint(ctx, ctx.chassis, top, lower, sp, springFor(rate, leverRatio(AX.Z, lowIn, sp, wc)));
 
