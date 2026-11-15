@@ -34,7 +34,7 @@ const HELIX_NOMINAL_DIAMETER = 0.13;
 const HELIX_WIRE_RADIUS = 0.007;
 
 /**
- * Unit-Wendel (Feder): Außendurchmesser 1, Länge 1 entlang Y, `HELIX_TURNS` Windungen.
+ * Unit-Wendel (Feder): Außendurchmesser 1, Länge 1 entlang Y (zentriert, Y −0,5…+0,5 wie der Unit-Zylinder), `HELIX_TURNS` Windungen.
  * Über scale (d, l, d) pro Instanz auf Durchmesser und Länge bringen – die Steigung folgt der Länge.
  * Der Drahtquerschnitt ist vorab für Nenn-Maße gegengerechnet, damit er unter der Nicht-Uniform-Skalierung
  * rund bleibt (bei stark abweichender Länge leicht oval).
@@ -52,8 +52,8 @@ export const UNIT_HELIX_GEOMETRY = (() => {
     const th = t * HELIX_TURNS * Math.PI * 2;
     const c = Math.cos(th);
     const sn = Math.sin(th);
-    // Drahtmitte läuft von y = ry bis 1 − ry, damit die Enden nicht über die Federteller hinausragen
-    const y = ry + t * (1 - 2 * ry);
+    // Drahtmitte läuft von y = −0,5 + ry bis 0,5 − ry, damit die Enden nicht über die Federteller hinausragen
+    const y = -0.5 + ry + t * (1 - 2 * ry);
     for (let j = 0; j < around; j++) {
       const phi = (j / around) * Math.PI * 2;
       const radial = R + Math.cos(phi) * rx;
