@@ -1,6 +1,6 @@
 import type { DriverInput } from '../shared/vehicleSpec';
 
-/** Tastenzustand → DriverInput. W/S Gas/Bremse, A/D Lenkung, Space Handbremse (hinten). */
+/** Tastenzustand → DriverInput. W/S Gas/Bremse, A/D Lenkung, Space Handbremse (hinten), Shift Boost (doppelte Leistung und Höchstgeschwindigkeit). */
 export class Keyboard {
   private down = new Set<string>();
   /** einmalige Tastendrücke (z. B. Reset) */
@@ -35,6 +35,7 @@ export class Keyboard {
       brake: Math.max(k('KeyS'), k('ArrowDown')),
       steer: Math.max(k('KeyA'), k('ArrowLeft')) - Math.max(k('KeyD'), k('ArrowRight')),
       handbrake: this.down.has('Space'),
+      boost: this.down.has('ShiftLeft') || this.down.has('ShiftRight'),
     };
   }
 }
