@@ -1,21 +1,6 @@
 import { BatchedMesh, BufferAttribute, BufferGeometry, Matrix4, type Camera, type Material, type PerspectiveCamera } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
-import { MeshStandardNodeMaterial } from 'three/webgpu';
-import {
-  attribute,
-  cameraPosition,
-  distance,
-  mix,
-  modelWorldMatrix,
-  normalLocal,
-  positionLocal,
-  smoothstep,
-  transformNormalToView,
-  uniform,
-  varying,
-  vec3,
-  vec4,
-} from 'three/tsl';
+import { terrainMaterial } from '../tsl/terrainMaterial';
 import { ORIGIN } from '../../shared/origin';
 import { sampleTerrainHeightWorld } from '../../shared/terrainHeight';
 import { buildTileArrays, buildTileIndex, TILE_VERTS, tileSize, type TileArrays } from '../../shared/tileGeometry';
@@ -23,28 +8,9 @@ import type { TileRequest, TileWorkerMessage } from './tileWorker';
 import { terrain } from '../../shared/terrain';
 import { MAX_LOD, VIEW_DISTANCE, lodSplit } from '../../shared/config';
 
-/** Debug: Geomorphing an (1) / aus (0) */
-export const morphEnabled = uniform(1);
-
 /** Kachel-Plätze im BatchedMesh (sichtbar ~150, Rest = Cache) */
 const SLOTS = 320;
 const INDEX = buildTileIndex();
-
-/**
- * Ein Material für alle Kacheln. CDLOD-Geomorphing im Vertex-Shader: zwischen morphRange.x und .y
- * (Abstand Vertex–Kamera) gleiten Höhe UND Normale zur nächstgröberen Stufe → weder Geometrie- noch
- * Licht-Sprung beim Kachelwechsel.
- */
-function terrainMaterial(): MeshStandardNodeMaterial {
-  const m = new MeshStandardNodeMaterial({ color: 0x4a6741, roughness: 0.92, metalness: 0.02 });
-  const range = attribute('morphRange', 'vec2');
-  // positionLocal enthält hier bereits die Kachel-Position (BatchedMesh)
-  const wp = modelWorldMatrix.mul(vec4(positionLocal, 1)).xyz;
-  const k = varying(smoothstep(range.x, range.y, distance(wp, cameraPosition)).mul(morphEnabled));
-  m.positionNode = positionLocal.add(vec3(0, attribute('morph', 'float').mul(k), 0));
-  m.normalNode = transformNormalToView(mix(normalLocal, attribute('morphNormal', 'vec3'), k)).normalize();
-  return m;
-}
 
 interface Chunk {
   key: string;
@@ -370,3 +336,6 @@ export class LodTerrain {
     this.stats = { visible: visible.size, cached: this.cache.size, built, queue: this.queue.length, drawCalls: 1 };
   }
 }
+
+/** Debug-Schalter lebt in `render/tsl/terrainMaterial.ts`; hier re-exportiert (bisheriger Importpfad). */
+export { morphEnabled } from '../tsl/terrainMaterial';
