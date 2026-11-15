@@ -2,6 +2,7 @@ import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import type { Corner, JointVisual, Vec3, VehicleSpec } from './types';
 import type { BuildContext } from './parts/context';
 import { createChassis } from './parts/chassis';
+import { frameHalfLength } from '../../shared/vehicleSpec';
 import { SUSPENSIONS } from './parts/suspension';
 import { axleLoadShares } from './tuning';
 
@@ -21,7 +22,7 @@ export function buildVehicle(
   spec: VehicleSpec,
   pos: { x: number; y: number; z: number },
 ): BuiltVehicle {
-  const chassis = createChassis(R, world, spec.chassis, pos);
+  const chassis = createChassis(R, world, spec.chassis, pos, frameHalfLength(spec));
   const names = new Map<number, string>([[chassis.handle, `${spec.name}.chassis`]]);
 
   const comZ = spec.chassis.comOffset?.[2] ?? 0;
