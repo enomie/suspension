@@ -8,5 +8,5 @@
 
 ## Sprache
 - Antworten und Gespräch auf Deutsch.
-- Code, Identifier und Code-Kommentare immer auf Englisch (auch in neuen oder geänderten Dateien).
-- Anzeigetexte (UI-Labels) sollen englisch und deutsch verfügbar sein.
+- Code, Identifier, Code-Kommentare und Anzeigetexte (UI-Labels) immer nur auf Englisch.
+- Bestehende deutsche Dateien nur dann ins Englische übersetzen, wenn sie ohnehin angefasst werden (nach und nach, kein Massen-Umbau).
