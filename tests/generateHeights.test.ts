@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createTerrain, DEFAULT_TERRAIN, HILLS_TERRAIN, WORLD_TERRAIN } from '../src/shared/terrain';
 import { softLimit } from '../src/shared/terrain/generator';
 import { setTerrain } from '../src/shared/terrain';
+import { createLayer } from '../src/shared/terrain/layers';
 import { simplex2, fbm } from '../src/shared/terrain/noise';
 import { buildTileArrays, tileSize } from '../src/shared/tileGeometry';
 import { TILE_SEGMENTS } from '../src/shared/config';
@@ -12,12 +13,12 @@ describe('Terrain-Generator', () => {
   it('Golden Values: Höhenfunktion ändert sich nicht unbemerkt (bitgleich)', () => {
     // Bei ABSICHTLICHER Änderung des Terrains neu erzeugen und hier eintragen.
     const golden: [number, number, number][] = [
-      [0, 0, 23.71920890029155],
-      [858000.5, 897000.25, 2462.0071854151306],
-      [12.5, -33.2, 24.259546188349688],
-      [1000.25, 777.75, 75.4244801087091],
-      [-54321.5, 98765.125, 83.34734422674967],
-      [2000000.25, -1350000.75, 1082.0608864449614],
+      [0, 0, 10],
+      [858000.5, 897000.25, 9.198603584027877],
+      [12.5, -33.2, 10.100316868783246],
+      [1000.25, 777.75, 9.134994251820109],
+      [-54321.5, 98765.125, 248.56007275394347],
+      [2000000.25, -1350000.75, 122.34832785871941],
     ];
     for (const [x, z, h] of golden) expect(t.height(x, z)).toBe(h);
   });
@@ -70,29 +71,40 @@ describe('Terrain-Generator', () => {
   });
 });
 
-describe('Welt: Kontinent + Gebirge', () => {
+describe('World: mountains, roads, calm spawn', () => {
   const w = createTerrain(WORLD_TERRAIN);
-  // grobes Raster über 900 × 900 km
   const H: number[] = [];
-  for (let i = 0; i < 300; i++) for (let j = 0; j < 300; j++) H.push(w.height(i * 3000 + 0.5, j * 3000 + 0.5));
+  for (let i = 0; i < 300; i++) for (let j = 0; j < 300; j++) H.push(w.height(i * 700 + 0.5, j * 700 + 0.5));
 
-  it('~60 % Land, ~40 % Meer', () => {
-    const land = H.filter((h) => h > 0).length / H.length;
-    expect(land).toBeGreaterThan(0.55);
-    expect(land).toBeLessThan(0.65);
+  it('flat land at ~10 m, mountains never above 500 m', () => {
+    expect(Math.min(...H)).toBeGreaterThan(5);
+    expect(Math.max(...H)).toBeLessThanOrEqual(500);
+    expect(Math.max(...H)).toBeGreaterThan(300);
   });
-  it('Meeresboden bis −1500 m, Gipfel bis 3000 m (nie darüber)', () => {
-    expect(Math.min(...H)).toBeGreaterThanOrEqual(-1500);
-    expect(Math.min(...H)).toBeLessThan(-1400);
-    expect(Math.max(...H)).toBeLessThanOrEqual(3000);
-    expect(Math.max(...H)).toBeGreaterThan(2500);
+  it('mountains are frequent but not everywhere', () => {
+    const m = H.filter((h) => h > 50).length / H.length;
+    expect(m).toBeGreaterThan(0.15);
+    expect(m).toBeLessThan(0.6);
   });
-  it('Gebirge sind Züge, nicht flächendeckend (3–15 % über 800 m)', () => {
-    const m = H.filter((h) => h > 800).length / H.length;
-    expect(m).toBeGreaterThan(0.03);
-    expect(m).toBeLessThan(0.15);
+  it('spawn area is calm (±0.5 m around 10 m)', () => {
+    for (let x = -300; x <= 300; x += 7)
+      for (let z = -300; z <= 300; z += 7) expect(Math.abs(w.height(x, z) - 10)).toBeLessThanOrEqual(0.5);
   });
-  it('findLand: Startpunkt auf flachem Land, deterministisch', () => {
+  it('roads: bumps are damped to ±0.5 m on 10 m wide strips', () => {
+    const road = createLayer({ type: 'roads', cellSize: 400, width: 10, blend: 6 }, WORLD_TERRAIN.seed);
+    const ctx = { x: 0, z: 20000.25, height: 0, masks: {} as Record<string, number>, minWavelength: 0 };
+    let on = 0;
+    for (let x = 20000; x < 22000; x += 0.5) {
+      ctx.x = x;
+      road.apply(ctx);
+      if (ctx.masks.road > 0.99) {
+        on++;
+        expect(Math.abs(w.height(x, ctx.z) - 10)).toBeLessThanOrEqual(0.5);
+      }
+    }
+    expect(on).toBeGreaterThan(50);
+  });
+  it('findLand: start point on flat land, deterministic', () => {
     const p = w.findLand(0, 0, { step: 64 });
     expect(w.height(p.x, p.z)).toBeGreaterThan(5);
     expect(w.height(p.x, p.z)).toBeLessThan(400);
@@ -115,10 +127,10 @@ describe('Welt: Kontinent + Gebirge', () => {
 describe('Geomorphing-Ziel = Elternkachel', () => {
   it('voll gemorphte Kachel hat an den groben Punkten exakt die Höhe der Elternkachel (auch im Gebirge)', () => {
     setTerrain(WORLD_TERRAIN);
-    // Gebirge bei (858 km, 897 km): Kacheln dort
+    // mountains near (-54 km, 99 km)
     for (const lod of [0, 3, 7]) {
-      const ix = Math.floor(858000 / tileSize(lod)) + 1;
-      const iz = Math.floor(897000 / tileSize(lod)) - 1;
+      const ix = Math.floor(-54321 / tileSize(lod)) + 1;
+      const iz = Math.floor(98765 / tileSize(lod)) - 1;
       const child = buildTileArrays(lod, ix, iz);
       const parent = buildTileArrays(lod + 1, ix >> 1, iz >> 1);
       const N = TILE_SEGMENTS;

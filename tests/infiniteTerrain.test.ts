@@ -196,8 +196,8 @@ describe('LOD stability (no flicker)', () => {
 describe('LOD beim Fahren (Kacheln kommen verzögert wie aus dem Worker)', () => {
   it('Gebirge (Welt): kein Hin-und-her-Schalten', () => {
     setTerrain(WORLD_TERRAIN);
-    ORIGIN.x = 858000;
-    ORIGIN.z = 897000;
+    ORIGIN.x = -54321;
+    ORIGIN.z = 98765;
     try {
       const t = new LodTerrain();
       t.budgetMs = 1e9;

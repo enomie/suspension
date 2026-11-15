@@ -2,12 +2,14 @@
  * Terrain-Generator: Typen. Alles hier ist reine Daten bzw. reine Funktionen (kein three.js, kein Rapier),
  * damit dieselbe Konfiguration in jedem Thread und in anderen Projekten denselben Boden ergibt.
  */
+import type { CalmLayerConfig } from './layers/calm';
 import type { ContinentLayerConfig } from './layers/continent';
 import type { DetailLayerConfig } from './layers/detail';
 import type { MountainLayerConfig } from './layers/mountains';
+import type { RoadsLayerConfig } from './layers/roads';
 
 /** Konfiguration einer Schicht – reine Daten (per postMessage übertragbar) */
-export type LayerConfig = ContinentLayerConfig | MountainLayerConfig | DetailLayerConfig;
+export type LayerConfig = ContinentLayerConfig | MountainLayerConfig | DetailLayerConfig | CalmLayerConfig | RoadsLayerConfig;
 
 export interface TerrainConfig {
   /** Grund-Seed; jede Schicht leitet daraus ihren eigenen ab (Name + Seed) */

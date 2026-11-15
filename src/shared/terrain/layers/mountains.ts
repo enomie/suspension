@@ -63,7 +63,7 @@ export function mountainLayer(cfg: MountainLayerConfig, seed: number): Layer {
       const inland = ctx.masks.inland ?? 1;
       if (inland <= 0) return;
       const raw = smoothstep(cfg.rangeThreshold, cfg.rangeThreshold + cfg.rangeFalloff, fbm(ctx.x, ctx.z, sMask, maskP));
-      const m = raw * raw * inland; // quadratisch → lange, sanfte Vorberge
+      const m = raw * raw * inland * (1 - (ctx.masks.spawn ?? 0)); // quadratisch → lange, sanfte Vorberge
       if (m <= 0) return;
       ctx.masks.mountain = m;
       const minWl = ctx.minWavelength;
