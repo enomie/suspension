@@ -96,9 +96,13 @@ export class LodTerrain {
   constructor(workerCount = Math.max(1, Math.min(4, (globalThis.navigator?.hardwareConcurrency ?? 2) - 1))) {
     const idx = INDEX.length;
     this.mesh = new BatchedMesh(SLOTS, SLOTS * TILE_VERTS, SLOTS * idx, this.material);
-    // receiveShadow + BatchedMesh + WebGPURenderer: Culling aus Shadow-Pass kann Hauptbild leeren (three.js #34822)
-    this.mesh.receiveShadow = false;
-    this.mesh.frustumCulled = false; // Gesamt-Hülle ändert sich laufend; pro Kachel wird gecullt
+    this.mesh.receiveShadow = true;
+    this.mesh.frustumCulled = false; // Gesamt-Hülle ändert sich laufend
+    /**
+     * Kein Culling pro Kachel durch three.js: Die Draw-Liste wird pro Pass (Schatten, Hauptbild) neu berechnet,
+     * die Indirect-Textur aber nur einmal hochgeladen → Hauptbild zeichnet mit veralteter Liste, Kacheln fehlen.
+     * Sichtbarkeit steuert `update()` (LOD + Sichtweite), die Draw-Liste baut `beforeRender()` einmal pro Frame.
+     */
     this.mesh.perObjectFrustumCulled = false;
     this.mesh.sortObjects = false;
     // Plätze einmal reservieren (Neu-Hinzufügen würde Puffer-Speicher verbrauchen), dann nur überschreiben
@@ -198,16 +202,20 @@ export class LodTerrain {
   }
 
   /**
-   * WebGPURenderer-Fallback auf WebGL2: BatchedMesh aktualisiert Draw-Listen sonst nicht
-   * (isWebGPURenderer bleibt true) → Terrain unsichtbar in Chrome ohne natives WebGPU.
+   * Einmal pro Frame vor `renderer.render`: Draw-Liste aus der aktuellen Sichtbarkeit bauen und
+   * die Indirect-Textur zum Hochladen markieren. Danach ist `_visibilityChanged` false, alle Passes
+   * (Schatten + Hauptbild, WebGPU und WebGL-Fallback) zeichnen dieselbe, aktuelle Liste.
    */
   beforeRender(renderer: WebGPURenderer, camera: PerspectiveCamera): void {
-    const backend = renderer.backend as { isWebGPUBackend?: boolean };
-    if (backend.isWebGPUBackend) return;
-    type Draw = BatchedMesh & {
-      _updateDrawParameters(camera: Camera, geometry: BufferGeometry, material: Material): void;
+    const m = this.mesh as BatchedMesh & {
+      _visibilityChanged: boolean;
+      _indirectTexture: { needsUpdate: boolean } | null;
+      _updateDrawParameters(camera: Camera, geometry: BufferGeometry, material: Material, format?: string): void;
     };
-    (this.mesh as Draw)._updateDrawParameters(camera, this.mesh.geometry, this.material);
+    if (!m._visibilityChanged) return;
+    const webgpu = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend === true;
+    m._updateDrawParameters(camera, m.geometry, this.material, webgpu ? 'merged' : 'multiDraw');
+    if (m._indirectTexture) m._indirectTexture.needsUpdate = true;
   }
 
   /** Kamera (lokal) → Kacheln wählen, bauen, sichtbar schalten. */
