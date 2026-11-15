@@ -75,8 +75,12 @@ function create<T extends Joint>(ctx: BuildContext, data: RAPIER.JointData, b1: 
   return j as T;
 }
 
-export function revolute(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P, axis: P) {
-  ctx.joints.push({ kind: 'revolute', body: b2, local: toVec3(localOn(b2, w)), axis: toVec3(axis) });
+/**
+ * `marks`: where the joint markers are drawn (default: the anchor `w`). Pass several points along the axis for a
+ * hinge that is built from multiple bearings, e.g. the two bushings of an A-arm.
+ */
+export function revolute(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P, axis: P, marks: P[] = [w]) {
+  for (const m of marks) ctx.joints.push({ kind: 'revolute', body: b2, local: toVec3(localOn(b2, m)), axis: toVec3(axis) });
   return create<RAPIER.RevoluteImpulseJoint>(ctx, ctx.R.JointData.revolute(localOn(b1, w), localOn(b2, w), axis), b1, b2);
 }
 export function spherical(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P) {
