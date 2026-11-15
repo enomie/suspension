@@ -87,8 +87,8 @@ describe('World: mountains, roads, calm spawn', () => {
     expect(m).toBeLessThan(0.6);
   });
   it('spawn area is calm (±0.5 m around 10 m)', () => {
-    for (let x = -300; x <= 300; x += 7)
-      for (let z = -300; z <= 300; z += 7) expect(Math.abs(w.height(x, z) - 10)).toBeLessThanOrEqual(0.5);
+    for (let x = -60; x <= 60; x += 3)
+      for (let z = -60; z <= 60; z += 3) expect(Math.abs(w.height(x, z) - 10)).toBeLessThanOrEqual(0.5);
   });
   it('roads: bumps are damped to ±0.5 m on 10 m wide strips', () => {
     const road = createLayer({ type: 'roads', cellSize: 400, width: 10, blend: 6 }, WORLD_TERRAIN.seed);
@@ -103,6 +103,17 @@ describe('World: mountains, roads, calm spawn', () => {
       }
     }
     expect(on).toBeGreaterThan(50);
+  });
+  it('test hills: constant flank slope, plateau 5 m above the ground', () => {
+    const base = (x: number, z: number) => w.height(x, z);
+    expect(base(101.5, -81) - 10).toBeGreaterThan(4.4); // plateau (ground ±0.5)
+    for (const [cx, cz, s] of [[0, -130, 0.1], [126.5, 29, 0.3], [-101.5, -81, 1.0]]) {
+      const top = 5 / s + 5;
+      const r1 = top - 0.3 * (5 / s);
+      const r2 = top - 0.7 * (5 / s);
+      const slope = (w.height(cx + r2, cz) - w.height(cx + r1, cz)) / (r1 - r2);
+      expect(Math.abs(slope - s)).toBeLessThan(0.05);
+    }
   });
   it('findLand: start point on flat land, deterministic', () => {
     const p = w.findLand(0, 0, { step: 64 });

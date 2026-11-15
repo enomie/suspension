@@ -7,9 +7,10 @@ import type { ContinentLayerConfig } from './layers/continent';
 import type { DetailLayerConfig } from './layers/detail';
 import type { MountainLayerConfig } from './layers/mountains';
 import type { RoadsLayerConfig } from './layers/roads';
+import type { TestHillsLayerConfig } from './layers/testHills';
 
 /** Konfiguration einer Schicht – reine Daten (per postMessage übertragbar) */
-export type LayerConfig = ContinentLayerConfig | MountainLayerConfig | DetailLayerConfig | CalmLayerConfig | RoadsLayerConfig;
+export type LayerConfig = ContinentLayerConfig | MountainLayerConfig | DetailLayerConfig | CalmLayerConfig | RoadsLayerConfig | TestHillsLayerConfig;
 
 export interface TerrainConfig {
   /** Grund-Seed; jede Schicht leitet daraus ihren eigenen ab (Name + Seed) */
