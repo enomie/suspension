@@ -3,7 +3,7 @@ import type { VehicleLayout } from '../../shared/vehicleLayout';
 import type { CornerTelemetry, VehicleSpec, WheelSpec } from '../../shared/vehicleSpec';
 import { ORIGIN } from '../../shared/origin';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/snapshot';
-import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY } from '../geometries/unitGeometries';
+import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO } from '../geometries/unitGeometries';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
 
@@ -36,7 +36,8 @@ function createWheelMesh(spec: WheelSpec): Group {
   disc.castShadow = true;
   const spoke = new Mesh(UNIT_BOX_GEOMETRY, rimMat);
   spoke.name = 'spoke';
-  spoke.scale.set(SPOKE_WIDTH, spec.radius * 0.9, spec.radius * 0.25);
+  // Länge = Durchmesser des Reifenlochs (Innenradius = Verhältnis × Außenradius)
+  spoke.scale.set(SPOKE_WIDTH, spec.radius * 2 * UNIT_HOLLOW_INNER_RATIO, spec.radius * 0.25);
   // Nabe: von knapp außerhalb der Scheibe bis zum Achsschenkel; Seite wird in `placeHubs` gesetzt
   const hub = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
   hub.name = 'hub';
