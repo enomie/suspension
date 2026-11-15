@@ -143,3 +143,15 @@ export interface CornerTelemetry {
   steerAngle: number;
 }
 
+
+/** The ladder frame ends this far beyond the outermost wheel centre [m] */
+export const FRAME_OVERHANG = 0.35;
+
+/**
+ * Half length of the visible ladder frame (and of its collider): reaches `FRAME_OVERHANG` beyond the outermost
+ * wheel, never longer than the chassis box. Mass and inertia still come from the full `chassis.size`.
+ */
+export function frameHalfLength(spec: VehicleSpec): number {
+  const reach = Math.max(0, ...spec.axles.map((a) => Math.abs(a.z) + (a.bogieSpacing ?? 0) / 2));
+  return Math.min(spec.chassis.size[2] / 2, reach + FRAME_OVERHANG);
+}

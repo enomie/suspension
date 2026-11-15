@@ -11,11 +11,11 @@ export const FRAME_RAIL = 0.1;
  * Früher: volle Box `size` → unsichtbar, setzte auf Bodenwellen auf und verhakte an
  * Dreieckskanten („unsichtbare Wand“). Rundung lässt den Rahmen über Kanten gleiten.
  */
-export function frameColliderBox(spec: ChassisSpec): { half: [number, number, number]; y: number } {
-  const [w, h, l] = spec.size;
+export function frameColliderBox(spec: ChassisSpec, halfLength = spec.size[2] / 2): { half: [number, number, number]; y: number } {
+  const [w, h] = spec.size;
   const railX = w * 0.25;
   const y = -h / 2 + FRAME_RAIL / 2 + 0.1;
-  return { half: [railX + FRAME_RAIL / 2, FRAME_RAIL / 2 + 0.01, l / 2], y };
+  return { half: [railX + FRAME_RAIL / 2, FRAME_RAIL / 2 + 0.01, halfLength], y };
 }
 
 /** Kollisions-Primitive → Rapier-ColliderDesc (Chassis-lokal) */
@@ -53,6 +53,8 @@ export function createChassis(
   world: RAPIER.World,
   spec: ChassisSpec,
   pos: { x: number; y: number; z: number },
+  /** collider length = visible frame (see `frameHalfLength`) */
+  frameHalf = spec.size[2] / 2,
 ): RAPIER.RigidBody {
   const [w, h, l] = spec.size;
   const body = world.createRigidBody(
@@ -71,7 +73,7 @@ export function createChassis(
     for (const p of spec.colliders) world.createCollider(primitiveDesc(R, p).setDensity(0).setCollisionGroups(CHASSIS_GROUPS), body);
     return body;
   }
-  const { half, y } = frameColliderBox(spec);
+  const { half, y } = frameColliderBox(spec, frameHalf);
   const border = 0.04;
   const desc = R.ColliderDesc.roundCuboid(half[0] - border, half[1] - border, half[2] - border, border)
     .setTranslation(0, y, 0)
