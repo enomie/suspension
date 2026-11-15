@@ -104,15 +104,22 @@ describe('World: mountains, roads, calm spawn', () => {
     }
     expect(on).toBeGreaterThan(50);
   });
-  it('test hills: constant flank slope, plateau 5 m above the ground', () => {
-    const base = (x: number, z: number) => w.height(x, z);
-    expect(base(101.5, -81) - 10).toBeGreaterThan(4.4); // plateau (ground ±0.5)
-    for (const [cx, cz, s] of [[0, -130, 0.1], [126.5, 29, 0.3], [-101.5, -81, 1.0]]) {
-      const top = 5 / s + 5;
-      const r1 = top - 0.3 * (5 / s);
-      const r2 = top - 0.7 * (5 / s);
-      const slope = (w.height(cx + r2, cz) - w.height(cx + r1, cz)) / (r1 - r2);
-      expect(Math.abs(slope - s)).toBeLessThan(0.05);
+  it('test hills: dome with constant flank slope, smooth crest', () => {
+    const hills = (WORLD_TERRAIN.layers.find((l) => l.type === 'testHills') as { hills: { x: number; z: number; slope: number }[] }).hills;
+    for (const { x, z, slope: s } of hills) {
+      expect(w.height(x, z) - 10).toBeGreaterThan(7); // crest ~7.6 m above the ground (±0.5 m ground bumps)
+      const reach = 8 / s;
+      const r1 = reach - 2.5 / s;
+      const r2 = reach - 5.5 / s;
+      const slope = (w.height(x + r2, z) - w.height(x + r1, z)) / (r1 - r2);
+      expect(Math.abs(slope - s)).toBeLessThan(0.08);
+      // no abrupt kink: the slope changes smoothly across the crest (neighbouring 1 m slopes differ by < 0.5)
+      let prev = 0;
+      for (let r = 0; r < 12; r++) {
+        const sl = (w.height(x + r + 1, z) - w.height(x + r, z));
+        if (r > 0) expect(Math.abs(sl - prev)).toBeLessThan(0.5);
+        prev = sl;
+      }
     }
   });
   it('findLand: start point on flat land, deterministic', () => {

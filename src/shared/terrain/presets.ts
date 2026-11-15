@@ -32,18 +32,18 @@ export const WORLD_TERRAIN: TerrainConfig = {
       warp: 500,
     },
     {
-      // off-road test hills in a ring (radius 130 m) around the spawn point, flank slopes 10 … 100 %
+      // off-road test hills: domes in a ring (radius 200 m) around the spawn point, flank slopes 10 … 100 %
       type: 'testHills',
-      height: 5,
-      topRadius: 5,
+      height: 8,
+      round: 1.5,
       hills: [
-        { x: 0, z: -130, slope: 0.1 },
-        { x: 101.5, z: -81, slope: 0.2 },
-        { x: 126.5, z: 29, slope: 0.3 },
-        { x: 56.5, z: 117, slope: 0.45 },
-        { x: -56.5, z: 117, slope: 0.6 },
-        { x: -126.5, z: 29, slope: 0.8 },
-        { x: -101.5, z: -81, slope: 1.0 },
+        { x: 0, z: -200, slope: 0.1 },
+        { x: 156.5, z: -124.5, slope: 0.2 },
+        { x: 195, z: 44.5, slope: 0.3 },
+        { x: 87, z: 180, slope: 0.45 },
+        { x: -87, z: 180, slope: 0.6 },
+        { x: -195, z: 44.5, slope: 0.8 },
+        { x: -156.5, z: -124.5, slope: 1.0 },
       ],
     },
     { type: 'detail', base: 7, amplitude: 6, wavelength: 50, octaves: 5, gain: 0.4, calmAmplitude: 1 },
