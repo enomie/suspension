@@ -4,6 +4,8 @@ import { sidesOf, type AxleBuilder } from './types';
 
 /** zusätzliche Solver-Iterationen für die McPherson-Körper */
 const EXTRA_ITERATIONS = 16;
+/** halber Abstand der beiden Querlenker-Lager (vorn/hinten) [m] */
+const A_ARM_HALF_SPAN = 0.25;
 
 const cross2 = (p: P, f: P) => p.x * f.y - p.y * f.x;
 
@@ -41,8 +43,9 @@ export const buildMacPherson: AxleBuilder = (ctx, axle, i) =>
     const top = add(wc, v(-s * 0.24, 0.55, 0));
     // Fuß 17 cm neben der Radmitte: Feder (Teller-Radius 7,5 cm) bleibt frei von Achsschenkel und Nabe
     const strutBot = add(wc, v(-s * 0.17, 0.05, 0));
-    const lowIn = add(wc, v(-s * 0.5, -0.15, 0));
-    const lowOut = add(wc, v(-s * 0.08, -0.15, 0));
+    // Lenker-Ebene 5 cm unter Radmitte (vorher 15): die Lager hingen sonst 30 cm unter dem Leiterrahmen
+    const lowIn = add(wc, v(-s * 0.5, -0.05, 0));
+    const lowOut = add(wc, v(-s * 0.08, -0.05, 0));
     const axis = norm(sub(strutBot, top)); // zeigt nach unten = Ausfedern
 
     const dome = helper(ctx, axle, top, partId(id, 'strutTop'), 0.3);
@@ -62,7 +65,12 @@ export const buildMacPherson: AxleBuilder = (ctx, axle, i) =>
     const visuals = [
       // Reihenfolge Fuß → Dom: Dämpferrohr sitzt unten am Radträger, Kolbenstange kommt oben heraus
       ...coilover(upright, strutBot, dome, top),
-      link('rod', lower, lowIn, lower, lowOut),
+      // A-Lenker (nur Optik): zwei Lager vorn/hinten auf der Drehachse (Z) durch lowIn, ein Kugelgelenk außen.
+      // Die Null-Länge-Stäbe Chassis→Lager erzeugen die Rahmen-Konsolen (`mounts`), sonst hinge der Lenker frei.
+      link('rod', lower, add(lowIn, v(0, 0, -A_ARM_HALF_SPAN)), lower, lowOut),
+      link('rod', lower, add(lowIn, v(0, 0, A_ARM_HALF_SPAN)), lower, lowOut),
+      link('rod', ctx.chassis, add(lowIn, v(0, 0, -A_ARM_HALF_SPAN)), lower, add(lowIn, v(0, 0, -A_ARM_HALF_SPAN))),
+      link('rod', ctx.chassis, add(lowIn, v(0, 0, A_ARM_HALF_SPAN)), lower, add(lowIn, v(0, 0, A_ARM_HALF_SPAN))),
       link('beam', upright, lowOut, upright, strutBot),
     ];
     return finishCorner(ctx, axle, i, side, upright, wl, rate, [dome, upright, lower], visuals);
