@@ -8,6 +8,8 @@ export class Keyboard {
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
+      // typing in the panel fields must not drive the car or switch presets
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
       // Space/Pfeile scrollen nicht; F1–F7 sind Debug-Schalter (statt Hilfe/Neu laden)
       if (e.code === 'Space' || e.code.startsWith('Arrow') || /^F[1-7]$/.test(e.code)) e.preventDefault();
       if (!this.down.has(e.code)) this.pressed.add(e.code);

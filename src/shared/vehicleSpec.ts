@@ -48,8 +48,8 @@ export interface AxleSpec {
   suspension: SuspensionType;
   spring: SpringDamperSpec;
   wheel: WheelSpec;
-  /** lenkbar: maxAngle [rad] */
-  steer?: { maxAngle: number };
+  /** Steerable: maxAngle [rad]; `counter` = steers against the front axle (rear-wheel steering) */
+  steer?: { maxAngle: number; counter?: boolean };
   /** Double wishbone: horizontal reach of the lower arm from the ball joint to the chassis pivot [m] (default 0.45) */
   armSpan?: number;
   /** Tandem-Pendel: Radabstand längs [m] */

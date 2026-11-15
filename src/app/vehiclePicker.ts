@@ -19,6 +19,7 @@ export class VehiclePicker {
       opt.textContent = label;
       this.select.appendChild(opt);
     }
+    this.select.appendChild(Object.assign(document.createElement('option'), { value: '-1', textContent: 'Custom', hidden: true }));
     this.select.addEventListener('change', () => {
       if (this.syncing) return;
       onSelect(Number(this.select.value));

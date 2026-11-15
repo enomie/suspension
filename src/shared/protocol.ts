@@ -1,4 +1,4 @@
-import type { DriverInput } from './vehicleSpec';
+import type { DriverInput, VehicleSpec } from './vehicleSpec';
 import type { VehicleLayout } from './vehicleLayout';
 import type { TerrainConfig } from './terrain/types';
 
@@ -6,7 +6,8 @@ import type { TerrainConfig } from './terrain/types';
 export type ToWorker =
   | { type: 'init'; preset: number; x: number; z: number; terrain: TerrainConfig }
   | { type: 'input'; input: DriverInput }
-  | { type: 'spawn'; preset: number };
+  /** `spec` = custom vehicle (then `preset` is -1) */
+  | { type: 'spawn'; preset: number; spec?: VehicleSpec };
 
 /** Physik-Worker → Haupt-Thread */
 export type FromWorker =

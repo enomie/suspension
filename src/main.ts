@@ -11,6 +11,7 @@ import { Keyboard } from './app/keyboard';
 import { TelemetryHud } from './app/hud';
 import { DebugToggles } from './app/debug';
 import { VehiclePicker } from './app/vehiclePicker';
+import { CustomPanel } from './app/customPanel';
 
 /*
  * Haupt-Thread. Physik läuft im Worker (src/physics/worker.ts), Terrain-Kacheln in Terrain-Workern.
@@ -61,6 +62,7 @@ const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.s
   jointsVisible = on;
   vehicle?.setJointsVisible(on);
 });
+new CustomPanel(document.querySelector<HTMLDivElement>('#custom-panel-host')!, (spec) => physics.spawn(-1, spec));
 const showVehicle = () => {
   vehicle?.dispose();
   vehicle = new VehicleVisual(physics.layout);

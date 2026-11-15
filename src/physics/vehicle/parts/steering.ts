@@ -17,9 +17,11 @@ export class Steering {
   constructor(private spec: SteeringSpec, vehicle: VehicleSpec) {
     const steered = vehicle.axles.filter((a) => a.steer);
     const fixed = vehicle.axles.filter((a) => !a.steer);
-    this.refZ = fixed.length ? fixed.reduce((s, a) => s + a.z, 0) / fixed.length : 0;
+    // Turning centre lies on the line through the fixed axles; if every axle steers, in the middle of the steered ones
+    const ref = fixed.length ? fixed : steered;
+    this.refZ = ref.length ? ref.reduce((s, a) => s + a.z, 0) / ref.length : 0;
     const first = steered[0];
-    this.refL = first ? this.refZ - first.z : 1;
+    this.refL = first ? Math.abs(this.refZ - first.z) || 1 : 1;
     this.refMax = first?.steer?.maxAngle ?? 0;
   }
 
@@ -45,13 +47,15 @@ export class Steering {
     if (!max) return 0;
     const delta = this.angle;
     let a: number;
+    // `counter` axles steer against the front axle; the magnitude comes from the distance to the turning-centre line
+    const sign = c.axle.steer?.counter ? -1 : 1;
     if (this.spec.mode === 'crab' || Math.abs(delta) < 1e-4) {
-      a = this.spec.mode === 'crab' ? delta : 0;
+      a = this.spec.mode === 'crab' ? sign * delta : 0;
     } else {
-      const radius = this.refL / Math.tan(delta); // + = Mittelpunkt links
-      const L = this.refZ - c.axle.z;
+      const radius = this.refL / Math.tan(delta); // + = centre on the left
+      const L = Math.abs(this.refZ - c.axle.z);
       const sx = c.anchor[0];
-      a = Math.atan(L / (radius + sx));
+      a = sign * Math.atan(L / (radius + sx));
     }
     return Math.max(-max, Math.min(max, a));
   }
