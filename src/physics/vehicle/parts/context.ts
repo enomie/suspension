@@ -1,5 +1,5 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
-import type { JointVisual } from '../types';
+import type { JointVisual, Vec3 } from '../types';
 
 /** Gemeinsamer Bau-Kontext für alle Bauteile eines Fahrzeugs. */
 export interface BuildContext {
@@ -12,6 +12,8 @@ export interface BuildContext {
   chassis: RAPIER.RigidBody;
   /** Statische gefederte Masse je Achse [kg] */
   axleSprungMass: number[];
+  /** Chassis-local points where suspension parts are bolted to the chassis (from chassis-side joints) */
+  mounts: Vec3[];
   /** Joint markers collected while building (see `JointVisual`) */
   joints: JointVisual[];
   /** Body-Handle → ID (Debug/Lookup) */

@@ -20,6 +20,13 @@ export function describeLayout(spec: VehicleSpec, built: BuiltVehicle): VehicleL
   for (const c of built.corners)
     for (const v of c.visuals)
       for (const a of [v.a, v.b]) if (a.body.handle === built.chassis.handle) mounts.push(a.local);
+  mounts.push(...built.mounts);
+  // one plate per distinct point
+  const seen = new Set<string>();
+  const uniqueMounts = mounts.filter((m) => {
+    const key = m.map((x) => x.toFixed(3)).join(',');
+    return !seen.has(key) && !!seen.add(key);
+  });
   return {
     spec,
     bodyCount: bodies.length,
@@ -34,6 +41,6 @@ export function describeLayout(spec: VehicleSpec, built: BuiltVehicle): VehicleL
     joints: built.joints
       .filter((j) => index.has(j.body.handle))
       .map((j) => ({ kind: j.kind, at: point({ body: j.body, local: j.local }), axis: j.axis })),
-    mounts,
+    mounts: uniqueMounts,
   };
 }

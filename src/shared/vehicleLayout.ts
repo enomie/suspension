@@ -26,6 +26,6 @@ export interface VehicleLayout {
   links: { kind: 'rod' | 'beam' | 'spring' | 'damper'; a: BodyPoint; b: BodyPoint }[];
   /** Joint markers: spherical = ball, revolute = cylinder along `axis` (body-local) */
   joints: { kind: 'spherical' | 'revolute'; at: BodyPoint; axis: Vec3 }[];
-  /** Anlenkpunkte am Chassis (Chassis-lokal) → Rahmen-Konsolen */
+  /** Points where suspension parts are mounted to the chassis (chassis-local) → mount plates */
   mounts: Vec3[];
 }

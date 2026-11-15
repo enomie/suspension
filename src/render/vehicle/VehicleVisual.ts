@@ -6,6 +6,7 @@ import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/sna
 import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO } from '../geometries/unitGeometries';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
+import { createMountPlates } from './mountVisual';
 import { JointRenderer } from './jointVisual';
 
 const tireMat = new MeshStandardMaterial({ color: 0x202226, roughness: 0.9 });
@@ -78,8 +79,8 @@ export class VehicleVisual implements BodyPoses {
     }));
     this.q0 = bodyOffset(layout.corners.length);
     this.root.name = layout.spec.name;
-    this.frame = createFrameVisual(layout.spec, layout.mounts);
-    this.chassis.add(this.frame);
+    this.frame = createFrameVisual(layout.spec);
+    this.chassis.add(this.frame, createMountPlates(layout.mounts));
     this.wheels = layout.corners.map((c) => {
       const w = createWheelMesh(c.wheelSpec);
       w.name = `${c.id}.wheel`;

@@ -66,12 +66,9 @@ export const buildMacPherson: AxleBuilder = (ctx, axle, i) =>
     const visuals = [
       // Reihenfolge Fuß → Dom: Dämpferrohr sitzt unten am Radträger, Kolbenstange kommt oben heraus
       ...coilover(upright, strutBot, dome, top),
-      // A-Lenker (nur Optik): zwei Lager vorn/hinten auf der Drehachse (Z) durch lowIn, ein Kugelgelenk außen.
-      // Die Null-Länge-Stäbe Chassis→Lager erzeugen die Rahmen-Konsolen (`mounts`), sonst hinge der Lenker frei.
+      // A-arm (visual only): two bushings front/rear on the hinge axis (Z) through lowIn, one ball joint outside
       link('rod', lower, add(lowIn, v(0, 0, -A_ARM_HALF_SPAN)), lower, lowOut),
       link('rod', lower, add(lowIn, v(0, 0, A_ARM_HALF_SPAN)), lower, lowOut),
-      link('rod', ctx.chassis, add(lowIn, v(0, 0, -A_ARM_HALF_SPAN)), lower, add(lowIn, v(0, 0, -A_ARM_HALF_SPAN))),
-      link('rod', ctx.chassis, add(lowIn, v(0, 0, A_ARM_HALF_SPAN)), lower, add(lowIn, v(0, 0, A_ARM_HALF_SPAN))),
       link('beam', upright, lowOut, upright, strutBot),
     ];
     return finishCorner(ctx, axle, i, side, upright, wl, rate, [dome, upright, lower], visuals);

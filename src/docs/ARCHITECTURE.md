@@ -21,7 +21,7 @@ physics/worker ──'vehicle' {layout}──▶ app/PhysicsClient ──▶ ren
                ──'snapshots' [Float64Array]──▶ Interpolation nach Zeit ──▶ VehicleVisual.apply()
 app/keyboard ──'input' / 'spawn'──▶ physics/worker
 ```
-- **Layout** (`shared/vehicleLayout.ts`): reine Daten (Spec, Körper-Indizes, Lenker-Punkte, Rahmen-Konsolen).
+- **Layout** (`shared/vehicleLayout.ts`): reine Daten (Spec, Körper-Indizes, Lenker-Punkte, Montageplatten-Punkte).
   Der Haupt-Thread lädt kein Rapier mehr (außer `?worker=0`).
 - **Snapshot** (`shared/snapshot.ts`): Generation, Zeitstempel, Telemetrie, absolute Posen je Körper-Index.
 

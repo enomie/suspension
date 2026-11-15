@@ -80,10 +80,12 @@ function create<T extends Joint>(ctx: BuildContext, data: RAPIER.JointData, b1: 
  * hinge that is built from multiple bearings, e.g. the two bushings of an A-arm.
  */
 export function revolute(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P, axis: P, marks: P[] = [w]) {
+  if (b1.handle === ctx.chassis.handle) for (const m of marks) ctx.mounts.push(toVec3(localOn(b1, m)));
   for (const m of marks) ctx.joints.push({ kind: 'revolute', body: b2, local: toVec3(localOn(b2, m)), axis: toVec3(axis) });
   return create<RAPIER.RevoluteImpulseJoint>(ctx, ctx.R.JointData.revolute(localOn(b1, w), localOn(b2, w), axis), b1, b2);
 }
 export function spherical(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P) {
+  if (b1.handle === ctx.chassis.handle) ctx.mounts.push(toVec3(localOn(b1, w)));
   ctx.joints.push({ kind: 'spherical', body: b2, local: toVec3(localOn(b2, w)), axis: [0, 1, 0] });
   return create<RAPIER.SphericalImpulseJoint>(ctx, ctx.R.JointData.spherical(localOn(b1, w), localOn(b2, w)), b1, b2);
 }
