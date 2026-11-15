@@ -31,6 +31,9 @@ export function describeLayout(spec: VehicleSpec, built: BuiltVehicle): VehicleL
       knuckle: idx(c.knuckle ?? c.carrier),
     })),
     links: built.corners.flatMap((c) => c.visuals.map((v) => ({ kind: v.kind, a: point(v.a), b: point(v.b) }))),
+    joints: built.joints
+      .filter((j) => index.has(j.body.handle))
+      .map((j) => ({ kind: j.kind, at: point({ body: j.body, local: j.local }), axis: j.axis })),
     mounts,
   };
 }

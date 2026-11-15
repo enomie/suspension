@@ -16,6 +16,14 @@ export interface LinkVisual {
   b: Attach;
 }
 
+/** Joint marker for the renderer (prismatic joints are not shown). Axis and point are body-local. */
+export interface JointVisual {
+  kind: 'spherical' | 'revolute';
+  body: RAPIER.RigidBody;
+  local: Vec3;
+  axis: Vec3;
+}
+
 export interface Corner {
   id: string;
   axleIndex: number;

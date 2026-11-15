@@ -46,6 +46,7 @@ scene.add(terrain.root);
 // ── Physik (Worker; ?worker=0 → Haupt-Thread) ────────────────────
 let vehicle: VehicleVisual | null = null;
 let frameVisible = true;
+let jointsVisible = true;
 const physics = await PhysicsClient.create({
   preset: 0,
   x: ORIGIN.x,
@@ -56,11 +57,15 @@ const vehiclePickerHost = document.querySelector<HTMLDivElement>('#vehicle-picke
 const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.spawn(preset), (on) => {
   frameVisible = on;
   vehicle?.setFrameVisible(on);
+}, (on) => {
+  jointsVisible = on;
+  vehicle?.setJointsVisible(on);
 });
 const showVehicle = () => {
   vehicle?.dispose();
   vehicle = new VehicleVisual(physics.layout);
   vehicle.setFrameVisible(frameVisible);
+  vehicle.setJointsVisible(jointsVisible);
   scene.add(vehicle.root);
   vehiclePicker.setPreset(physics.preset);
 };
