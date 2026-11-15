@@ -4,6 +4,8 @@ import type { AxleSpec, SuspensionType, VehicleSpec, WheelSpec } from './vehicle
 export type SteerMode = 'none' | 'steer' | 'counter';
 
 export interface CustomAxleConfig {
+  /** distance between the two wheel centres of this axle [m] */
+  track: number;
   steer: SteerMode;
   suspension: SuspensionType;
   /** driven axle (torque is shared equally between driven axles) */
@@ -13,15 +15,16 @@ export interface CustomAxleConfig {
 }
 
 export interface CustomVehicleConfig {
-  /** overall length of the chassis [m] */
-  length: number;
+  /** distance between the front and the rear axle [m]; axles are spaced evenly in between */
+  wheelbase: number;
   /** index 0 = front axle */
   axles: CustomAxleConfig[];
 }
 
 export const CUSTOM_LIMITS = {
   axles: [1, 5],
-  length: [3, 12],
+  wheelbase: [1, 10],
+  track: [1, 3.2],
   wheelRadius: [0.25, 0.6],
   wheelWidth: [0.15, 0.5],
 } as const;
@@ -57,10 +60,10 @@ export function suspensionsFor(steer: SteerMode): SuspensionType[] {
 }
 
 export const DEFAULT_CUSTOM: CustomVehicleConfig = {
-  length: 5,
+  wheelbase: 3.2,
   axles: [
-    { steer: 'steer', suspension: 'doubleWishbone', drive: false, wheelRadius: 0.33, wheelWidth: 0.22 },
-    { steer: 'none', suspension: 'solidAxle', drive: true, wheelRadius: 0.33, wheelWidth: 0.22 },
+    { track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, wheelRadius: 0.33, wheelWidth: 0.22 },
+    { track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, wheelRadius: 0.33, wheelWidth: 0.22 },
   ],
 };
 
@@ -68,15 +71,15 @@ const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(hi, M
 
 /** Chassis centre height above the ground at design ride height (same as the presets) */
 const RIDE_HEIGHT = 0.6;
-/** Distance of the outer axles from the chassis ends [m] */
-const END_MARGIN = 0.7;
+/** The chassis box (mass, inertia) extends this far beyond the outer axles [m]; the visible frame does not */
+const BOX_MARGIN = 0.7;
 
 /** Config → complete VehicleSpec (pure data; invalid combinations are corrected, not rejected). */
 export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   const n = Math.round(clamp(config.axles.length, CUSTOM_LIMITS.axles));
-  const length = clamp(config.length, CUSTOM_LIMITS.length);
+  const wheelbase = clamp(config.wheelbase, CUSTOM_LIMITS.wheelbase);
   const mass = 500 + 350 * n;
-  const half = Math.max(0, length / 2 - END_MARGIN);
+  const half = n === 1 ? 0 : wheelbase / 2;
 
   const axles: AxleSpec[] = Array.from({ length: n }, (_, i) => {
     const c = config.axles[i];
@@ -88,7 +91,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
     const brake = (mass * 12 * radius) / (2 * n);
     return {
       z: n === 1 ? 0 : -half + (2 * half * i) / (n - 1),
-      track: 1.3 + width * 1.5,
+      track: clamp(c.track, CUSTOM_LIMITS.track),
       y: radius - RIDE_HEIGHT,
       suspension,
       spring: { frequencyHz: i === 0 ? 1.6 : 1.8, dampingRatio: 0.4, travel: [-0.1, 0.12] },
@@ -104,7 +107,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   return {
     name: 'custom',
     label: 'Custom',
-    chassis: { size: [1.4, 0.5, length], mass, comOffset: [0, -0.2, 0] },
+    chassis: { size: [1.4, 0.5, 2 * half + 2 * BOX_MARGIN], mass, comOffset: [0, -0.2, 0] },
     axles,
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
     drive: { maxTorque: mass * 2, maxSpeed: 45, reverseSpeed: 8, rollingResistance: 15 },

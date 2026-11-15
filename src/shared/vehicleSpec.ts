@@ -144,14 +144,15 @@ export interface CornerTelemetry {
 }
 
 
-/** The ladder frame ends this far beyond the outermost wheel centre [m] */
-export const FRAME_OVERHANG = 0.35;
+/** Half the depth of a cross member: the side rails end flush with the outer cross members [m] */
+const CROSS_MEMBER_HALF_DEPTH = 0.04;
 
 /**
- * Half length of the visible ladder frame (and of its collider): reaches `FRAME_OVERHANG` beyond the outermost
- * wheel, never longer than the chassis box. Mass and inertia still come from the full `chassis.size`.
+ * Half length of the visible ladder frame (and of its collider): the two side rails run from the front axle to the
+ * rear axle, one cross member per axle, nothing sticks out. Mass and inertia still come from the full `chassis.size`.
  */
 export function frameHalfLength(spec: VehicleSpec): number {
-  const reach = Math.max(0, ...spec.axles.map((a) => Math.abs(a.z) + (a.bogieSpacing ?? 0) / 2));
-  return Math.min(spec.chassis.size[2] / 2, reach + FRAME_OVERHANG);
+  const reach = Math.max(0, ...spec.axles.map((a) => Math.abs(a.z)));
+  // a single axle still needs rails long enough for a valid collider
+  return Math.max(0.3, reach + CROSS_MEMBER_HALF_DEPTH);
 }

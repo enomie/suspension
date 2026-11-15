@@ -37,8 +37,8 @@ function numberInput(value: number, [min, max]: readonly [number, number], step:
 }
 
 /**
- * Collapsible panel to assemble any vehicle: overall length, number of axles (1–5), and per axle
- * steering mode, suspension type (the list depends on the steering mode), drive and wheel size.
+ * Collapsible panel to assemble any vehicle: wheelbase (front to rear axle), number of axles (1–5), and per axle
+ * steering mode, suspension type (the list depends on the steering mode), drive, track width and wheel size.
  * "Apply" builds a `VehicleSpec` and hands it to `onApply`.
  */
 export class CustomPanel {
@@ -48,7 +48,7 @@ export class CustomPanel {
   constructor(parent: HTMLElement, onApply: (spec: VehicleSpec) => void) {
     const details = el('details', { id: 'custom-panel' }, el('summary', { textContent: 'Custom vehicle' }));
 
-    const length = numberInput(this.config.length, CUSTOM_LIMITS.length, 0.1, (v) => (this.config.length = v));
+    const wheelbase = numberInput(this.config.wheelbase, CUSTOM_LIMITS.wheelbase, 0.1, (v) => (this.config.wheelbase = v));
     const count = el('select');
     for (let n = CUSTOM_LIMITS.axles[0]; n <= CUSTOM_LIMITS.axles[1]; n++) count.append(option(String(n), String(n)));
     count.value = String(this.config.axles.length);
@@ -60,7 +60,7 @@ export class CustomPanel {
     const apply = el('button', { type: 'button', textContent: 'Apply' });
     apply.addEventListener('click', () => onApply(buildCustomSpec(this.config)));
 
-    details.append(field('Length (m)', length), field('Axles', count), this.axleHost, apply);
+    details.append(field('Wheelbase (m)', wheelbase), field('Axles', count), this.axleHost, apply);
     parent.append(details);
     this.renderAxles();
   }
@@ -107,6 +107,7 @@ export class CustomPanel {
       el('legend', { textContent: `Axle ${i + 1}${tag}` }),
       field('Steering', steer),
       field('Suspension', susp),
+      field('Track (m)', numberInput(c.track, CUSTOM_LIMITS.track, 0.05, (v) => (c.track = v))),
       field('Radius (m)', numberInput(c.wheelRadius, CUSTOM_LIMITS.wheelRadius, 0.01, (v) => (c.wheelRadius = v))),
       field('Width (m)', numberInput(c.wheelWidth, CUSTOM_LIMITS.wheelWidth, 0.01, (v) => (c.wheelWidth = v))),
       field('Driven', drive),
