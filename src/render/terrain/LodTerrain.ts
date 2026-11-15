@@ -88,6 +88,10 @@ export class LodTerrain {
   private workers: Worker[] = [];
   private idle: Worker[] = [];
   private pending = new Set<string>();
+  /** Worker → Kachel, an der er gerade rechnet (für Fehlerfall / Timeout) */
+  private busy = new Map<Worker, { key: string; since: number }>();
+  /** Worker, die so lange nicht antworten, gelten als hängend [ms] */
+  workerTimeoutMs = 5000;
   private dirty = true;
   private lastCam = { x: NaN, y: NaN, z: NaN };
   private visible = new Set<Chunk>();
@@ -123,9 +127,16 @@ export class LodTerrain {
       w.onmessage = (e: MessageEvent<TileRequest & TileArrays>) => {
         const { key, lod, ix, iz } = e.data;
         this.pending.delete(key);
+        this.busy.delete(w);
         this.idle.push(w);
         this.addChunk(key, lod, ix, iz, e.data);
       };
+      w.onerror = (e) => {
+        e.preventDefault?.();
+        console.error('[terrain] Kachel-Worker ausgefallen – baue im Haupt-Thread weiter', e.message ?? e);
+        this.dropWorker(w);
+      };
+      w.onmessageerror = () => this.dropWorker(w);
       this.workers.push(w);
       this.idle.push(w);
     }
@@ -218,9 +229,26 @@ export class LodTerrain {
     if (m._indirectTexture) m._indirectTexture.needsUpdate = true;
   }
 
+  /** Worker entfernen (Fehler / hängt); ohne Worker baut update() im Haupt-Thread. */
+  private dropWorker(w: Worker): void {
+    const job = this.busy.get(w);
+    if (job) this.pending.delete(job.key);
+    this.busy.delete(w);
+    w.terminate();
+    this.workers = this.workers.filter((x) => x !== w);
+    this.idle = this.idle.filter((x) => x !== w);
+    this.dirty = true;
+  }
+
   /** Kamera (lokal) → Kacheln wählen, bauen, sichtbar schalten. */
   update(camX: number, camY: number, camZ: number): void {
     this.frame++;
+    const now = performance.now();
+    for (const [w, job] of this.busy)
+      if (now - job.since > this.workerTimeoutMs) {
+        console.error('[terrain] Kachel-Worker antwortet nicht – baue im Haupt-Thread weiter', job.key);
+        this.dropWorker(w);
+      }
     const moved = Math.abs(camX - this.lastCam.x) + Math.abs(camY - this.lastCam.y) + Math.abs(camZ - this.lastCam.z);
     if (this.frozen || (!this.dirty && moved < 0.25 && this.queue.length === 0 && this.pending.size === 0)) {
       if (this.frame % 60 === 0) for (const c of this.visible) c.lastUsed = this.frame;
@@ -325,7 +353,9 @@ export class LodTerrain {
         const k = key(q.lod, q.ix, q.iz);
         if (this.pending.has(k)) continue;
         this.pending.add(k);
-        this.idle.pop()!.postMessage({ type: 'tile', key: k, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
+        const w = this.idle.pop()!;
+        this.busy.set(w, { key: k, since: performance.now() });
+        w.postMessage({ type: 'tile', key: k, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
         built++;
       }
     } else {
