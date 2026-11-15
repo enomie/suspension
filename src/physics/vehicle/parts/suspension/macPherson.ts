@@ -59,7 +59,8 @@ export const buildMacPherson: AxleBuilder = (ctx, axle, i) =>
     const mr = strutRatio(top, axis, lowIn, lowOut, v(wc.x, wc.y - axle.wheel.radius, wc.z));
     const ax = Math.abs(axis.y);
     prismaticSpring(ctx, pj, springFor(rate, mr), [axle.spring.travel[0] * ax, axle.spring.travel[1] * ax]);
-    revolute(ctx, ctx.chassis, lower, lowIn, AX.Z);
+    // A-arm: the hinge axis (Z) runs through both bushings, so show a marker at each of them
+    revolute(ctx, ctx.chassis, lower, lowIn, AX.Z, [add(lowIn, v(0, 0, -A_ARM_HALF_SPAN)), add(lowIn, v(0, 0, A_ARM_HALF_SPAN))]);
     revolute(ctx, lower, upright, lowOut, AX.Z);
 
     const visuals = [
