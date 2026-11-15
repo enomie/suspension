@@ -13,6 +13,7 @@ const rimMat = new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.4, metal
 const discMat = new MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.35, metalness: 0.7 });
 const DISC_RADIUS = 0.45; // × Reifenradius (Innenradius des Reifens = 0,6)
 const DISC_THICKNESS = 0.025; // [m]
+const SPOKE_WIDTH = 0.03; // Felgen-Platzhalter: schmal, außen vor der Bremsscheibe
 const HUB_DIAMETER = 0.12;
 const HUB_LENGTH = 0.08;
 
@@ -34,7 +35,8 @@ function createWheelMesh(spec: WheelSpec): Group {
   disc.rotation.z = Math.PI / 2;
   disc.castShadow = true;
   const spoke = new Mesh(UNIT_BOX_GEOMETRY, rimMat);
-  spoke.scale.set(spec.width * 1.02, spec.radius * 0.9, spec.radius * 0.25);
+  spoke.name = 'spoke';
+  spoke.scale.set(SPOKE_WIDTH, spec.radius * 0.9, spec.radius * 0.25);
   // Nabe: von knapp außerhalb der Scheibe bis zum Achsschenkel; Seite wird in `placeHubs` gesetzt
   const hub = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
   hub.name = 'hub';
@@ -95,6 +97,7 @@ export class VehicleVisual implements BodyPoses {
       return local.x > 0 ? -1 : 1;
     });
     signs.forEach((s, i) => this.wheels[i].getObjectByName('hub')!.position.x = s * (HUB_LENGTH / 2 - 0.02));
+    signs.forEach((s, i) => (this.wheels[i].getObjectByName('spoke')!.position.x = -s * (DISC_THICKNESS / 2 + SPOKE_WIDTH / 2 + 0.005)));
     this.links.setInboard(signs);
     this.inboardPlaced = true;
   }
