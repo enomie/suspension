@@ -7,4 +7,6 @@
 - Kein Force-Push auf `main`.
 
 ## Sprache
-- Antworten auf Deutsch.
+- Antworten und Gespräch auf Deutsch.
+- Code, Identifier und Code-Kommentare immer auf Englisch (auch in neuen oder geänderten Dateien).
+- Anzeigetexte (UI-Labels) sollen englisch und deutsch verfügbar sein.
