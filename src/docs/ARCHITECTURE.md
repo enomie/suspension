@@ -47,6 +47,11 @@ app/keyboard ──'input' / 'spawn'──▶ physics/worker
 Neue Terrain-Kacheln (Kachel-Worker) und Snapshots (Physik-Worker) kommen zwischen zwei Frames an und werden im
 nächsten Frame übernommen. Physik-Worker: fester 120-Hz-Takt nach Wanduhr (`shared/stepClock.ts`), ein Snapshot pro Schritt.
 
+## Instancing und TSL
+- **TSL-Materialien** liegen in `render/tsl/` (bisher: `terrainMaterial.ts` mit Debug-Uniform `morphEnabled`). Neue Node-Materialien dort ablegen, nicht inline in Renderern.
+- **Instancing-Muster:** `render/vehicle/linkVisual.ts` – ein `InstancedMesh` je (Geometrie, Material), Anzahl vorab aus dem Layout, Matrix pro Frame per `setMatrixAt(i, Matrix4.compose(...))`, danach `instanceMatrix.needsUpdate = true`.
+- **Fallen:** `frustumCulled = false` setzen (Bounding-Sphere wird nicht nachgeführt); Posen sind Render-lokal (absolut − `ORIGIN`, Floating Origin); `count` ≤ Kapazität; für per-Instanz-Farbe `setColorAt` bzw. in TSL `instancedBufferAttribute`/`storage()` + `instanceIndex`.
+
 ## Bekannte Ursachen früherer Flacker-Probleme (nicht wieder einbauen)
 | Symptom | Ursache | Absicherung |
 |---|---|---|
