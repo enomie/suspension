@@ -1,22 +1,39 @@
-import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
+import { Group, Mesh, MeshStandardMaterial, Quaternion, Vector3 } from 'three';
 import type { VehicleLayout } from '../../shared/vehicleLayout';
 import type { CornerTelemetry, VehicleSpec, WheelSpec } from '../../shared/vehicleSpec';
 import { ORIGIN } from '../../shared/origin';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/snapshot';
+import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY } from '../geometries/unitGeometries';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
 
 const tireMat = new MeshStandardMaterial({ color: 0x202226, roughness: 0.9 });
 const rimMat = new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.4, metalness: 0.3 });
 
-/** Reifen (Zylinder um X) + Speiche (macht Drehung sichtbar). */
+const discMat = new MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.35, metalness: 0.7 });
+const DISC_RADIUS = 0.45; // × Reifenradius (Innenradius des Reifens = 0,6)
+const DISC_THICKNESS = 0.025; // [m]
+
+/**
+ * Rad = hohler Reifen (Unit-Hohlzylinder um X) + Bremsscheibe (Unit-Zylinder) + Speiche (macht Drehung sichtbar).
+ * Reifen ist ein eigenes Mesh `tire` → später abmontierbar, dann bleibt die Bremsscheibe sichtbar.
+ */
 function createWheelMesh(spec: WheelSpec): Group {
   const g = new Group();
-  const tire = new Mesh(new CylinderGeometry(spec.radius, spec.radius, spec.width, 24), tireMat);
+  const d = spec.radius * 2;
+  const tire = new Mesh(UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
+  tire.name = 'tire';
+  tire.scale.set(d, spec.width, d);
   tire.rotation.z = Math.PI / 2;
   tire.castShadow = true;
-  const spoke = new Mesh(new BoxGeometry(spec.width * 1.02, spec.radius * 1.6, spec.radius * 0.25), rimMat);
-  g.add(tire, spoke);
+  const disc = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
+  disc.name = 'brakeDisc';
+  disc.scale.set(spec.radius * 2 * DISC_RADIUS, DISC_THICKNESS, spec.radius * 2 * DISC_RADIUS);
+  disc.rotation.z = Math.PI / 2;
+  disc.castShadow = true;
+  const spoke = new Mesh(UNIT_BOX_GEOMETRY, rimMat);
+  spoke.scale.set(spec.width * 1.02, spec.radius * 0.9, spec.radius * 0.25);
+  g.add(tire, disc, spoke);
   return g;
 }
 
@@ -34,6 +51,7 @@ export class VehicleVisual implements BodyPoses {
   /** absolute Chassis-Position (HUD) */
   readonly absPos = new Vector3();
   private wheels: Group[];
+  private frame: Mesh;
   private links: LinkRenderer;
   private state: Float64Array | null = null;
   private q0: number;
@@ -46,7 +64,8 @@ export class VehicleVisual implements BodyPoses {
     }));
     this.q0 = bodyOffset(layout.corners.length);
     this.root.name = layout.spec.name;
-    this.chassis.add(createFrameVisual(layout.spec, layout.mounts));
+    this.frame = createFrameVisual(layout.spec, layout.mounts);
+    this.chassis.add(this.frame);
     this.wheels = layout.corners.map((c) => {
       const w = createWheelMesh(c.wheelSpec);
       w.name = `${c.id}.wheel`;
@@ -94,6 +113,11 @@ export class VehicleVisual implements BodyPoses {
     const o = this.q0 + body * BODY_STRIDE;
     const s = this.state!;
     return out.set(s[o + 3], s[o + 4], s[o + 5], s[o + 6]);
+  }
+
+  /** Leiterrahmen ein-/ausblenden (Aufhängung und Räder bleiben sichtbar) */
+  setFrameVisible(on: boolean): void {
+    this.frame.visible = on;
   }
 
   dispose(): void {
