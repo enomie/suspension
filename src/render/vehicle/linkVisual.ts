@@ -1,5 +1,6 @@
-import { BoxGeometry, CylinderGeometry, Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
+import { BufferGeometry, Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import type { BodyPoint, VehicleLayout } from '../../shared/vehicleLayout';
+import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY } from '../geometries/unitGeometries';
 import { MAT } from './materials';
 
 /** Posen der Körper (Render-lokal), adressiert über den Snapshot-Index */
@@ -16,14 +17,9 @@ const _d = new Vector3();
 const _m = new Vector3();
 const _t = new Vector3();
 
-const GEO = {
-  rod: new CylinderGeometry(0.022, 0.022, 1, 8),
-  beam: new CylinderGeometry(0.04, 0.04, 1, 10),
-  spring: new CylinderGeometry(0.065, 0.065, 1, 14),
-  tube: new CylinderGeometry(0.032, 0.032, 1, 10),
-  piston: new CylinderGeometry(0.014, 0.014, 1, 8),
-  knuckle: new BoxGeometry(0.07, 0.24, 0.12),
-};
+/** Durchmesser bzw. Boxmaße [m] der Teile; Länge kommt aus den Endpunkten */
+const SIZE = { rod: 0.044, beam: 0.08, spring: 0.13, tube: 0.064, piston: 0.028 };
+const KNUCKLE: [number, number, number] = [0.07, 0.24, 0.12];
 const DAMPER_TUBE = 0.2;
 
 function world(poses: BodyPoses, at: BodyPoint, out: Vector3): Vector3 {
@@ -36,17 +32,17 @@ const _p = new Vector3();
 const _s = new Vector3();
 const _mat = new Matrix4();
 
-/** Instanz `i` von `batch` als Zylinder/Box von `a` nach `b` setzen (Einheitslänge 1 entlang Y, gestreckt auf |b−a|). */
-function stretch(batch: InstancedMesh, i: number, a: Vector3, b: Vector3): void {
+/** Instanz `i` von `batch` als Zylinder/Box von `a` nach `b` setzen (Unit-Zylinder entlang Y, Länge |b−a|, Durchmesser `d`). */
+function stretch(batch: InstancedMesh, i: number, a: Vector3, b: Vector3, d: number): void {
   _d.subVectors(b, a);
   const l = _d.length();
   _p.addVectors(a, b).multiplyScalar(0.5);
   _q.setFromUnitVectors(UP, l > 1e-6 ? _d.divideScalar(l) : UP);
-  batch.setMatrixAt(i, _mat.compose(_p, _q, _s.set(1, Math.max(l, 1e-4), 1)));
+  batch.setMatrixAt(i, _mat.compose(_p, _q, _s.set(d, Math.max(l, 1e-4), d)));
 }
 
 /** Ein Draw Call pro (Geometrie, Material); `count` = Anzahl Instanzen, `next` = Schreib-Index beim Aufbau */
-function batch(geo: CylinderGeometry | BoxGeometry, mat: InstancedMesh['material'], count: number): InstancedMesh {
+function batch(geo: BufferGeometry, mat: InstancedMesh['material'], count: number): InstancedMesh {
   const m = new InstancedMesh(geo, mat, Math.max(count, 1));
   m.count = count;
   m.castShadow = true;
@@ -66,7 +62,7 @@ function batch(geo: CylinderGeometry | BoxGeometry, mat: InstancedMesh['material
 export class LinkRenderer {
   readonly root = new Group();
   /** Je Link: Instanz-Indizes in `rod`/`beam`/`spring`/`tube`/`piston` (Damper = tube + piston) */
-  private items: { v: VehicleLayout['links'][number]; main: InstancedMesh; i: number; piston?: number }[] = [];
+  private items: { v: VehicleLayout['links'][number]; main: InstancedMesh; i: number; piston?: number; kind: 'rod' | 'beam' | 'spring' }[] = [];
   private knuckles: { body: number; i: number }[] = [];
   private readonly rods: InstancedMesh;
   private readonly beams: InstancedMesh;
@@ -81,26 +77,26 @@ export class LinkRenderer {
     const nSpring = n('spring');
     const nBeam = n('beam');
     const nRod = layout.links.length - nDamper - nSpring - nBeam;
-    this.rods = batch(GEO.rod, MAT.hub, nRod);
-    this.beams = batch(GEO.beam, MAT.frame, nBeam);
-    this.springs = batch(GEO.spring, MAT.spring, nSpring);
-    this.tubes = batch(GEO.tube, MAT.damper, nDamper);
-    this.pistons = batch(GEO.piston, MAT.rod, nDamper);
-    this.knuckleMesh = batch(GEO.knuckle, MAT.knuckle, layout.corners.length);
+    this.rods = batch(UNIT_CYLINDER_GEOMETRY, MAT.hub, nRod);
+    this.beams = batch(UNIT_CYLINDER_GEOMETRY, MAT.frame, nBeam);
+    this.springs = batch(UNIT_CYLINDER_GEOMETRY, MAT.spring, nSpring);
+    this.tubes = batch(UNIT_CYLINDER_GEOMETRY, MAT.damper, nDamper);
+    this.pistons = batch(UNIT_CYLINDER_GEOMETRY, MAT.rod, nDamper);
+    this.knuckleMesh = batch(UNIT_BOX_GEOMETRY, MAT.knuckle, layout.corners.length);
 
     const used = { rod: 0, beam: 0, spring: 0, damper: 0 };
     for (const v of layout.links) {
       const group = v.kind === 'damper' || v.kind === 'spring' || v.kind === 'beam' ? v.kind : 'rod';
       const main = { damper: this.tubes, spring: this.springs, beam: this.beams, rod: this.rods }[group];
       const i = used[group]++;
-      this.items.push({ v, main, i, piston: group === 'damper' ? i : undefined });
+      this.items.push({ v, main, i, piston: group === 'damper' ? i : undefined, kind: group === 'damper' ? 'rod' : group });
     }
     layout.corners.forEach((c, i) => this.knuckles.push({ body: c.knuckle, i }));
     this.root.add(this.rods, this.beams, this.springs, this.tubes, this.pistons, this.knuckleMesh);
   }
 
   sync(poses: BodyPoses): void {
-    for (const { v, main, i, piston } of this.items) {
+    for (const { v, main, i, piston, kind } of this.items) {
       world(poses, v.a, _a);
       world(poses, v.b, _b);
       if (piston !== undefined) {
@@ -108,16 +104,16 @@ export class LinkRenderer {
         _d.subVectors(_b, _a);
         const l = _d.length();
         _t.copy(_d).multiplyScalar(Math.min(1, DAMPER_TUBE / (l || 1))).add(_a);
-        stretch(main, i, _a, _t);
-        stretch(this.pistons, piston, _t, _b);
+        stretch(main, i, _a, _t, SIZE.tube);
+        stretch(this.pistons, piston, _t, _b, SIZE.piston);
       } else {
-        stretch(main, i, _a, _b);
+        stretch(main, i, _a, _b, SIZE[kind]);
       }
     }
     for (const { body, i } of this.knuckles) {
       poses.position(body, _p);
       poses.rotation(body, _q);
-      this.knuckleMesh.setMatrixAt(i, _mat.compose(_p, _q, _s.set(1, 1, 1)));
+      this.knuckleMesh.setMatrixAt(i, _mat.compose(_p, _q, _s.set(...KNUCKLE)));
     }
     for (const m of [this.rods, this.beams, this.springs, this.tubes, this.pistons, this.knuckleMesh]) {
       m.instanceMatrix.needsUpdate = true;
