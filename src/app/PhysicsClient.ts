@@ -1,4 +1,4 @@
-import type { DriverInput } from '../shared/vehicleSpec';
+import type { DriverInput, VehicleSpec } from '../shared/vehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import type { FromWorker, ToWorker } from '../shared/protocol';
 import { blendSnapshots, wallClock } from '../shared/snapshot';
@@ -116,10 +116,11 @@ export class PhysicsClient {
     else this.local!.input = { ...input };
   }
 
-  spawn(preset: number): void {
-    if (this.worker) return this.send({ type: 'spawn', preset });
+  /** `custom` = freely assembled vehicle (preset index -1) */
+  spawn(preset: number, custom?: VehicleSpec): void {
+    if (this.worker) return this.send({ type: 'spawn', preset, spec: custom });
     const s = this.local!;
-    s.spawn(preset);
+    s.spawn(preset, custom);
     this.setVehicle(s.layout, s.gen, s.preset);
   }
 

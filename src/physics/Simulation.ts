@@ -9,7 +9,7 @@ import { ORIGIN } from '../shared/origin';
 import { OriginShifter } from '../shared/originShifter';
 import { PHYSICS_DT } from '../shared/stepClock';
 import { writeVehicleSnapshot } from './vehicle/snapshot';
-import type { DriverInput } from '../shared/vehicleSpec';
+import type { DriverInput, VehicleSpec } from '../shared/vehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import { setTerrain, type TerrainConfig } from '../shared/terrain';
 
@@ -58,12 +58,12 @@ export class Simulation {
   }
 
   /** Neues Fahrzeug (Preset) an aktueller Position; neue Generation */
-  spawn(preset = this.preset): void {
-    if (preset < 0 || preset >= PRESETS.length) return;
+  spawn(preset = this.preset, custom?: VehicleSpec): void {
+    if (!custom && (preset < 0 || preset >= PRESETS.length)) return;
     const t = this.vehicle.chassis.translation();
     this.vehicle.dispose();
-    this.preset = preset;
-    this.vehicle = new Vehicle(this.R, this.world, PRESETS[preset], this.spawnPoint(t.x, t.z));
+    this.preset = custom ? -1 : preset;
+    this.vehicle = new Vehicle(this.R, this.world, custom ?? PRESETS[preset], this.spawnPoint(t.x, t.z));
     this.bodies = poseBodies(this.vehicle.built);
     this.layout = describeLayout(this.vehicle.spec, this.vehicle.built);
     this.gen++;

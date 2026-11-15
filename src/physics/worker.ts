@@ -37,7 +37,7 @@ async function handle(m: ToWorker): Promise<void> {
   } else if (!sim) return;
   else if (m.type === 'input') sim.input = m.input;
   else if (m.type === 'spawn') {
-    sim.spawn(m.preset);
+    sim.spawn(m.preset, m.spec);
     announce(sim);
   }
 }
