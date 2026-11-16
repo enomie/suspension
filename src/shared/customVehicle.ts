@@ -23,6 +23,8 @@ export interface CustomVehicleConfig {
   torque?: number;
   /** engine power [kW]: top speed together with rolling and air drag (default `0.3 × mass`) */
   power?: number;
+  /** wheelspin: how much faster than the ground a wheel may spin [m/s] (slip limit; default 2.5 = hardly any) */
+  wheelspin?: number;
 }
 
 export const CUSTOM_LIMITS = {
@@ -33,6 +35,7 @@ export const CUSTOM_LIMITS = {
   wheelWidth: [0.15, 0.5],
   torque: [200, 30000],
   power: [5, 1000],
+  wheelspin: [2.5, 15],
 } as const;
 
 /** Suspension types that can carry a steering knuckle (long-arm and beam types are non-steering only) */
@@ -75,6 +78,7 @@ export const DEFAULT_CUSTOM: CustomVehicleConfig = {
   ],
   torque: 2400,
   power: 360,
+  wheelspin: 2.5,
 };
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, x));
@@ -124,6 +128,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
       maxTorque: clamp(config.torque ?? mass * 2, CUSTOM_LIMITS.torque),
       maxPower: 1000 * clamp(config.power ?? mass * 0.3, CUSTOM_LIMITS.power),
       reverseSpeed: 8,
+      maxSlipSpeed: clamp(config.wheelspin ?? CUSTOM_LIMITS.wheelspin[0], CUSTOM_LIMITS.wheelspin),
     },
   };
 }
