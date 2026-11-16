@@ -1,4 +1,4 @@
-import type { DriveSpec, VehicleSpec } from './types';
+import type { DriveSpec, VehicleSpec } from './vehicleSpec';
 
 /** air density [kg/m³] */
 export const AIR_DENSITY = 1.2;

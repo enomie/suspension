@@ -130,7 +130,7 @@ export interface DriveSpec {
   /** engine power [W] split over the driven axles by `share`: caps the thrust at high speed (thrust ≤ P / v) */
   maxPower: number;
   /**
-   * Top speed is NOT set directly: it is where thrust equals rolling + air drag (see `topSpeed()` in physics/vehicle/performance.ts).
+   * Top speed is NOT set directly: it is where thrust equals rolling + air drag (see `topSpeed()` in shared/performance.ts).
    * Rolling resistance (same force at every wheel) and air drag (same drag area) are global constants, identical for all vehicles.
    * Optional speed limiters [m/s] (ECU), only for vehicles that get unstable beyond some speed.
    */

@@ -1,5 +1,5 @@
 import type { Corner, DriveSpec, DriverInput } from '../types';
-import { ROLLING_FORCE_PER_WHEEL } from '../performance';
+import { ROLLING_FORCE_PER_WHEEL } from '../../../shared/performance';
 
 /** velocity motor damping factor [N·m·s/rad] — high = stiff, torque capped via MaxForce. */
 const MOTOR_FACTOR = 1e4;

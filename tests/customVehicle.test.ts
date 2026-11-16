@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
-import { buildCustomSpec, DEFAULT_CUSTOM, type CustomAxleConfig, type CustomVehicleConfig } from '../src/shared/customVehicle';
+import { topSpeed } from '../src/shared/performance';
+import { buildCustomSpec, CUSTOM_LIMITS, DEFAULT_CUSTOM, type CustomAxleConfig, type CustomVehicleConfig } from '../src/shared/customVehicle';
 import type { DriverInput } from '../src/physics/vehicle/types';
 
 await RAPIER.init();
@@ -99,5 +100,19 @@ describe('steering modes', () => {
     const [front, rear] = steerAngles('steer');
     expect(rear * front).toBeGreaterThan(0);
     expect(steerAngles('none')[1]).toBe(0);
+  });
+});
+
+describe('custom drive fields', () => {
+  it('torque and power are clamped and reach the spec (power in kW → W)', () => {
+    const s = buildCustomSpec({ ...DEFAULT_CUSTOM, torque: 1e9, power: 1 });
+    expect(s.drive.maxTorque).toBe(CUSTOM_LIMITS.torque[1]);
+    expect(s.drive.maxPower).toBe(CUSTOM_LIMITS.power[0] * 1000);
+    expect(buildCustomSpec(DEFAULT_CUSTOM).drive).toMatchObject({ maxTorque: 2400, maxPower: 360_000 });
+  });
+  it('more power → higher top speed, more torque alone does not', () => {
+    const base = topSpeed(buildCustomSpec(DEFAULT_CUSTOM));
+    expect(topSpeed(buildCustomSpec({ ...DEFAULT_CUSTOM, power: 600 }))).toBeGreaterThan(base * 1.1);
+    expect(topSpeed(buildCustomSpec({ ...DEFAULT_CUSTOM, torque: 6000 }))).toBeCloseTo(base, 0);
   });
 });
