@@ -19,6 +19,10 @@ export interface CustomVehicleConfig {
   wheelbase: number;
   /** index 0 = front axle */
   axles: CustomAxleConfig[];
+  /** total drive torque [N·m]: acceleration and wheelspin (default `2 × mass`) */
+  torque?: number;
+  /** engine power [kW]: top speed together with rolling and air drag (default `0.3 × mass`) */
+  power?: number;
 }
 
 export const CUSTOM_LIMITS = {
@@ -27,6 +31,8 @@ export const CUSTOM_LIMITS = {
   track: [1, 3.2],
   wheelRadius: [0.25, 0.6],
   wheelWidth: [0.15, 0.5],
+  torque: [200, 30000],
+  power: [5, 1000],
 } as const;
 
 /** Suspension types that can carry a steering knuckle (long-arm and beam types are non-steering only) */
@@ -67,6 +73,8 @@ export const DEFAULT_CUSTOM: CustomVehicleConfig = {
     { track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, wheelRadius: 0.33, wheelWidth: 0.22 },
     { track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, wheelRadius: 0.33, wheelWidth: 0.22 },
   ],
+  torque: 2400,
+  power: 360,
 };
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, x));
@@ -112,6 +120,10 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
     chassis: { size: [1.4, 0.5, 2 * half + 2 * BOX_MARGIN], mass, comOffset: [0, -0.2, 0] },
     axles,
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
-    drive: { maxTorque: mass * 2, maxPower: mass * 300, reverseSpeed: 8 },
+    drive: {
+      maxTorque: clamp(config.torque ?? mass * 2, CUSTOM_LIMITS.torque),
+      maxPower: 1000 * clamp(config.power ?? mass * 0.3, CUSTOM_LIMITS.power),
+      reverseSpeed: 8,
+    },
   };
 }

@@ -5,7 +5,7 @@ import { buildVehicle, type BuiltVehicle } from './buildVehicle';
 import { Steering } from './parts/steering';
 import { applyDrive } from './parts/drive';
 import { Balance } from './parts/balance';
-import { dragForce, topSpeed } from './performance';
+import { dragForce, topSpeed } from '../../shared/performance';
 
 const _q = new Quaternion();
 const _qi = new Quaternion();

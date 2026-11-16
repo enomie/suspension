@@ -4,7 +4,7 @@ import { Vehicle } from '../src/physics/vehicle/Vehicle';
 import { car } from '../src/physics/vehicle/presets/car';
 import { trophyTruck } from '../src/physics/vehicle/presets/trophyTruck';
 import { moped, motorcycle } from '../src/physics/vehicle/presets/motorcycle';
-import { topSpeed } from '../src/physics/vehicle/performance';
+import { topSpeed } from '../src/shared/performance';
 import { PHYSICS_DT, PHYSICS_SUBSTEPS } from '../src/shared/stepClock';
 import type { DriverInput, VehicleSpec } from '../src/physics/vehicle/types';
 
