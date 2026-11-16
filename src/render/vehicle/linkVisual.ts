@@ -67,7 +67,8 @@ export class LinkRenderer {
   readonly root = new Group();
   /** per link: instance indices in `rod`/`beam`/`spring`/`tube`/`piston` (damper = tube + piston) */
   private items: { v: VehicleLayout['links'][number]; main: InstancedMesh; i: number; piston?: number; kind: 'rod' | 'beam' | 'spring' }[] = [];
-  private knuckles: { body: number; wheel: number; i: number; inboard: number }[] = [];
+  /** `corner` = index in `layout.corners`, `i` = instance index (corners with a hidden knuckle have none) */
+  private knuckles: { body: number; wheel: number; i: number; corner: number; inboard: number }[] = [];
   private readonly rods: InstancedMesh;
   private readonly beams: InstancedMesh;
   private readonly springs: InstancedMesh;
@@ -89,7 +90,7 @@ export class LinkRenderer {
     this.seats = batch(UNIT_CYLINDER_GEOMETRY, MAT.frame, nSpring * 2);
     this.tubes = batch(UNIT_CYLINDER_GEOMETRY, MAT.damper, nDamper);
     this.pistons = batch(UNIT_CYLINDER_GEOMETRY, MAT.rod, nDamper);
-    this.knuckleMesh = batch(UNIT_BOX_GEOMETRY, MAT.knuckle, layout.corners.length);
+    this.knuckleMesh = batch(UNIT_BOX_GEOMETRY, MAT.knuckle, layout.corners.filter((c) => !c.wheelSpec.hideKnuckle).length);
 
     const used = { rod: 0, beam: 0, spring: 0, damper: 0 };
     for (const v of layout.links) {
@@ -98,13 +99,16 @@ export class LinkRenderer {
       const i = used[group]++;
       this.items.push({ v, main, i, piston: group === 'damper' ? i : undefined, kind: group === 'damper' ? 'rod' : group });
     }
-    layout.corners.forEach((c, i) => this.knuckles.push({ body: c.knuckle, wheel: c.wheel, i, inboard: 0 }));
+    // single-track vehicles (`hideKnuckle`): fork slider / swingarm already draw the wheel carrier, no box
+    layout.corners.forEach((c, corner) => {
+      if (!c.wheelSpec.hideKnuckle) this.knuckles.push({ body: c.knuckle, wheel: c.wheel, i: this.knuckles.length, corner, inboard: 0 });
+    });
     this.root.add(this.rods, this.beams, this.springs, this.seats, this.tubes, this.pistons, this.knuckleMesh);
   }
 
   /** per wheel side: +1 / −1 = toward chassis in wheel-local X (`VehicleVisual` sets once) */
   setInboard(signs: number[]): void {
-    signs.forEach((s, i) => (this.knuckles[i].inboard = s));
+    for (const k of this.knuckles) k.inboard = signs[k.corner];
   }
 
   sync(poses: BodyPoses): void {

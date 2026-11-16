@@ -54,3 +54,9 @@ describe('torus wheel (apokalypto wheel-bike)', () => {
     expect((col.shape as unknown as { borderRadius: number }).borderRadius).toBeCloseTo(border, 6);
   });
 });
+
+describe('single-track wheels draw no knuckle box', () => {
+  it.each([motorcycle, moped])('$name: hideKnuckle on both wheels', (spec) => {
+    for (const a of spec.axles) expect(a.wheel.hideKnuckle).toBe(true);
+  });
+});

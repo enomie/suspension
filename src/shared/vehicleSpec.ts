@@ -39,6 +39,8 @@ export interface WheelSpec {
   friction: number;
   /** torus = apokalypto bike tire: round convex hull of the torus mesh (width is then 0.6·radius, see `torusWheelWidth`) */
   shape?: 'ball' | 'roundCylinder' | 'torus';
+  /** true = no grey wheel-carrier box is drawn (motorcycle, moped: fork slider / swingarm are the carrier) */
+  hideKnuckle?: boolean;
   /** tire look: smooth hollow cylinder (default), tread blocks, or the apokalypto bike torus */
   tire?: 'smooth' | 'tread' | 'torus';
 }

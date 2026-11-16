@@ -24,7 +24,7 @@ interface BikeParams {
 function makeBike(p: BikeParams): VehicleSpec {
   const y = -0.3;
   const half = p.wheelbase / 2;
-  const wheel: WheelSpec = { ...p.wheel, width: torusWheelWidth(p.wheel.radius), shape: 'torus', tire: 'torus' };
+  const wheel: WheelSpec = { ...p.wheel, width: torusWheelWidth(p.wheel.radius), shape: 'torus', tire: 'torus', hideKnuckle: true };
   const front: AxleSpec = {
     z: -half,
     track: 0,
