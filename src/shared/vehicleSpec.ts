@@ -38,6 +38,8 @@ export interface WheelSpec {
   mass: number;
   friction: number;
   shape?: 'ball' | 'roundCylinder';
+  /** tire look: smooth hollow cylinder (default) or tread blocks (rubber from apokalypto) */
+  tire?: 'smooth' | 'tread';
 }
 
 export interface AxleSpec {

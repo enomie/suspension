@@ -4,6 +4,7 @@ import type { CornerTelemetry, VehicleSpec, WheelSpec } from '../../shared/vehic
 import { ORIGIN } from '../../shared/origin';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/snapshot';
 import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO } from '../geometries/unitGeometries';
+import { createTreadTireGeometry } from './treadTire';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
 import { createMountPlates } from './mountVisual';
@@ -26,10 +27,15 @@ const HUB_LENGTH = 0.08;
 function createWheelMesh(spec: WheelSpec): Group {
   const g = new Group();
   const d = spec.radius * 2;
-  const tire = new Mesh(UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
+  const tire =
+    spec.tire === 'tread'
+      ? new Mesh(createTreadTireGeometry(spec), tireMat)
+      : new Mesh(UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
   tire.name = 'tire';
-  tire.scale.set(d, spec.width, d);
-  tire.rotation.z = Math.PI / 2;
+  if (spec.tire !== 'tread') {
+    tire.scale.set(d, spec.width, d);
+    tire.rotation.z = Math.PI / 2;
+  }
   tire.castShadow = true;
   const disc = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
   disc.name = 'brakeDisc';

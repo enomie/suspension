@@ -23,6 +23,7 @@ interface BikeParams {
 function makeBike(p: BikeParams): VehicleSpec {
   const y = -0.3;
   const half = p.wheelbase / 2;
+  const wheel: WheelSpec = { ...p.wheel, tire: 'tread' };
   const front: AxleSpec = {
     z: -half,
     track: 0,
@@ -30,7 +31,7 @@ function makeBike(p: BikeParams): VehicleSpec {
     suspension: 'telescopicFork',
     fork: { rake: p.rake, trail: p.trail },
     spring: { frequencyHz: p.frontHz, dampingRatio: 0.4, travel: [-p.forkTravel, p.forkTravel] },
-    wheel: p.wheel,
+    wheel,
     steer: { maxAngle: 0.5 },
     brake: { torque: p.brakeFront },
   };
@@ -40,7 +41,7 @@ function makeBike(p: BikeParams): VehicleSpec {
     y,
     suspension: 'swingArm',
     spring: { frequencyHz: p.rearHz, dampingRatio: 0.4, travel: [-p.rearTravel, p.rearTravel] },
-    wheel: p.wheel,
+    wheel,
     drive: { share: 1 },
     brake: { torque: p.brakeRear },
     handbrake: { torque: p.brakeRear * 2 },
