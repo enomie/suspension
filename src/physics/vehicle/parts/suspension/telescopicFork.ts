@@ -61,16 +61,19 @@ export const buildTelescopicFork: AxleBuilder = (ctx, axle, i) => {
   // everything below is attached to the yoke (stanchions, clamp) or the slider (lower legs, axle): all steer together
   const legX = axle.wheel.width / 2 + legClearance(axle.wheel.radius);
   const withX = (p: P, x: number): P => v(p.x + x, p.y, p.z);
-  const foot = W(ctx, wl);
+  const axleCenter = W(ctx, wl); // wheel center
+  const legFoot = onAxis(0); // lower end of the leg on the steering axis (leg runs parallel to the spring)
   const sliderTop = onAxis(SLIDER_LENGTH);
   const visuals = [link('beam', yoke, withX(clamp, -legX), yoke, withX(clamp, legX))];
   for (const x of [-legX, legX]) {
-    // lower leg (rod) from the axle up to the top of the slider, then spring + damper coaxial up to the clamp
-    visuals.push(link('rod', slider, withX(foot, x), slider, withX(sliderTop, x)));
+    // lower leg (rod) parallel to the steering axis, then spring + damper coaxial up to the clamp
+    visuals.push(link('rod', slider, withX(legFoot, x), slider, withX(sliderTop, x)));
     visuals.push(...coilover(slider, withX(sliderTop, x), yoke, withX(clamp, x)));
+    // fork offset: short bracket from the leg foot (on the axis) forward to the axle
+    visuals.push(link('rod', slider, withX(legFoot, x), slider, withX(axleCenter, x)));
   }
-  // axle between the legs
-  visuals.push(link('rod', slider, withX(foot, -legX), slider, withX(foot, legX)));
+  // axle between the legs, through the wheel center
+  visuals.push(link('rod', slider, withX(axleCenter, -legX), slider, withX(axleCenter, legX)));
 
   // the steering joint lives on the yoke, the wheel on the slider: finishCorner builds the spin joint on the slider
   const corner = finishCorner(ctx, { ...axle, steer: undefined }, i, side, slider, wl, rate, [yoke, slider], visuals);
