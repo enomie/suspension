@@ -24,7 +24,7 @@ Concept, naming, parts: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code structure: [ARCHI
 | — infrastructure | physics worker, infinite LOD terrain (32 km), floating origin, frame collider | ✓ |
 | 2 polish | `antiRollBar`, test track (ramp, waves, step), Rapier `debugRender`, `roundCylinder` option | open |
 | 3 multi-axle | presets `truck6x4`, `truck6x6aws` (all-wheel / crab steering), `truck8x4` | open (solid axle + bogie pivot exist) |
-| 4 motorcycle | telescopic fork with trail, swingarm, `balanceAssist` (roll angle → steer angle) | open |
+| 4 motorcycle | telescopic fork with trail ✓ (`tests/fork.test.ts`, preset `presets/motorcycle.ts`, roll locked in tests), swingarm (trailing arm, `track: 0`) basic, dedicated swingarm + moped, `balanceAssist` (roll angle → steer angle) | in progress |
 | 5 trailers | `coupling.ts` (hitch / fifthWheel / kingPin), drawbar trailer, semi-truck, key `T`; simple engine curve | open |
 | 6 optional | gearbox, differential (open / locked / limited slip) – today every wheel acts locked | open |
 | 7 tracks | road wheels on swingarms (torsion bar = position motor), left/right drive separate | open |

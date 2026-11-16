@@ -53,6 +53,7 @@ export const SUSPENSION_LABELS: Record<SuspensionType, string> = {
   multiLink: 'Multi-link',
   bogie: 'Tandem bogie',
   fourLink: '4-link solid axle',
+  telescopicFork: 'Telescopic fork',
 };
 
 export function suspensionsFor(steer: SteerMode): SuspensionType[] {
