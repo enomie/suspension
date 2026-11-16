@@ -12,6 +12,8 @@ const REVERSE_THRESHOLD = 0.6;
 /** Boost (Shift): factor on drive torque and top speed */
 const BOOST_FACTOR = 2;
 
+const drivenOnAxle: number[] = [];
+
 /**
  * Antrieb + Betriebsbremse + Handbremse pro Rad über den Velocity-Motor des Spin-Joints.
  * Kein Getriebe (Phase 1): Gas = Ziel-Raddrehzahl vMax/r, Moment begrenzt.
@@ -19,9 +21,9 @@ const BOOST_FACTOR = 2;
  */
 export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInput, forwardSpeed: number): void {
   const boost = input.boost ? BOOST_FACTOR : 1;
-  const driven = corners.filter((c) => c.axle.drive);
-  const shareSum = new Map<number, number>();
-  for (const c of driven) shareSum.set(c.axleIndex, (shareSum.get(c.axleIndex) ?? 0) + 1);
+  // driven wheels per axle (scratch array: no allocation per physics step)
+  for (const c of corners) drivenOnAxle[c.axleIndex] = 0;
+  for (const c of corners) if (c.axle.drive) drivenOnAxle[c.axleIndex]++;
 
   const wantsReverse = input.brake > 0 && forwardSpeed < REVERSE_THRESHOLD && input.throttle === 0;
   const braking =
@@ -40,7 +42,7 @@ export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInpu
     } else if (braking) {
       torque = c.axle.brake.torque * brakeAmount;
     } else if (c.axle.drive && (input.throttle > 0 || wantsReverse)) {
-      const perWheel = (spec.maxTorque * boost * c.axle.drive.share) / (shareSum.get(c.axleIndex) ?? 1);
+      const perWheel = (spec.maxTorque * boost * c.axle.drive.share) / (drivenOnAxle[c.axleIndex] || 1);
       if (wantsReverse) {
         target = -Math.min(spec.reverseSpeed, Math.max(0, -forwardSpeed) + MAX_SLIP_SPEED) / r;
         torque = perWheel * input.brake;

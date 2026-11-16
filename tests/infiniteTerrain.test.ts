@@ -45,6 +45,40 @@ describe('physics tiles', () => {
     });
   }
 
+  it('streams the neighbours in the direction of travel first', () => {
+    ORIGIN.x = 0;
+    ORIGIN.z = 0;
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const tiles = new PhysicsTiles(RAPIER, world);
+    tiles.update(32, 32); // cell (0, 0) and its 8 neighbours
+    tiles.update(64 * 5 + 32, 32, 2500); // jump to cell (5, 0), heading east: all 8 neighbours missing
+    const built = (tiles as unknown as { tiles: Map<string, unknown> }).tiles;
+    const firstFinished: string[] = [];
+    for (let i = 0; i < 400 && firstFinished.length < 3; i++) {
+      tiles.update(64 * 5 + 32 + i * 0.01, 32, 2500);
+      for (const k of built.keys()) if (k !== '5,0' && !firstFinished.includes(k)) firstFinished.push(k);
+    }
+    // the first neighbours to finish are the ones on the east side (x = 6)
+    expect(firstFinished.length).toBe(3);
+    for (const k of firstFinished) expect(k.startsWith('6,')).toBe(true);
+  });
+
+  it('keeps finished height fields: coming back costs no new sampling', () => {
+    ORIGIN.x = 0;
+    ORIGIN.z = 0;
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const tiles = new PhysicsTiles(RAPIER, world);
+    tiles.update(32, 32);
+    tiles.update(32 + 64, 32); // east: column −1 leaves the window
+    expect(tiles.count).toBe(9);
+    const heights = (tiles as unknown as { heights: Map<string, Float32Array> }).heights;
+    expect(heights.has('-1,0')).toBe(true);
+    const spy = heights.get('-1,0')!;
+    tiles.update(32, 32); // back west: tile (−1, 0) comes from the cache
+    expect(heights.get('-1,0')).toBe(spy);
+    expect(tiles.count).toBe(9);
+  });
+
   it('Budget: Kachel unter dem Fahrzeug sofort, Nachbarn stückweise; Ergebnis identisch', () => {
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     const tiles = new PhysicsTiles(RAPIER, world);

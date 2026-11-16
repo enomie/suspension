@@ -45,7 +45,9 @@ export function buildTileIndex(): Uint32Array {
   return new Uint32Array(idx);
 }
 
-export const tileSize = (lod: number) => TILE_SIZE * 2 ** lod;
+/** Tile edge per LOD level (table: this is called many times per frame) */
+const TILE_SIZES = Array.from({ length: MAX_LOD + 1 }, (_, k) => TILE_SIZE * 2 ** k);
+export const tileSize = (lod: number) => TILE_SIZES[lod] ?? TILE_SIZE * 2 ** lod;
 
 /**
  * Morph-Bereich [start, end] (Abstand Vertex–Kamera): bei `end` sieht die Kachel exakt wie ihr Elternteil aus.

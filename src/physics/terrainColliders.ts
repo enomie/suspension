@@ -28,16 +28,29 @@ interface Job {
   col: number;
 }
 
+/** Height fields kept after a tile left the window (66 KB each): driving back needs no recomputation */
+const HEIGHT_CACHE = 24;
+const WANT = (2 * PHYSICS_TILE_RADIUS + 1) ** 2;
+
 /**
  * Streamt (2r+1)² Heightfield-Kacheln (64 m, 128 Zellen) um das Fahrzeug.
  * Die Kachel unter dem Fahrzeug wird sofort gebaut; Nachbarn stückweise mit festem Budget pro Aufruf
  * (`sampleBudget` Punkte), damit kein Physik-Schritt hängt – das Terrain kostet ~1 µs pro Punkt.
+ * Nachbarn in Fahrtrichtung kommen zuerst; fertige Höhenfelder bleiben in einem kleinen LRU-Cache.
  * Beim Origin-Shift wandern die Körper mit der Welt.
  * Später: gröbere Ringe für ferne Objekte über dieselbe Höhenfunktion.
  */
 export class PhysicsTiles {
   private tiles = new Map<string, RAPIER.RigidBody>();
   private job: Job | null = null;
+  /** finished height fields, least recently used first */
+  private heights = new Map<string, Float32Array>();
+  /** tile cell of the last full pass (NaN = none yet) */
+  private cx = NaN;
+  private cz = NaN;
+  /** last absolute position → direction of travel */
+  private lastAbsX = NaN;
+  private lastAbsZ = NaN;
 
   constructor(
     private R: typeof RAPIER,
@@ -59,18 +72,32 @@ export class PhysicsTiles {
    * sampleBudget = Infinity: alles sofort (Spawn, Tests).
    */
   update(localX: number, localZ: number, sampleBudget = Infinity): void {
-    const cx = Math.floor((localX + ORIGIN.x) / PHYSICS_TILE_SIZE);
-    const cz = Math.floor((localZ + ORIGIN.z) / PHYSICS_TILE_SIZE);
+    const ax = localX + ORIGIN.x;
+    const az = localZ + ORIGIN.z;
+    const dirX = ax - this.lastAbsX || 0;
+    const dirZ = az - this.lastAbsZ || 0;
+    this.lastAbsX = ax;
+    this.lastAbsZ = az;
+    const cx = Math.floor(ax / PHYSICS_TILE_SIZE);
+    const cz = Math.floor(az / PHYSICS_TILE_SIZE);
+    // Normalfall (jeder Physik-Schritt): gleiche Kachel, alles da, nichts in Arbeit → nichts zu tun
+    if (cx === this.cx && cz === this.cz && !this.job && this.tiles.size === WANT) return;
+    this.cx = cx;
+    this.cz = cz;
+
     const r = PHYSICS_TILE_RADIUS;
     const want = new Set<string>();
     const missing: [number, number][] = [];
-    // mittlere Kachel zuerst, dann die Nachbarn
-    const order: [number, number][] = [[0, 0]];
-    for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) if (dx || dz) order.push([dx, dz]);
-    for (const [dx, dz] of order) {
-      const key = `${cx + dx},${cz + dz}`;
-      want.add(key);
-      if (!this.tiles.has(key)) missing.push([cx + dx, cz + dz]);
+    for (let dz = -r; dz <= r; dz++)
+      for (let dx = -r; dx <= r; dx++) {
+        const key = `${cx + dx},${cz + dz}`;
+        want.add(key);
+        if ((dx || dz) && !this.tiles.has(key)) missing.push([cx + dx, cz + dz]);
+      }
+    // Nachbarn in Fahrtrichtung zuerst (Skalarprodukt Kachel-Offset · Bewegung), stabil sortiert
+    if (dirX || dirZ) {
+      const ahead = (t: [number, number]) => (t[0] - cx) * dirX + (t[1] - cz) * dirZ;
+      missing.sort((a, b) => ahead(b) - ahead(a));
     }
     for (const [key, body] of this.tiles)
       if (!want.has(key)) {
@@ -100,7 +127,10 @@ export class PhysicsTiles {
   }
 
   private newJob(ix: number, iz: number): Job {
-    return { key: `${ix},${iz}`, ix, iz, h: new Float32Array(S1 * S1), col: 0 };
+    const key = `${ix},${iz}`;
+    const cached = this.heights.get(key);
+    if (cached) return { key, ix, iz, h: cached, col: S1 };
+    return { key, ix, iz, h: new Float32Array(S1 * S1), col: 0 };
   }
 
   /** rechnet bis zu `budget` Punkte; gibt das Restbudget zurück */
@@ -112,9 +142,17 @@ export class PhysicsTiles {
     job.col = to;
     if (job.col >= S1) {
       this.tiles.set(job.key, this.build(job));
+      this.remember(job);
       if (this.job === job) this.job = null;
     }
     return budget;
+  }
+
+  /** finished height field into the LRU cache (most recent last) */
+  private remember(job: Job): void {
+    this.heights.delete(job.key);
+    this.heights.set(job.key, job.h);
+    if (this.heights.size > HEIGHT_CACHE) this.heights.delete(this.heights.keys().next().value!);
   }
 
   private build(job: Job): RAPIER.RigidBody {
