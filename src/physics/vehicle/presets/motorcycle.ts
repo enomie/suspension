@@ -15,7 +15,8 @@ interface BikeParams {
   frontHz: number;
   rearHz: number;
   maxTorque: number;
-  maxSpeed: number;
+  /** engine power [W] */
+  maxPower: number;
   brakeFront: number;
   brakeRear: number;
 }
@@ -60,7 +61,7 @@ function makeBike(p: BikeParams): VehicleSpec {
     },
     axles: [front, rear],
     steering: { mode: 'ackermann', rate: 3, returnRate: 5, highSpeedFactor: 0.25 },
-    drive: { maxTorque: p.maxTorque, maxSpeed: p.maxSpeed, reverseSpeed: 3, rollingResistance: 5 },
+    drive: { maxTorque: p.maxTorque, maxPower: p.maxPower, reverseSpeed: 3 },
     // slimmer springs and seats: the dampers on a bike are thin
     springStyle: 'slim',
     balance: { standSpeed: 5, maxLean: 0.6, standStiffness: p.mass * 40, standDamping: p.mass * 4 },
@@ -80,7 +81,7 @@ export const motorcycle = makeBike({
   frontHz: 2,
   rearHz: 2.2,
   maxTorque: 350,
-  maxSpeed: 60,
+  maxPower: 55_000,
   brakeFront: 400,
   brakeRear: 300,
 });
@@ -98,7 +99,7 @@ export const moped = makeBike({
   frontHz: 2.4,
   rearHz: 2.6,
   maxTorque: 110,
-  maxSpeed: 28,
+  maxPower: 13_000,
   brakeFront: 150,
   brakeRear: 120,
 });

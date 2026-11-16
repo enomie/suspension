@@ -125,17 +125,21 @@ export interface BalanceSpec {
 }
 
 export interface DriveSpec {
-  /** total torque at all driven wheels [N·m] */
+  /** total torque at all driven wheels [N·m]: caps the thrust at low speed (traction, wheelspin) */
   maxTorque: number;
-  /** [m/s] */
-  maxSpeed: number;
-  /** top speed with boost (Shift) [m/s]; default 2 × maxSpeed. Set it where the vehicle gets unstable that fast. */
+  /** engine power [W] split over the driven axles by `share`: caps the thrust at high speed (thrust ≤ P / v) */
+  maxPower: number;
+  /**
+   * Top speed is NOT set directly: it is where thrust equals rolling + air drag (see `topSpeed()` in physics/vehicle/performance.ts).
+   * Rolling resistance (same force at every wheel) and air drag (same drag area) are global constants, identical for all vehicles.
+   * Optional speed limiters [m/s] (ECU), only for vehicles that get unstable beyond some speed.
+   */
+  maxSpeed?: number;
+  /** limiter with boost (Shift) [m/s]; boost cuts the drag area to a quarter (≈ 2× top speed) */
   maxBoostSpeed?: number;
   reverseSpeed: number;
   /** slip limit (ASR): wheel tangential speed may exceed vehicle speed by this much [m/s]; default 2.5. Higher = more wheelspin. */
   maxSlipSpeed?: number;
-  /** rolling/bearing resistance per wheel [N·m] */
-  rollingResistance: number;
 }
 
 export interface VehicleSpec {

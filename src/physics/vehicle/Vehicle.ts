@@ -5,6 +5,7 @@ import { buildVehicle, type BuiltVehicle } from './buildVehicle';
 import { Steering } from './parts/steering';
 import { applyDrive } from './parts/drive';
 import { Balance } from './parts/balance';
+import { dragForce, topSpeed } from './performance';
 
 const _q = new Quaternion();
 const _qi = new Quaternion();
@@ -19,6 +20,8 @@ export class Vehicle {
   readonly balance?: Balance;
   /** forward speed [m/s] (+ = chassis −Z) */
   forwardSpeed = 0;
+  /** natural top speed [m/s] (thrust = rolling + drag): reference for the steering lock */
+  private readonly refSpeed: number;
 
   constructor(
     R: typeof RAPIER,
@@ -27,6 +30,7 @@ export class Vehicle {
     pos: { x: number; y: number; z: number },
   ) {
     this.built = buildVehicle(R, world, spec, pos);
+    this.refSpeed = topSpeed(spec);
     this.steering = new Steering(spec.steering, spec);
     if (spec.balance) {
       const zs = spec.axles.map((a) => a.z);
@@ -49,8 +53,8 @@ export class Vehicle {
     _v.set(0, 0, -1).applyQuaternion(_q);
     this.forwardSpeed = _v.x * lv.x + _v.y * lv.y + _v.z * lv.z;
 
-    // steering was tuned for half of today's top speed; beyond that the lock shrinks further (see Steering)
-    this.steering.update(input.steer, dt, this.forwardSpeed, this.spec.drive.maxSpeed / 2);
+    // steering was tuned for half of the top speed; beyond that the lock shrinks further (see Steering)
+    this.steering.update(input.steer, dt, this.forwardSpeed, this.refSpeed / 2);
     if (this.balance) {
       const maxSteer = this.spec.axles.find((a) => a.steer)?.steer?.maxAngle ?? 0;
       const total = this.balance.update(this.chassis, this.steering.value, maxSteer, this.forwardSpeed);
@@ -58,6 +62,16 @@ export class Vehicle {
     }
     this.steering.apply(this.corners);
     applyDrive(this.corners, this.spec.drive, input, this.forwardSpeed);
+    this.applyAirDrag(dt, !!input.boost);
+  }
+
+  /** air drag on the chassis against its velocity: F = ½·ρ·CdA·v² as impulse F·dt (never reverses the velocity) */
+  private applyAirDrag(dt: number, boost: boolean): void {
+    const lv = this.chassis.linvel();
+    const speed = Math.hypot(lv.x, lv.y, lv.z);
+    if (speed < 0.01) return;
+    const j = Math.min(dragForce(speed, boost) * dt, speed * this.chassis.mass()) / speed;
+    this.chassis.applyImpulse({ x: -lv.x * j, y: -lv.y * j, z: -lv.z * j }, true);
   }
 
   /** after world.step(): refresh telemetry. */

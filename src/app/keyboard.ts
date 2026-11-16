@@ -1,6 +1,6 @@
 import type { DriverInput } from '../shared/vehicleSpec';
 
-/** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake (rear), Shift boost (double torque and top speed). */
+/** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake (rear), Shift boost (a quarter of the air drag). */
 export class Keyboard {
   private down = new Set<string>();
   /** one-shot key presses (e.g. reset) */
