@@ -4,6 +4,7 @@ import type { Corner, DriverInput, VehicleSpec } from './types';
 import { buildVehicle, type BuiltVehicle } from './buildVehicle';
 import { Steering } from './parts/steering';
 import { applyDrive } from './parts/drive';
+import { Balance } from './parts/balance';
 
 const _q = new Quaternion();
 const _qi = new Quaternion();
@@ -14,6 +15,8 @@ const _w = new Vector3();
 export class Vehicle {
   readonly built: BuiltVehicle;
   readonly steering: Steering;
+  /** single-track balance assist (motorcycle, moped) */
+  readonly balance?: Balance;
   /** forward speed [m/s] (+ = chassis −Z) */
   forwardSpeed = 0;
 
@@ -25,6 +28,10 @@ export class Vehicle {
   ) {
     this.built = buildVehicle(R, world, spec, pos);
     this.steering = new Steering(spec.steering, spec);
+    if (spec.balance) {
+      const zs = spec.axles.map((a) => a.z);
+      this.balance = new Balance(spec.balance, Math.max(...zs) - Math.min(...zs) || 1);
+    }
   }
 
   get chassis(): RAPIER.RigidBody {
@@ -43,6 +50,11 @@ export class Vehicle {
     this.forwardSpeed = _v.x * lv.x + _v.y * lv.y + _v.z * lv.z;
 
     this.steering.update(input.steer, dt, this.forwardSpeed, this.spec.drive.maxSpeed);
+    if (this.balance) {
+      const maxSteer = this.spec.axles.find((a) => a.steer)?.steer?.maxAngle ?? 0;
+      const total = this.balance.update(this.chassis, this.steering.value, maxSteer, this.forwardSpeed);
+      this.steering.balanceOffset = total - this.steering.angle;
+    }
     this.steering.apply(this.corners);
     applyDrive(this.corners, this.spec.drive, input, this.forwardSpeed);
   }

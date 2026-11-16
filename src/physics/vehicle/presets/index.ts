@@ -2,6 +2,7 @@ import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
 import type { VehicleSpec } from '../types';
 import { car, makeCar } from './car';
 import { trophyTruck } from './trophyTruck';
+import { moped, motorcycle } from './motorcycle';
 
 /** Preset index → suspension layout (same test chassis). */
 export const PRESETS: VehicleSpec[] = [
@@ -16,4 +17,6 @@ export const PRESETS: VehicleSpec[] = [
   makeCar('multilink', VEHICLE_PRESET_LABELS[8], 'multiLink'),
   makeCar('bogie', VEHICLE_PRESET_LABELS[9], 'bogie'),
   trophyTruck,
+  motorcycle,
+  moped,
 ];

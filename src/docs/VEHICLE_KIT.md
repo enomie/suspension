@@ -81,6 +81,7 @@ Spring rates are converted to the wheel center via leverage (`leverRatio`, MR) �
 | 8 | `twistBeam` | 2 trailing arms + revolute X between arms with position motor (torsion) | spring joints |
 | 9 | `multiLink` | 5 links: Chassis ─Spherical→ link ─Spherical→ carrier | spring joint + 2 ropes (bump/rebound stops) |
 | 0 | `bogie` | Chassis ─Prismatic −Y→ carrier ─Rev X→ rocker → 2 wheels | prismatic motor |
+| – | `swingArm` | Chassis ─Rev X (ahead of wheel)→ arm with two legs; one mono-shock on the center plane | spring joint |
 | – | `telescopicFork` | Chassis ─Prismatic along rake axis→ stanchion ─Rev about the same axis (steering)→ knuckle → wheel; `fork: {rake, trail}` | prismatic motor (k·cos²ε) |
 
 Non-steerable types (4, 5, 8, 0) sit rear; front stays `strut` with steering.

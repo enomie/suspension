@@ -80,6 +80,7 @@ export class VehicleVisual implements BodyPoses {
     this.q0 = bodyOffset(layout.corners.length);
     this.root.name = layout.spec.name;
     this.frame = createFrameVisual(layout.spec);
+    this.frame.visible = layout.spec.chassis.frame !== false;
     this.chassis.add(this.frame, createMountPlates(layout.mounts));
     this.wheels = layout.corners.map((c) => {
       const w = createWheelMesh(c.wheelSpec);
@@ -150,7 +151,7 @@ export class VehicleVisual implements BodyPoses {
 
   /** show/hide ladder frame (suspension and wheels stay visible) */
   setFrameVisible(on: boolean): void {
-    this.frame.visible = on;
+    this.frame.visible = on && this.spec.chassis.frame !== false;
   }
 
   /** Show or hide the joint markers (balls and hinge cylinders) */
