@@ -70,12 +70,13 @@ export class CustomPanel {
     this.onConfigChange = showTopSpeed;
     const torque = numberInput(this.config.torque ?? 0, CUSTOM_LIMITS.torque, 50, (v) => ((this.config.torque = v), showTopSpeed()));
     const power = numberInput(this.config.power ?? 0, CUSTOM_LIMITS.power, 5, (v) => ((this.config.power = v), showTopSpeed()));
+    const wheelspin = numberInput(this.config.wheelspin ?? 2.5, CUSTOM_LIMITS.wheelspin, 0.5, (v) => (this.config.wheelspin = v));
     showTopSpeed();
 
     const apply = el('button', { type: 'button', textContent: 'Apply' });
     apply.addEventListener('click', () => onApply(buildCustomSpec(this.config)));
 
-    details.append(field('Wheelbase (m)', wheelbase), field('Axles', count), this.axleHost, field('Torque (N·m)', torque), field('Power (kW)', power), field('Top speed', topSpeedOut), apply);
+    details.append(field('Wheelbase (m)', wheelbase), field('Axles', count), this.axleHost, field('Torque (N·m)', torque), field('Power (kW)', power), field('Wheelspin (m/s)', wheelspin), field('Top speed', topSpeedOut), apply);
     parent.append(details);
     this.renderAxles();
   }

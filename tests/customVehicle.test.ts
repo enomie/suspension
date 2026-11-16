@@ -116,3 +116,11 @@ describe('custom drive fields', () => {
     expect(topSpeed(buildCustomSpec({ ...DEFAULT_CUSTOM, torque: 6000 }))).toBeCloseTo(base, 0);
   });
 });
+
+describe('custom wheelspin field', () => {
+  it('sets the slip limit, clamped to its range', () => {
+    expect(buildCustomSpec({ ...DEFAULT_CUSTOM, wheelspin: 10 }).drive.maxSlipSpeed).toBe(10);
+    expect(buildCustomSpec({ ...DEFAULT_CUSTOM, wheelspin: 99 }).drive.maxSlipSpeed).toBe(CUSTOM_LIMITS.wheelspin[1]);
+    expect(buildCustomSpec({ ...DEFAULT_CUSTOM, wheelspin: 0 }).drive.maxSlipSpeed).toBe(CUSTOM_LIMITS.wheelspin[0]);
+  });
+});
