@@ -12,7 +12,15 @@ import { MAX_LOD, VIEW_DISTANCE, lodSplit } from '../../shared/config';
 const SLOTS = 320;
 const INDEX = buildTileIndex();
 
+/** Numeric tile id (no string allocation in the per-frame selection): lod · 2^44 + (ix + 2^21) · 2^22 + (iz + 2^21) */
+const OFFSET = 2 ** 21;
+const SPAN = 2 ** 22;
+const tileId = (lod: number, ix: number, iz: number) => (lod * SPAN + ix + OFFSET) * SPAN + iz + OFFSET;
+
 interface Chunk {
+  /** Numeric id (map key) */
+  id: number;
+  /** "lod,ix,iz" – for tests, debugging and worker messages */
   key: string;
   lod: number;
   ix: number;
@@ -38,13 +46,13 @@ export class LodTerrain {
   get root(): BatchedMesh {
     return this.mesh;
   }
-  private cache = new Map<string, Chunk>();
+  private cache = new Map<number, Chunk>();
   private freeSlots: number[] = [];
   private queue: { lod: number; ix: number; iz: number; d: number }[] = [];
   private frame = 0;
   /** im letzten Durchlauf geteilte Knoten (für Hysterese) */
-  private splitSet = new Set<string>();
-  private inView = new Set<string>();
+  private splitSet = new Set<number>();
+  private inView = new Set<number>();
   /** Bau-Budget pro Frame [ms] (nur ohne Worker) */
   budgetMs = 3;
   stats = { visible: 0, cached: 0, built: 0, queue: 0, drawCalls: 1 };
@@ -53,9 +61,9 @@ export class LodTerrain {
 
   private workers: Worker[] = [];
   private idle: Worker[] = [];
-  private pending = new Set<string>();
+  private pending = new Set<number>();
   /** Worker → Kachel, an der er gerade rechnet (für Fehlerfall / Timeout) */
-  private busy = new Map<Worker, { key: string; since: number }>();
+  private busy = new Map<Worker, { id: number; since: number }>();
   /** Worker, die so lange nicht antworten, gelten als hängend [ms] */
   workerTimeoutMs = 5000;
   private dirty = true;
@@ -92,7 +100,7 @@ export class LodTerrain {
       w.postMessage({ type: 'terrain', config: terrain().config } satisfies TileWorkerMessage);
       w.onmessage = (e: MessageEvent<TileRequest & TileArrays>) => {
         const { key, lod, ix, iz } = e.data;
-        this.pending.delete(key);
+        this.pending.delete(tileId(lod, ix, iz));
         this.busy.delete(w);
         this.idle.push(w);
         this.addChunk(key, lod, ix, iz, e.data);
@@ -132,21 +140,22 @@ export class LodTerrain {
     for (const c of this.cache.values())
       if (!this.visible.has(c) && (!oldest || c.lastUsed < oldest.lastUsed)) oldest = c;
     if (!oldest) return null;
-    this.cache.delete(oldest.key);
+    this.cache.delete(oldest.id);
     return oldest.slot;
   }
 
   private addChunk(key: string, lod: number, ix: number, iz: number, a: TileArrays): void {
-    if (this.cache.has(key)) return;
+    const id = tileId(lod, ix, iz);
+    if (this.cache.has(id)) return;
     const slot = this.takeSlot();
     if (slot === null) return; // voll – kommt beim nächsten Durchlauf wieder
     const g = this.geometryFrom(a);
     this.mesh.setGeometryAt(slot, g);
     g.dispose();
     this.mesh.setVisibleAt(slot, false);
-    const c: Chunk = { key, lod, ix, iz, slot, lastUsed: this.frame, minY: a.bounds[0], maxY: a.bounds[1] };
+    const c: Chunk = { id, key, lod, ix, iz, slot, lastUsed: this.frame, minY: a.bounds[0], maxY: a.bounds[1] };
     this.place(c);
-    this.cache.set(key, c);
+    this.cache.set(id, c);
     this.dirty = true;
   }
 
@@ -199,7 +208,7 @@ export class LodTerrain {
   /** Worker entfernen (Fehler / hängt); ohne Worker baut update() im Haupt-Thread. */
   private dropWorker(w: Worker): void {
     const job = this.busy.get(w);
-    if (job) this.pending.delete(job.key);
+    if (job) this.pending.delete(job.id);
     this.busy.delete(w);
     w.terminate();
     this.workers = this.workers.filter((x) => x !== w);
@@ -213,7 +222,7 @@ export class LodTerrain {
     const now = performance.now();
     for (const [w, job] of this.busy)
       if (now - job.since > this.workerTimeoutMs) {
-        console.error('[terrain] Kachel-Worker antwortet nicht – baue im Haupt-Thread weiter', job.key);
+        console.error('[terrain] Kachel-Worker antwortet nicht – baue im Haupt-Thread weiter', job.id);
         this.dropWorker(w);
       }
     const moved = Math.abs(camX - this.lastCam.x) + Math.abs(camY - this.lastCam.y) + Math.abs(camZ - this.lastCam.z);
@@ -231,8 +240,8 @@ export class LodTerrain {
 
     const visible = new Set<Chunk>();
     const want: { lod: number; ix: number; iz: number; d: number }[] = [];
-    const key = (lod: number, ix: number, iz: number) => `${lod},${ix},${iz}`;
-    const ready = (lod: number, ix: number, iz: number) => this.cache.has(key(lod, ix, iz));
+    const key = tileId;
+    const ready = (lod: number, ix: number, iz: number) => this.cache.has(tileId(lod, ix, iz));
     /**
      * Abstand Kamera ↔ Kachel in 3D: über die Höhenspanne der Kachel (Berg 2 km höher zählt mit).
      * Noch nicht gebaute Kachel: Kamerahöhe über dem Boden darunter als Näherung.
@@ -246,7 +255,7 @@ export class LodTerrain {
       return Math.sqrt(dx * dx + dz * dz + dy * dy);
     };
     /** Sichtweiten-Grenze ebenfalls mit Hysterese (sonst Pendeln am Nebel-Ende) */
-    const nextInView = new Set<string>();
+    const nextInView = new Set<number>();
     const outOfView = (lod: number, ix: number, iz: number) => {
       const k = key(lod, ix, iz);
       const out = dist(lod, ix, iz) > VIEW_DISTANCE * (this.inView.has(k) ? 1.05 : 1);
@@ -254,7 +263,7 @@ export class LodTerrain {
       return out;
     };
     /** Teilen mit Hysterese: einmal geteilt erst bei +15 % Abstand wieder zusammenfassen */
-    const nextSplit = new Set<string>();
+    const nextSplit = new Set<number>();
     const split = (lod: number, ix: number, iz: number) => {
       if (lod === 0) return false;
       const k = key(lod, ix, iz);
@@ -299,7 +308,7 @@ export class LodTerrain {
     this.inView = nextInView;
 
     // Sichtbarkeit nur bei Änderung umschalten (vor dem Bauen, damit sichtbare nicht verdrängt werden)
-    for (const c of this.visible) if (!visible.has(c) && this.cache.get(c.key) === c) this.mesh.setVisibleAt(c.slot, false);
+    for (const c of this.visible) if (!visible.has(c) && this.cache.get(c.id) === c) this.mesh.setVisibleAt(c.slot, false);
     for (const c of visible) {
       c.lastUsed = this.frame;
       if (!this.visible.has(c)) this.mesh.setVisibleAt(c.slot, true);
@@ -307,7 +316,7 @@ export class LodTerrain {
     this.visible = visible;
 
     // Bau-Warteschlange: grob vor fein, nah vor fern
-    const seen = new Set<string>();
+    const seen = new Set<number>();
     this.queue = want.filter((w) => {
       const k = key(w.lod, w.ix, w.iz);
       return seen.has(k) ? false : (seen.add(k), true);
@@ -321,15 +330,15 @@ export class LodTerrain {
         if (this.pending.has(k)) continue;
         this.pending.add(k);
         const w = this.idle.pop()!;
-        this.busy.set(w, { key: k, since: performance.now() });
-        w.postMessage({ type: 'tile', key: k, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
+        this.busy.set(w, { id: k, since: performance.now() });
+        w.postMessage({ type: 'tile', key: `${q.lod},${q.ix},${q.iz}`, lod: q.lod, ix: q.ix, iz: q.iz } satisfies TileRequest);
         built++;
       }
     } else {
       const t0 = performance.now();
       while (this.queue.length && (built === 0 || performance.now() - t0 < this.budgetMs)) {
         const q = this.queue.shift()!;
-        this.addChunk(key(q.lod, q.ix, q.iz), q.lod, q.ix, q.iz, buildTileArrays(q.lod, q.ix, q.iz));
+        this.addChunk(`${q.lod},${q.ix},${q.iz}`, q.lod, q.ix, q.iz, buildTileArrays(q.lod, q.ix, q.iz));
         built++;
       }
       if (built) this.dirty = true;
