@@ -112,6 +112,6 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
     chassis: { size: [1.4, 0.5, 2 * half + 2 * BOX_MARGIN], mass, comOffset: [0, -0.2, 0] },
     axles,
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
-    drive: { maxTorque: mass * 2, maxSpeed: 90, reverseSpeed: 8, rollingResistance: 15 },
+    drive: { maxTorque: mass * 2, maxPower: mass * 300, reverseSpeed: 8 },
   };
 }

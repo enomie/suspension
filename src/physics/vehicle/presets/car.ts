@@ -42,7 +42,8 @@ export function makeCar(name: string, label: string, type: SuspensionType): Vehi
     chassis: { size: [1.8, 0.5, 4.2], mass: 1200, comOffset: [0, -0.2, 0] },
     axles: [frontAxle(type), rearAxle(type)],
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
-    drive: { maxTorque: 2400, maxSpeed: 90, reverseSpeed: 8, rollingResistance: 15 },
+    // top speed ≈ 90 m/s: P = v·(rolling + drag) at 90 m/s ≈ 364 kW (rolling and drag are global, see performance.ts)
+    drive: { maxTorque: 2400, maxPower: 364_000, reverseSpeed: 8 },
   };
 }
 

@@ -43,5 +43,6 @@ export const trophyTruck: VehicleSpec = {
   // above ~65 m/s the truck spins out on flat ground (measured), so boost stops just below
   // 14000 N·m / 4 wheels = 3500 N·m per wheel → ~7800 N at r = 0.45 m, above the grip limit (μ·N ≈ 1.1 · 4850 N)
   // so the wheels break loose; maxSlipSpeed lets them actually spin up (default 2.5 m/s would hide it).
-  drive: { maxTorque: 14000, maxSpeed: 60, maxBoostSpeed: 64, reverseSpeed: 8, maxSlipSpeed: 12, rollingResistance: 15 },
+  // top speed ≈ 60 m/s: P ≈ 113 kW (rolling and drag are global); the power limit also ends the wheelspin at ~5 m/s
+  drive: { maxTorque: 14000, maxPower: 113_000, maxBoostSpeed: 64, reverseSpeed: 8, maxSlipSpeed: 12 },
 };
