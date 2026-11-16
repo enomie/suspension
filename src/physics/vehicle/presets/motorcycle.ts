@@ -80,7 +80,7 @@ export const motorcycle = makeBike({
   frontHz: 2,
   rearHz: 2.2,
   maxTorque: 350,
-  maxSpeed: 50,
+  maxSpeed: 60,
   brakeFront: 400,
   brakeRear: 300,
 });
@@ -98,7 +98,7 @@ export const moped = makeBike({
   frontHz: 2.4,
   rearHz: 2.6,
   maxTorque: 110,
-  maxSpeed: 14,
+  maxSpeed: 28,
   brakeFront: 150,
   brakeRear: 120,
 });

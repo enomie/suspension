@@ -129,6 +129,8 @@ export interface DriveSpec {
   maxTorque: number;
   /** [m/s] */
   maxSpeed: number;
+  /** top speed with boost (Shift) [m/s]; default 2 × maxSpeed. Set it where the vehicle gets unstable that fast. */
+  maxBoostSpeed?: number;
   reverseSpeed: number;
   /** rolling/bearing resistance per wheel [N·m] */
   rollingResistance: number;

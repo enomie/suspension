@@ -9,8 +9,11 @@ const MOTOR_FACTOR = 1e4;
 const MAX_SLIP_SPEED = 2.5;
 /** below this speed [m/s], S switches from brake to reverse */
 const REVERSE_THRESHOLD = 0.6;
-/** Boost (Shift): factor on drive torque and top speed */
-const BOOST_FACTOR = 2;
+/**
+ * Boost (Shift): factor on top speed. The torque is NOT doubled any more: at the speeds the vehicles reach now,
+ * 2× torque exceeds the traction and the car starts to hop and loses speed; with the same torque it stays stable.
+ */
+const BOOST_SPEED_FACTOR = 2;
 
 const drivenOnAxle: number[] = [];
 
@@ -20,7 +23,7 @@ const drivenOnAxle: number[] = [];
  * priority: handbrake (axles with `handbrake` only) > brake > drive > rolling resistance.
  */
 export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInput, forwardSpeed: number): void {
-  const boost = input.boost ? BOOST_FACTOR : 1;
+  const topSpeed = input.boost ? (spec.maxBoostSpeed ?? spec.maxSpeed * BOOST_SPEED_FACTOR) : spec.maxSpeed;
   // driven wheels per axle (scratch array: no allocation per physics step)
   for (const c of corners) drivenOnAxle[c.axleIndex] = 0;
   for (const c of corners) if (c.axle.drive) drivenOnAxle[c.axleIndex]++;
@@ -42,12 +45,12 @@ export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInpu
     } else if (braking) {
       torque = c.axle.brake.torque * brakeAmount;
     } else if (c.axle.drive && (input.throttle > 0 || wantsReverse)) {
-      const perWheel = (spec.maxTorque * boost * c.axle.drive.share) / (drivenOnAxle[c.axleIndex] || 1);
+      const perWheel = (spec.maxTorque * c.axle.drive.share) / (drivenOnAxle[c.axleIndex] || 1);
       if (wantsReverse) {
         target = -Math.min(spec.reverseSpeed, Math.max(0, -forwardSpeed) + MAX_SLIP_SPEED) / r;
         torque = perWheel * input.brake;
       } else {
-        target = Math.min(spec.maxSpeed * boost, Math.max(0, forwardSpeed) + MAX_SLIP_SPEED) / r;
+        target = Math.min(topSpeed, Math.max(0, forwardSpeed) + MAX_SLIP_SPEED) / r;
         torque = perWheel * input.throttle;
       }
     }

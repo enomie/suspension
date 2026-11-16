@@ -49,7 +49,8 @@ export class Vehicle {
     _v.set(0, 0, -1).applyQuaternion(_q);
     this.forwardSpeed = _v.x * lv.x + _v.y * lv.y + _v.z * lv.z;
 
-    this.steering.update(input.steer, dt, this.forwardSpeed, this.spec.drive.maxSpeed);
+    // steering was tuned for half of today's top speed; beyond that the lock shrinks further (see Steering)
+    this.steering.update(input.steer, dt, this.forwardSpeed, this.spec.drive.maxSpeed / 2);
     if (this.balance) {
       const maxSteer = this.spec.axles.find((a) => a.steer)?.steer?.maxAngle ?? 0;
       const total = this.balance.update(this.chassis, this.steering.value, maxSteer, this.forwardSpeed);

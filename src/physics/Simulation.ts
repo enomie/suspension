@@ -7,7 +7,7 @@ import { PRESETS } from './vehicle/presets';
 import { sampleTerrainHeightWorld } from '../shared/terrainHeight';
 import { ORIGIN } from '../shared/origin';
 import { OriginShifter } from '../shared/originShifter';
-import { PHYSICS_DT } from '../shared/stepClock';
+import { PHYSICS_DT, PHYSICS_SUBSTEPS } from '../shared/stepClock';
 import { writeVehicleSnapshot } from './vehicle/snapshot';
 import type { DriverInput, VehicleSpec } from '../shared/vehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
@@ -36,7 +36,7 @@ export class Simulation {
     ORIGIN.x = opts.x;
     ORIGIN.z = opts.z;
     this.world = createPhysicsWorld(R);
-    this.world.timestep = PHYSICS_DT;
+    this.world.timestep = PHYSICS_DT / PHYSICS_SUBSTEPS;
     this.world.numSolverIterations = 8;
     this.tiles = new PhysicsTiles(R, this.world);
     // origin shift: move all Rapier bodies together (joints are relative → stay valid)
@@ -73,8 +73,11 @@ export class Simulation {
     const v = this.vehicle;
     const t = v.chassis.translation();
     this.tiles.update(t.x, t.z, 2500); // neighbour tiles incrementally: ~2500 samples (~2.5 ms) per step
-    v.applyInput(this.input, PHYSICS_DT);
-    this.world.step();
+    // PHYSICS_SUBSTEPS solver steps per tick (see stepClock.ts): wheels may spin faster, i.e. vehicles may drive faster
+    for (let i = 0; i < PHYSICS_SUBSTEPS; i++) {
+      v.applyInput(this.input, PHYSICS_DT / PHYSICS_SUBSTEPS);
+      this.world.step();
+    }
     v.updateTelemetry();
     const c = v.chassis.translation();
     this.origin.update(c.x, c.z);
