@@ -1,6 +1,6 @@
 import { BufferGeometry, Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import type { BodyPoint, VehicleLayout } from '../../shared/vehicleLayout';
-import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HELIX_GEOMETRY } from '../geometries/unitGeometries';
+import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HELIX_GEOMETRY, UNIT_HELIX_SLIM_GEOMETRY } from '../geometries/unitGeometries';
 import { MAT } from './materials';
 
 /** body poses (render-local), addressed by snapshot index */
@@ -21,6 +21,11 @@ const _t = new Vector3();
 const SIZE = { rod: 0.044, beam: 0.08, spring: 0.13, tube: 0.064, piston: 0.028 };
 const SEAT_DIAMETER = 0.15;
 const SEAT_THICKNESS = 0.012;
+/**
+ * slim springs (bikes): coil Ø and seat Ø smaller, but the coil still clears the damper tube
+ * (inner coil Ø ≈ spring Ø − 2·wire ≈ 0.08 > tube 0.064)
+ */
+const SLIM = { spring: 0.09, seat: 0.11, seatThickness: 0.01 };
 const KNUCKLE: [number, number, number] = [0.07, 0.24, 0.12];
 /** knuckle box offset inboard (knuckle-local X) to sit behind brake disc [m] */
 export const KNUCKLE_INBOARD = 0.05;
@@ -77,6 +82,7 @@ export class LinkRenderer {
   private readonly tubes: InstancedMesh;
   private readonly pistons: InstancedMesh;
   private readonly knuckleMesh: InstancedMesh;
+  private readonly slim: boolean;
 
   constructor(layout: VehicleLayout) {
     const n = (kind: string) => layout.links.filter((v) => v.kind === kind).length;
@@ -86,7 +92,8 @@ export class LinkRenderer {
     const nRod = layout.links.length - nDamper - nSpring - nBeam;
     this.rods = batch(UNIT_CYLINDER_GEOMETRY, MAT.hub, nRod);
     this.beams = batch(UNIT_CYLINDER_GEOMETRY, MAT.frame, nBeam);
-    this.springs = batch(UNIT_HELIX_GEOMETRY, MAT.spring, nSpring);
+    this.slim = layout.spec.springStyle === 'slim';
+    this.springs = batch(this.slim ? UNIT_HELIX_SLIM_GEOMETRY : UNIT_HELIX_GEOMETRY, MAT.spring, nSpring);
     this.seats = batch(UNIT_CYLINDER_GEOMETRY, MAT.frame, nSpring * 2);
     this.tubes = batch(UNIT_CYLINDER_GEOMETRY, MAT.damper, nDamper);
     this.pistons = batch(UNIT_CYLINDER_GEOMETRY, MAT.rod, nDamper);
@@ -123,10 +130,11 @@ export class LinkRenderer {
         stretch(main, i, _a, _t, SIZE.tube);
         stretch(this.pistons, piston, _t, _b, SIZE.piston);
       } else {
-        stretch(main, i, _a, _b, SIZE[kind]);
+        stretch(main, i, _a, _b, kind === 'spring' && this.slim ? SLIM.spring : SIZE[kind]);
         if (main === this.springs) {
           // spring seats at both ends, same orientation as spring (`_q` from `stretch`)
-          this.seats.setMatrixAt(2 * i, _mat.compose(_a, _q, _s.set(SEAT_DIAMETER, SEAT_THICKNESS, SEAT_DIAMETER)));
+          const seatD = this.slim ? SLIM.seat : SEAT_DIAMETER;
+          this.seats.setMatrixAt(2 * i, _mat.compose(_a, _q, _s.set(seatD, this.slim ? SLIM.seatThickness : SEAT_THICKNESS, seatD)));
           this.seats.setMatrixAt(2 * i + 1, _mat.compose(_b, _q, _s));
         }
       }
