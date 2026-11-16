@@ -2,12 +2,13 @@ import { cornerId, partId } from '../../ids';
 import { AX, add, armLimits, coilover, finishCorner, helper, lerp, link, revolute, springFor, springJoint, v, W, wheelLocal, wheelRate, leverRatio } from './common';
 import type { AxleBuilder } from './types';
 
-/** pivot sits this far ahead of the axle [m] */
-const ARM_LENGTH = 0.6;
+/** pivot sits this far ahead of the axle: about two wheel radii, at least this long [m] */
+const MIN_ARM_LENGTH = 0.5;
 /** gap between tire side and swingarm leg [m] */
 const LEG_CLEARANCE = 0.05;
-/** shock mount: fraction of the arm length from the pivot, and height of the upper mount above it [m] */
-const SHOCK_ALONG = 0.55;
+/** the lower shock mount stays this far ahead of the tire's front edge, so the spring never pokes into the wheel [m] */
+const SHOCK_TIRE_CLEARANCE = 0.1;
+/** height of the upper shock mount above the lower one [m] */
 const SHOCK_HEIGHT = 0.4;
 
 /**
@@ -22,14 +23,16 @@ export const buildSwingArm: AxleBuilder = (ctx, axle, i) => {
   const wc = W(ctx, wl);
   const rate = wheelRate(ctx, axle, i, 1);
   const legX = axle.wheel.width / 2 + LEG_CLEARANCE;
+  const armLength = Math.max(MIN_ARM_LENGTH, axle.wheel.radius * 2);
 
-  const pivot = add(wc, v(0, 0.04, -ARM_LENGTH));
+  const pivot = add(wc, v(0, 0.04, -armLength));
   const arm = helper(ctx, axle, wc, partId(id, 'arm'));
   const j = revolute(ctx, ctx.chassis, arm, pivot, AX.X, [add(pivot, v(-legX, 0, 0)), add(pivot, v(legX, 0, 0))]);
   armLimits(j, AX.X, pivot, wc, axle.spring.travel);
 
-  // mono-shock, vertical, on the arm between pivot and wheel
-  const sp = lerp(pivot, wc, SHOCK_ALONG);
+  // mono-shock, vertical, on the arm in front of the wheel (clear of the tire)
+  const along = Math.min(0.7, Math.max(0.15, 1 - (axle.wheel.radius + SHOCK_TIRE_CLEARANCE) / armLength));
+  const sp = lerp(pivot, wc, along);
   const top = add(sp, v(0, SHOCK_HEIGHT, 0));
   springJoint(ctx, ctx.chassis, top, arm, sp, springFor(rate, leverRatio(AX.X, pivot, sp, wc)));
 

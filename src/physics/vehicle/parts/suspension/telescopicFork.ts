@@ -1,5 +1,5 @@
 import { cornerId, partId } from '../../ids';
-import { STEER_DAMPING, STEER_STIFFNESS, add, finishCorner, helper, link, prismatic, prismaticSpring, revolute, springFor, v, W, wheelLocal, wheelRate, type P } from './common';
+import { STEER_DAMPING, STEER_STIFFNESS, add, coilover, finishCorner, helper, link, prismatic, prismaticSpring, revolute, springFor, v, W, wheelLocal, wheelRate, type P } from './common';
 import type { AxleBuilder } from './types';
 
 /** defaults: 26° steering-head angle, 100 mm trail */
@@ -8,7 +8,7 @@ const DEFAULT_TRAIL = 0.1;
 /** distance from the axle line up the steering axis to the triple clamp [m] */
 const CLAMP_HEIGHT = 0.55;
 /** length of the lower leg (slider) above the axle line [m] */
-const SLIDER_LENGTH = 0.28;
+const SLIDER_LENGTH = 0.3;
 /** distance from the axle line to the lower steering bearing [m] */
 const LOWER_BEARING = 0.45;
 /** gap between tire side and fork leg axis [m] */
@@ -65,9 +65,9 @@ export const buildTelescopicFork: AxleBuilder = (ctx, axle, i) => {
   const sliderTop = onAxis(SLIDER_LENGTH);
   const visuals = [link('beam', yoke, withX(clamp, -legX), yoke, withX(clamp, legX))];
   for (const x of [-legX, legX]) {
-    // lower leg (tube) with the stanchion (piston rod) sliding out of it up to the clamp; spring above the tube
-    visuals.push(link('damper', slider, withX(foot, x), yoke, withX(clamp, x)));
-    visuals.push(link('spring', yoke, withX(clamp, x), slider, withX(sliderTop, x)));
+    // lower leg (rod) from the axle up to the top of the slider, then spring + damper coaxial up to the clamp
+    visuals.push(link('rod', slider, withX(foot, x), slider, withX(sliderTop, x)));
+    visuals.push(...coilover(slider, withX(sliderTop, x), yoke, withX(clamp, x)));
   }
   // axle between the legs
   visuals.push(link('rod', slider, withX(foot, -legX), slider, withX(foot, legX)));
