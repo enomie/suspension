@@ -39,5 +39,6 @@ export const trophyTruck: VehicleSpec = {
     },
   ],
   steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
-  drive: { maxTorque: 6000, maxSpeed: 60, reverseSpeed: 8, rollingResistance: 15 },
+  // above ~65 m/s the truck spins out on flat ground (measured), so boost stops just below
+  drive: { maxTorque: 6000, maxSpeed: 60, maxBoostSpeed: 64, reverseSpeed: 8, rollingResistance: 15 },
 };

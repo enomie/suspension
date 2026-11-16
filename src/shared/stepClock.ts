@@ -1,5 +1,11 @@
 /** physics tick [s] */
 export const PHYSICS_DT = 1 / 120;
+/**
+ * Rapier limits a body's rotation to π/4 per solver step, so a wheel cannot spin faster than π/(4·dt) rad/s
+ * (94 rad/s at 120 Hz ≈ 31 m/s for r = 0.33 m — no vehicle got faster, whatever `maxSpeed` said).
+ * Each 120 Hz tick therefore runs this many solver steps of dt/PHYSICS_SUBSTEPS: 4 → 377 rad/s ≈ 124 m/s.
+ */
+export const PHYSICS_SUBSTEPS = 4;
 
 /**
  * wall-clock tick: step n belongs at start + n·dt. `due(now)` = how many steps due now.

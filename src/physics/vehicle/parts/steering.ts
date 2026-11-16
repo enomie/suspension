@@ -36,7 +36,9 @@ export class Steering {
     const d = target - this.value;
     this.value += Math.sign(d) * Math.min(Math.abs(d), rate * dt);
     const hs = this.spec.highSpeedFactor ?? 1;
-    this.speedScale = 1 + (hs - 1) * Math.min(1, Math.abs(speed) / maxSpeed);
+    const v = Math.abs(speed);
+    // reduction up to the reference speed `maxSpeed`, beyond it the lock falls off ∝ 1/v so fast driving stays controllable
+    this.speedScale = (1 + (hs - 1) * Math.min(1, v / maxSpeed)) * Math.min(1, maxSpeed / Math.max(v, 1e-3));
   }
 
   /** reference steer angle of first steered axle [rad], + = left */
