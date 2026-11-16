@@ -3,10 +3,10 @@ import type { Corner, DriveSpec, DriverInput } from '../types';
 /** velocity motor damping factor [N·m·s/rad] — high = stiff, torque capped via MaxForce. */
 const MOTOR_FACTOR = 1e4;
 /**
- * slip limit (ASR): wheel tangential speed at most this much above vehicle speed [m/s].
+ * default slip limit (ASR, `DriveSpec.maxSlipSpeed` overrides): wheel tangential speed at most this much above vehicle speed [m/s].
  * Without it an unloaded wheel spins to vMax (each wheel has its own motor = open diff with no load).
  */
-const MAX_SLIP_SPEED = 2.5;
+const DEFAULT_MAX_SLIP_SPEED = 2.5;
 /** below this speed [m/s], S switches from brake to reverse */
 const REVERSE_THRESHOLD = 0.6;
 /**
@@ -23,6 +23,7 @@ const drivenOnAxle: number[] = [];
  * priority: handbrake (axles with `handbrake` only) > brake > drive > rolling resistance.
  */
 export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInput, forwardSpeed: number): void {
+  const slip = spec.maxSlipSpeed ?? DEFAULT_MAX_SLIP_SPEED;
   const topSpeed = input.boost ? (spec.maxBoostSpeed ?? spec.maxSpeed * BOOST_SPEED_FACTOR) : spec.maxSpeed;
   // driven wheels per axle (scratch array: no allocation per physics step)
   for (const c of corners) drivenOnAxle[c.axleIndex] = 0;
@@ -47,10 +48,10 @@ export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInpu
     } else if (c.axle.drive && (input.throttle > 0 || wantsReverse)) {
       const perWheel = (spec.maxTorque * c.axle.drive.share) / (drivenOnAxle[c.axleIndex] || 1);
       if (wantsReverse) {
-        target = -Math.min(spec.reverseSpeed, Math.max(0, -forwardSpeed) + MAX_SLIP_SPEED) / r;
+        target = -Math.min(spec.reverseSpeed, Math.max(0, -forwardSpeed) + slip) / r;
         torque = perWheel * input.brake;
       } else {
-        target = Math.min(topSpeed, Math.max(0, forwardSpeed) + MAX_SLIP_SPEED) / r;
+        target = Math.min(topSpeed, Math.max(0, forwardSpeed) + slip) / r;
         torque = perWheel * input.throttle;
       }
     }

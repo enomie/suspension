@@ -8,7 +8,7 @@ const spring: AxleSpec['spring'] = { frequencyHz: 1.3, dampingRatio: 0.5, travel
 
 /**
  * Trophy truck: independent double wishbone with very long arms at the front,
- * 4-link solid axle (2 lower trailing arms + 2 upper links) at the rear, rear-wheel drive.
+ * 4-link solid axle (2 lower trailing arms + 2 upper links) at the rear, 4WD (torque split 50/50).
  */
 export const trophyTruck: VehicleSpec = {
   name: 'trophy',
@@ -24,6 +24,7 @@ export const trophyTruck: VehicleSpec = {
       spring,
       wheel,
       steer: { maxAngle: 0.5 },
+      drive: { share: 0.5 },
       brake: { torque: 3000 },
     },
     {
@@ -33,12 +34,14 @@ export const trophyTruck: VehicleSpec = {
       suspension: 'fourLink',
       spring,
       wheel,
-      drive: { share: 1 },
+      drive: { share: 0.5 },
       brake: { torque: 2500 },
       handbrake: { torque: 4000 },
     },
   ],
   steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
   // above ~65 m/s the truck spins out on flat ground (measured), so boost stops just below
-  drive: { maxTorque: 6000, maxSpeed: 60, maxBoostSpeed: 64, reverseSpeed: 8, rollingResistance: 15 },
+  // 14000 N·m / 4 wheels = 3500 N·m per wheel → ~7800 N at r = 0.45 m, above the grip limit (μ·N ≈ 1.1 · 4850 N)
+  // so the wheels break loose; maxSlipSpeed lets them actually spin up (default 2.5 m/s would hide it).
+  drive: { maxTorque: 14000, maxSpeed: 60, maxBoostSpeed: 64, reverseSpeed: 8, maxSlipSpeed: 12, rollingResistance: 15 },
 };
