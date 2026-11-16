@@ -8,8 +8,8 @@ const MIN_ARM_LENGTH = 0.5;
 const LEG_CLEARANCE = 0.05;
 /** the lower shock mount stays this far ahead of the tire's front edge, so the spring never pokes into the wheel [m] */
 const SHOCK_TIRE_CLEARANCE = 0.1;
-/** height of the upper shock mount above the lower one [m] */
-const SHOCK_HEIGHT = 0.4;
+/** height of the upper shock mount above the lower one, in wheel radii (0.31 m wheel → 0.39 m) */
+const SHOCK_HEIGHT_PER_RADIUS = 1.25;
 
 /**
  * 12 · swingarm (motorcycle rear, single centered wheel)
@@ -33,7 +33,7 @@ export const buildSwingArm: AxleBuilder = (ctx, axle, i) => {
   // mono-shock, vertical, on the arm in front of the wheel (clear of the tire)
   const along = Math.min(0.7, Math.max(0.15, 1 - (axle.wheel.radius + SHOCK_TIRE_CLEARANCE) / armLength));
   const sp = lerp(pivot, wc, along);
-  const top = add(sp, v(0, SHOCK_HEIGHT, 0));
+  const top = add(sp, v(0, SHOCK_HEIGHT_PER_RADIUS * axle.wheel.radius, 0));
   springJoint(ctx, ctx.chassis, top, arm, sp, springFor(rate, leverRatio(AX.X, pivot, sp, wc)));
 
   const visuals = [
