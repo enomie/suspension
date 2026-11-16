@@ -7,9 +7,9 @@ import { createHelperBody } from '../knuckle';
 import { dampingCoeff, G, springRate } from '../../tuning';
 
 /**
- * Gemeinsame Bausteine aller Aufhängungen.
- * Beim Bau haben alle Körper Identitäts-Rotation → Joint-Achsen in Welt = lokal,
- * lokale Anker = Weltpunkt − Körperposition.
+ * shared building blocks of all suspensions.
+ * at build all bodies have identity rotation → joint axes in world = local,
+ * local anchors = world point − body position.
  */
 export type P = { x: number; y: number; z: number };
 
@@ -18,7 +18,7 @@ export const AX = {
   Y: { x: 0, y: 1, z: 0 },
   Z: { x: 0, y: 0, z: 1 },
   DOWN: { x: 0, y: -1, z: 0 },
-  /** Raddrehachse: positive Drehzahl = vorwärts (−Z) */
+  /** wheel spin axis: positive rate = forward (−Z) */
   SPIN: { x: -1, y: 0, z: 0 },
 };
 
@@ -39,19 +39,19 @@ export const norm = (a: P): P => {
 const cross = (a: P, b: P): P => v(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
 const toVec3 = (p: P): Vec3 => [p.x, p.y, p.z];
 
-/** Radmitte (Chassis-lokal) */
+/** wheel center (chassis-local) */
 export function wheelLocal(axle: AxleSpec, side: Side, dz = 0): P {
   return v(sideSign(side) * (axle.track / 2), axle.y, axle.z + dz);
 }
 
-/** Chassis-lokal → Welt (Spawn ohne Rotation) */
+/** chassis-local → world (spawn without rotation) */
 export const W = (ctx: BuildContext, l: P): P => add(ctx.origin, l);
 
 function localOn(body: RAPIER.RigidBody, w: P): P {
   return sub(w, body.translation());
 }
 
-/** Visual-Anker: Weltpunkt fest an Körper */
+/** visual anchor: world point fixed on body */
 export function at(body: RAPIER.RigidBody, w: P) {
   return { body, local: toVec3(localOn(body, w)) };
 }
@@ -60,7 +60,7 @@ export function link(kind: LinkVisual['kind'], b1: RAPIER.RigidBody, w1: P, b2: 
   return { kind, a: at(b1, w1), b: at(b2, w2) };
 }
 
-/** Hilfskörper (Lenker, Radträger …) – Masse relativ zum Rad. */
+/** helper body (arms, carrier …) — mass relative to wheel. */
 export function helper(ctx: BuildContext, axle: AxleSpec, w: P, id: string, massFactor = 0.5): RAPIER.RigidBody {
   const m = axle.wheel.mass * massFactor;
   const b = createHelperBody(ctx.R, ctx.world, w, m, 0.5 * m * axle.wheel.radius ** 2 + 0.05);
@@ -92,16 +92,16 @@ export function spherical(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.Ri
 export function prismatic(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P, axis: P) {
   return create<RAPIER.PrismaticImpulseJoint>(ctx, ctx.R.JointData.prismatic(localOn(b1, w), localOn(b2, w), axis), b1, b2);
 }
-/** Seil = maximaler Abstand (Ausfeder-Anschlag) */
+/** rope = max distance (bump stop) */
 export function rope(ctx: BuildContext, b1: RAPIER.RigidBody, w1: P, b2: RAPIER.RigidBody, w2: P, maxLen: number) {
   return create(ctx, ctx.R.JointData.rope(maxLen, localOn(b1, w1), localOn(b2, w2)), b1, b2);
 }
 
-/** Feder-/Dämpferwerte auf Radmitte bezogen */
+/** spring/damper values at wheel center */
 export interface WheelRate {
   kWheel: number;
   cWheel: number;
-  /** statische Last je Rad [N] */
+  /** static load per wheel [N] */
   load: number;
 }
 
@@ -114,15 +114,15 @@ export function wheelRate(ctx: BuildContext, axle: AxleSpec, axleIndex: number, 
 }
 
 /**
- * Feder an Übersetzung (motion ratio MR = Federweg / Radweg) anpassen:
- * k_Feder = k_Rad / MR², c entsprechend, Federkraft = Last / MR.
+ * scale spring for motion ratio MR = spring travel / wheel travel:
+ * k_spring = k_wheel / MR², c likewise, spring force = load / MR.
  */
 export function springFor(r: WheelRate, mr: number) {
   const m = Math.max(0.05, Math.abs(mr));
   return { k: r.kWheel / (m * m), c: r.cWheel / (m * m), force: r.load / m };
 }
 
-/** Feder-Joint (Rapier Spring) zwischen zwei Punkten, vorgespannt auf statische Last. */
+/** spring joint (Rapier spring) between two points, preloaded to static load. */
 export function springJoint(
   ctx: BuildContext,
   b1: RAPIER.RigidBody,
@@ -135,7 +135,7 @@ export function springJoint(
   return create(ctx, ctx.R.JointData.spring(rest, s.k, s.c, localOn(b1, w1), localOn(b2, w2)), b1, b2);
 }
 
-/** Feder+Dämpfer als Positions-Motor eines Prismatic-Joints; Achse zeigt in Ausfeder-Richtung. */
+/** spring+damper as prismatic position motor; axis points in jounce direction. */
 export function prismaticSpring(
   ctx: BuildContext,
   j: RAPIER.PrismaticImpulseJoint,
@@ -147,17 +147,17 @@ export function prismaticSpring(
   j.configureMotorPosition(s.force / s.k, s.k, s.c);
 }
 
-/** Vertikaler Weg eines Punktes pro Drehwinkel um eine Schwenkachse */
+/** vertical travel of a point per rad of swing about an axis */
 function dyPerRad(axis: P, pivot: P, point: P): number {
   return cross(axis, sub(point, pivot)).y;
 }
 
-/** Übersetzung Feder/Rad für einen Hebel um `axis` durch `pivot` (vertikale Feder an `springPt`). */
+/** spring/wheel ratio for lever about `axis` through `pivot` (vertical spring at `springPt`). */
 export function leverRatio(axis: P, pivot: P, springPt: P, wheel: P): number {
   return dyPerRad(axis, pivot, springPt) / dyPerRad(axis, pivot, wheel);
 }
 
-/** Winkel-Limits eines Schwenkarms aus dem gewünschten Radweg [−ein, +aus]. */
+/** swing-arm angle limits from desired wheel travel [−jounce, +rebound]. */
 export function armLimits(j: RAPIER.RevoluteImpulseJoint, axis: P, pivot: P, wheel: P, travel: [number, number]) {
   const d = dyPerRad(axis, pivot, wheel);
   const a = -travel[0] / d;
@@ -166,8 +166,8 @@ export function armLimits(j: RAPIER.RevoluteImpulseJoint, axis: P, pivot: P, whe
 }
 
 /**
- * Corner abschließen: (lenkbar) Knuckle mit Revolute Y am Radträger, dann Rad mit Revolute X.
- * Jede Aufhängung liefert nur den Radträger + ihre Lenker/Federn.
+ * finish corner: (steerable) knuckle with revolute Y on carrier, then wheel with revolute X.
+ * each suspension only supplies carrier + its arms/springs.
  */
 export function finishCorner(
   ctx: BuildContext,
@@ -218,7 +218,7 @@ export function finishCorner(
   };
 }
 
-/** Federbein-Optik: Feder + Dämpfer zwischen zwei Punkten */
+/** strut visuals: spring + damper between two points */
 export function coilover(b1: RAPIER.RigidBody, w1: P, b2: RAPIER.RigidBody, w2: P): LinkVisual[] {
   return [link('spring', b1, w1, b2, w2), link('damper', b1, w1, b2, w2)];
 }

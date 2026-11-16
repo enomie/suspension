@@ -1,11 +1,11 @@
 /**
- * Snapshot = Zustand nach einem Physik-Schritt, als Float64Array (per Transfer, ohne Kopie).
- *   [0] Generation (wechselt bei Respawn/Preset → alte Snapshots werden verworfen)
- *   [1] Zeitstempel [ms, performance.timeOrigin + now] des simulierten Zeitpunkts
- *   [2] Vorwärtsgeschwindigkeit [m/s]
- *   [3..] je Corner 4 Werte Telemetrie (travel, springForce, wheelOmega, steerAngle)
- *   danach je Körper 7 Werte: ABSOLUTE Position (x, y, z) + Quaternion (x, y, z, w)
- * Absolute Positionen (Float64) entkoppeln den Floating Origin von Worker und Haupt-Thread.
+ * snapshot = state after a physics step, as Float64Array (transfer, no copy).
+ *   [0] generation (changes on respawn/preset → old snapshots discarded)
+ *   [1] timestamp [ms, performance.timeOrigin + now] of simulated time
+ *   [2] forward speed [m/s]
+ *   [3..] per corner 4 telemetry values (travel, springForce, wheelOmega, steerAngle)
+ *   then per body 7 values: ABSOLUTE position (x, y, z) + quaternion (x, y, z, w)
+ * absolute positions (Float64) decouple floating origin from worker and main thread.
  */
 export const HEADER = 3;
 export const CORNER_STRIDE = 4;
@@ -16,12 +16,12 @@ export const snapshotLength = (corners: number, bodies: number) =>
 
 export const bodyOffset = (corners: number) => HEADER + corners * CORNER_STRIDE;
 
-/** Gemeinsame Uhr für Worker und Haupt-Thread [ms] */
+/** shared clock for worker and main thread [ms] */
 export const wallClock = () => performance.timeOrigin + performance.now();
 
 /**
- * Mischt zwei Snapshots (lineare Werte linear, Quaternionen nlerp mit Vorzeichen-Korrektur –
- * bei 8 ms Abstand praktisch identisch zu slerp, aber billiger).
+ * blends two snapshots (linear values linear, quaternions nlerp with sign fix —
+ * at 8 ms spacing practically same as slerp, but cheaper).
  */
 export function blendSnapshots(a: Float64Array, b: Float64Array, t: number, corners: number, out: Float64Array): void {
   const q0 = bodyOffset(corners);

@@ -2,25 +2,25 @@ import { fbm, hashString, smoothstep } from '../noise';
 import type { Layer, SampleContext } from '../types';
 
 /**
- * Kontinent: sehr großräumiges Rauschen entscheidet Land / Meer.
- *   v = fbm − seaThreshold   (seaThreshold so gewählt, dass ~landFraction Land ist)
- *   Land:  0 … landHeight (flache Küste, Tiefebenen, sanft ansteigend ins Landesinnere)
- *   Meer:  Schelf bis shelfDepth, dann Abhang bis maxDepth
- * Masken: `land` (0/1 weich), `coast` (1 an der Küste), `inland` (1 weit im Landesinneren)
+ * continent: very large-scale noise decides land / sea.
+ *   v = fbm − seaThreshold   (seaThreshold chosen so ~landFraction is land)
+ *   land:  0 … landHeight (flat coast, low plains, gentle rise inland)
+ *   sea:  shelf to shelfDepth, then slope to maxDepth
+ * masks: `land` (soft 0/1), `coast` (1 at coast), `inland` (1 deep inland)
  */
 export interface ContinentLayerConfig {
   type: 'continent';
   name?: string;
-  /** Wellenlänge der gröbsten Oktave [m] */
+  /** wavelength of coarsest octave [m] */
   wavelength: number;
   octaves: number;
-  /** fbm-Schwelle Land/Meer (−0,06 ≈ 60 % Land bei 6 Oktaven, gain 0,5) */
+  /** fbm threshold land/sea (−0.06 ≈ 60% land at 6 octaves, gain 0.5) */
   seaThreshold: number;
-  /** höchste Landhöhe ohne Gebirge [m] */
+  /** highest land height without mountains [m] */
   landHeight: number;
-  /** Tiefe am Schelfrand [m, negativ] */
+  /** depth at shelf edge [m, negative] */
   shelfDepth: number;
-  /** tiefstes Meer [m, negativ] */
+  /** deepest sea [m, negative] */
   maxDepth: number;
 }
 

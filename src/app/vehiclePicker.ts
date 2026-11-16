@@ -1,6 +1,6 @@
 import { VEHICLE_PRESET_LABELS } from '../shared/vehiclePresetLabels';
 
-/** Dropdown oben rechts: Fahrzeug-Preset wählen. */
+/** top-right dropdown: pick vehicle preset. */
 export class VehiclePicker {
   readonly select: HTMLSelectElement;
   private syncing = false;

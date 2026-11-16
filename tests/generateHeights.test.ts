@@ -9,9 +9,9 @@ import { TILE_SEGMENTS } from '../src/shared/config';
 
 const t = createTerrain(DEFAULT_TERRAIN);
 
-describe('Terrain-Generator', () => {
-  it('Golden Values: Höhenfunktion ändert sich nicht unbemerkt (bitgleich)', () => {
-    // Bei ABSICHTLICHER Änderung des Terrains neu erzeugen und hier eintragen.
+describe('terrain generator', () => {
+  it('golden values: height function does not change silently (bit-identical)', () => {
+    // On INTENTIONAL terrain changes, regenerate and paste values here.
     const golden: [number, number, number][] = [
       [0, 0, 10],
       [858000.5, 897000.25, 9.198603584027877],
@@ -23,7 +23,7 @@ describe('Terrain-Generator', () => {
     for (const [x, z, h] of golden) expect(t.height(x, z)).toBe(h);
   });
 
-  it('deterministisch: zwei Generatoren aus derselben Konfiguration sind identisch', () => {
+  it('deterministic: two generators from the same config are identical', () => {
     const u = createTerrain(structuredClone(DEFAULT_TERRAIN));
     for (let i = 0; i < 500; i++) {
       const x = i * 97.31 - 20000;
@@ -32,14 +32,14 @@ describe('Terrain-Generator', () => {
     }
   });
 
-  it('anderer Seed → anderes Gelände', () => {
+  it('different seed → different terrain', () => {
     const u = createTerrain({ ...DEFAULT_TERRAIN, seed: 1 });
     let diff = 0;
     for (let i = 0; i < 100; i++) diff += Math.abs(u.height(i * 13, i * 7) - t.height(i * 13, i * 7));
     expect(diff).toBeGreaterThan(10);
   });
 
-  it('Hügelwelt: base … base + amplitude, mit echter Variation', () => {
+  it('hill world: base … base + amplitude, with real variation', () => {
     const t = createTerrain(HILLS_TERRAIN);
     const l = HILLS_TERRAIN.layers[0] as { base: number; amplitude: number };
     let min = Infinity;
@@ -54,7 +54,7 @@ describe('Terrain-Generator', () => {
     expect(max - min).toBeGreaterThan(2);
   });
 
-  it('Simplex-Noise: Bereich ≈ ±1, stetig', () => {
+  it('simplex noise: range ≈ ±1, continuous', () => {
     let m = 0;
     for (let i = 0; i < 20000; i++) m = Math.max(m, Math.abs(simplex2(i * 0.173, i * 0.071, 7)));
     expect(m).toBeLessThan(1.05);
@@ -62,10 +62,10 @@ describe('Terrain-Generator', () => {
     expect(Math.abs(simplex2(10, 10, 7) - simplex2(10.001, 10, 7))).toBeLessThan(0.01);
   });
 
-  it('Bandbegrenzung lässt nur feine Oktaven weg', () => {
+  it('band limit drops only fine octaves', () => {
     const p = { wavelength: 100, octaves: 5 };
     const full = fbm(123.4, 567.8, 3, p);
-    const coarse = fbm(123.4, 567.8, 3, p, 30); // nur 100 m + 50 m
+    const coarse = fbm(123.4, 567.8, 3, p, 30); // only 100 m + 50 m wavelengths
     expect(Math.abs(full - coarse)).toBeLessThan(0.35);
     expect(fbm(123.4, 567.8, 3, p, 0)).toBe(full);
   });
@@ -131,7 +131,7 @@ describe('World: mountains, roads, calm spawn', () => {
     expect(w.findLand(0, 0, { step: 64 })).toEqual(p);
   });
 
-  it('weiche Obergrenze: stetig, monoton, nie über max', () => {
+  it('soft ceiling: continuous, monotonic, never above max', () => {
     let prev = -Infinity;
     for (let h = 2000; h < 10000; h += 7) {
       const v = softLimit(h, -1500, 3000, 300);
@@ -143,8 +143,8 @@ describe('World: mountains, roads, calm spawn', () => {
   });
 });
 
-describe('Geomorphing-Ziel = Elternkachel', () => {
-  it('voll gemorphte Kachel hat an den groben Punkten exakt die Höhe der Elternkachel (auch im Gebirge)', () => {
+describe('geomorphing target = parent tile', () => {
+  it('fully morphed tile matches parent height at coarse grid points (in mountains too)', () => {
     setTerrain(WORLD_TERRAIN);
     // mountains near (-54 km, 99 km)
     for (const lod of [0, 3, 7]) {
@@ -160,7 +160,7 @@ describe('Geomorphing-Ziel = Elternkachel', () => {
         for (let i = 0; i <= N; i += 2) {
           const k = j * (N + 1) + i;
           const morphed = child.position[k * 3 + 1] + child.morph[k];
-          // gleicher Weltpunkt in der Elternkachel
+          // same world point on the parent tile
           const wx = ix * cs + i * (cs / N);
           const wz = iz * cs + j * (cs / N);
           const pi = Math.round((wx - (ix >> 1) * ps) / (ps / N));

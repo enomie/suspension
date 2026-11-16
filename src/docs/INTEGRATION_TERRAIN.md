@@ -1,76 +1,76 @@
-# Terrain-Technik in ein anderes Projekt übernehmen
+# Adopting terrain tech in another project
 
-Ziel: ein bestehendes Spiel mit festen Chunks (z. B. 9 Stück) und eigenen Biomen auf **unendliches Terrain** umstellen –
-mit LOD bis 32 km in einem Draw Call, exakt passender Physik in der Nähe und Floating Origin.
+Goal: convert an existing game with fixed chunks (e.g. 9 pieces) and custom biomes to **infinite terrain** –
+with LOD to 32 km in one draw call, matching physics up close, and floating origin.
 
-## 1. Die vier Bausteine
-| Baustein | Dateien | Aufgabe | Ersetzt im Zielprojekt |
+## 1. The four building blocks
+| Block | Files | Job | Replaces in target project |
 |---|---|---|---|
-| **Höhenfunktion** | `shared/terrain/` | `height(x, z)` deterministisch aus Seed + Konfiguration | die Höhen-/Biom-Erzeugung der Chunks |
-| **LOD-Optik** | `render/terrain/`, `shared/tileGeometry.ts`, `shared/config.ts` | Quadtree-Kacheln 32 m … 32 km, 1 BatchedMesh, Geomorphing, Kachel-Worker | die 9 Chunk-Meshes |
-| **Physik-Boden** | `physics/terrainColliders.ts` | 3×3 Rapier-Heightfields à 64 m um das Fahrzeug, gestreamt | Chunk-Collider |
-| **Floating Origin** | `shared/origin.ts`, `shared/originShifter.ts` | Weltkoordinaten bleiben klein (Shift ab 1024 m im 64-m-Raster) | – (neu, nötig ab einigen km) |
+| **Height function** | `shared/terrain/` | `height(x, z)` deterministic from seed + config | chunk height/biome generation |
+| **LOD visuals** | `render/terrain/`, `shared/tileGeometry.ts`, `shared/config.ts` | quadtree tiles 32 m … 32 km, 1 BatchedMesh, geomorphing, tile worker | the 9 chunk meshes |
+| **Physics ground** | `physics/terrainColliders.ts` | 3×3 Rapier heightfields at 64 m around vehicle, streamed | chunk colliders |
+| **Floating origin** | `shared/origin.ts`, `shared/originShifter.ts` | world coordinates stay small (shift from 1024 m on 64 m grid) | – (new, needed past a few km) |
 
-Alles hängt nur an **einer** Funktion: der Höhe an einer absoluten Position. Optik (jede LOD-Stufe) und Physik tasten
-sie an denselben Punkten ab → in der Nähe stimmen Bild und Collider auf < 1 mm überein.
+Everything hangs on **one** function: height at an absolute position. Visuals (each LOD level) and physics sample
+the same points → up close, image and collider agree within < 1 mm.
 
-## 2. Wichtigste Entscheidung: woher kommen die Höhen?
-### Variante A (empfohlen): Biome des Zielprojekts als Schichten
-Das Zielprojekt hat bereits Biome. Diese werden zu **Schichten** in `shared/terrain/layers/`:
-1. Pro Biom-Regel eine Schicht-Datei (Muster: `layers/mountains.ts`): `apply(ctx)` addiert Höhe und setzt Masken.
-2. Biom-Auswahl als eigene Schicht (z. B. `biomes.ts`), die Masken `ctx.masks.<biom> = 0…1` setzt –
-   weich überblendet, sonst entstehen Stufen an Biom-Grenzen.
-3. Schicht-Typ in `layers/index.ts` und `types.ts` eintragen, Preset in `presets.ts`.
-4. Golden-Value-Test anlegen (`tests/generateHeights.test.ts` als Vorlage).
+## 2. Key decision: where do heights come from?
+### Variant A (recommended): target project biomes as layers
+The target project already has biomes. Convert them to **layers** in `shared/terrain/layers/`:
+1. One layer file per biome rule (pattern: `layers/mountains.ts`): `apply(ctx)` adds height and sets masks.
+2. Biome selection as its own layer (e.g. `biomes.ts`) setting masks `ctx.masks.<biome> = 0…1` –
+   blended softly, else steps at biome borders.
+3. Register layer type in `layers/index.ts` and `types.ts`, preset in `presets.ts`.
+4. Add golden-value test (`tests/generateHeights.test.ts` as template).
 
-### Variante B: vorhandene Höhenfunktion übernehmen
-Wenn das Zielprojekt schon `height(x, z)` hat: als **eine** Schicht verpacken (`layers/external.ts`, `apply(ctx) { ctx.height += theirHeight(ctx.x, ctx.z) }`).
-Voraussetzungen (sonst Risse/Flackern/Abweichung Physik ↔ Optik):
-- **rein und deterministisch**: keine Zufallszahlen ohne Seed, kein Zustand, keine Abhängigkeit von geladenen Chunks
-- **unendlich**: liefert für jede Koordinate einen Wert (nicht nur innerhalb der 9 Chunks)
-- **in Workern lauffähig**: kein DOM, kein three.js-Szenenzugriff (die Funktion läuft im Physik- und in den Kachel-Workern)
-- **bitgleiche Mathe**: nur `+ − × ÷`, `floor`, `sqrt`, `Math.imul`/Bit-Ops. `Math.pow/sin/cos/exp` können je Browser
-  minimal abweichen → für Physik meist egal, für exakte Golden-Tests nicht.
+### Variant B: adopt existing height function
+If the target already has `height(x, z)`: wrap as **one** layer (`layers/external.ts`, `apply(ctx) { ctx.height += theirHeight(ctx.x, ctx.z) }`).
+Requirements (else cracks/flicker/physics ↔ visual mismatch):
+- **pure and deterministic**: no RNG without seed, no state, no dependency on loaded chunks
+- **infinite**: value for every coordinate (not only inside 9 chunks)
+- **worker-safe**: no DOM, no three.js scene access (runs in physics and tile workers)
+- **bit-identical math**: only `+ − × ÷`, `floor`, `sqrt`, `Math.imul`/bit ops. `Math.pow/sin/cos/exp` can differ slightly per browser
+  → usually OK for physics, not for exact golden tests.
 
-## 3. Konventionen, die im Zielprojekt passen müssen
-| Thema | Hier | Prüfen im Zielprojekt |
+## 3. Conventions the target project must match
+| Topic | Here | Check in target |
 |---|---|---|
-| Achsen | Y oben, Höhe = y; Sea Level y = 0 | gleiche Höhenreferenz wie das Meer-Projekt |
-| Einheit | 1 = 1 m | – |
-| Raster | Zelle 0,5 m (LOD 0 = Physik), Render-Kachel 32 m, Physik-Kachel 64 m, Wurzel 32 768 m | Objekt-Platzierung (Bäume …) am besten an 64-m-Kacheln koppeln |
-| Dreiecks-Diagonale | (x1,z0)–(x0,z1) wie Rapier-Heightfield | eigene Meshes, die exakt auf dem Boden liegen müssen |
-| Koordinaten | Szene + Physik **lokal**, absolut = lokal + `ORIGIN` | alles mit Weltposition muss beim Shift mitverschoben werden (`origin.on(...)`) |
-| Tiefe | Reversed-Z (`reversedDepthBuffer: true`), near 0,3 m, far 36 km | Post-Processing/Shader, die Tiefe lesen |
+| Axes | Y up, height = y; sea level y = 0 | same height reference as ocean project |
+| Unit | 1 = 1 m | – |
+| Grid | cell 0.5 m (LOD 0 = physics), render tile 32 m, physics tile 64 m, root 32 768 m | object placement (trees …) best tied to 64 m tiles |
+| Triangle diagonal | (x1,z0)–(x0,z1) as Rapier heightfield | own meshes that must sit exactly on ground |
+| Coordinates | scene + physics **local**, absolute = local + `ORIGIN` | anything with world position must shift with origin (`origin.on(...)`) |
+| Depth | reversed Z (`reversedDepthBuffer: true`), near 0.3 m, far 36 km | post-processing/shaders that read depth |
 
-## 4. Einbau Schritt für Schritt
-1. **Generator** kopieren (`shared/terrain/`, `shared/config.ts`, `shared/terrainHeight.ts`, `shared/tileGeometry.ts`),
-   Höhenquelle nach Variante A oder B einhängen. Test: Golden Values + Wertebereich.
-2. **Aktives Terrain je Thread**: im Haupt-Thread `setTerrain(config)` **vor** allem anderen; dieselbe `config` an jeden
-   Worker schicken (Physik-Worker: Init-Nachricht; Kachel-Worker: macht `LodTerrain` selbst).
-3. **Optik**: `render/terrain/` kopieren. `const lod = new LodTerrain(); scene.add(lod.root);`
-   Pro Frame **nach** dem Kamera-Update: `lod.update(camera.position.x, camera.position.y, camera.position.z)`.
-   Die 9 Chunk-Meshes entfernen.
-4. **Physik**: `physics/terrainColliders.ts` – `new PhysicsTiles(R, world)`, pro Physik-Schritt
-   `tiles.update(fahrzeug.x, fahrzeug.z, 2500)` (Kachel unter dem Fahrzeug sofort, Nachbarn stückweise).
-   Mehrere Fahrzeuge/Objekte: je Fokus eine Instanz oder `update` für jeden Fokus erweitern.
-5. **Floating Origin**: eine `OriginShifter`-Instanz je Thread. Physik: Listener verschiebt alle Rapier-Körper
-   (siehe `physics/Simulation.ts`); Haupt-Thread: Kamera, `lod.onOriginShift()`, alle eigenen Objekte.
-6. **Startpunkt**: `terrain().findLand(x, z)` – nächster ebener Landpunkt.
-7. **Einfärbung nach Biom** (hier noch nicht umgesetzt): Biom-Gewichte in `buildTileArrays` als zusätzliches
-   Vertex-Attribut schreiben (wie `morph`), im Material (`terrainMaterial()` in `LodTerrain.ts`) mischen.
-   Neue Attribute müssen auch in `geometryFrom()` und im Kachel-Worker-Transfer ergänzt werden.
+## 4. Integration step by step
+1. **Copy generator** (`shared/terrain/`, `shared/config.ts`, `shared/terrainHeight.ts`, `shared/tileGeometry.ts`),
+   plug height source per variant A or B. Test: golden values + value range.
+2. **Active terrain per thread**: on main thread `setTerrain(config)` **before** everything else; send same `config` to each
+   worker (physics worker: init message; tile worker: `LodTerrain` does it).
+3. **Visuals**: copy `render/terrain/`. `const lod = new LodTerrain(); scene.add(lod.root);`
+   Each frame **after** camera update: `lod.update(camera.position.x, camera.position.y, camera.position.z)`.
+   Remove the 9 chunk meshes.
+4. **Physics**: `physics/terrainColliders.ts` – `new PhysicsTiles(R, world)`, per physics step
+   `tiles.update(vehicle.x, vehicle.z, 2500)` (tile under vehicle immediately, neighbors incrementally).
+   Multiple vehicles/objects: one instance per focus or extend `update` for each focus.
+5. **Floating origin**: one `OriginShifter` instance per thread. Physics: listener moves all Rapier bodies
+   (see `physics/Simulation.ts`); main thread: camera, `lod.onOriginShift()`, all own objects.
+6. **Start point**: `terrain().findLand(x, z)` – nearest flat land point.
+7. **Biome coloring** (not implemented here yet): write biome weights in `buildTileArrays` as extra
+   vertex attribute (like `morph`), blend in material (`terrainMaterial()` in `LodTerrain.ts`).
+   New attributes must also be added in `geometryFrom()` and tile worker transfer.
 
-## 5. Stolpersteine (alle hier schon einmal aufgetreten)
-| Symptom | Ursache | Lösung / Ort |
+## 5. Pitfalls (all seen here before)
+| Symptom | Cause | Fix / location |
 |---|---|---|
-| Terrain flackert beim Fahren | Verfeinerung wartet auf den ganzen Teilbaum → Rückfall auf grobe Kachel | Ebene für Ebene verfeinern (`select()` in `LodTerrain.ts`) |
-| Licht springt bei LOD-Wechsel | nur Höhe gemorpht | Höhe **und** Normale morphen (`morphNormal`) |
-| Sprung trotz Morph | grobe Kacheln lassen feine Oktaven weg | Morph-Ziel aus der echten Elternstufe abtasten (`buildTileArrays`) |
-| Kacheln pendeln an Grenzen | festes Fenster / Schwellen ohne Hysterese | Hysterese bei Teilung und Sichtweite |
-| Risse an Steilhängen | Skirts zu flach | Skirt-Tiefe aus größtem Morph-Ausschlag |
-| Physik-Worker hängt | ganze 64-m-Kachel in einem Schritt (~20 ms bei 1 µs/Punkt) | stückweise mit Budget |
-| Schatten springt bei Shift | Texel-Raster in lokalen Koordinaten | in absoluten Koordinaten rastern (`SunRig`) |
+| terrain flicker while driving | refinement waits for whole subtree → fallback to coarse tile | refine level by level (`select()` in `LodTerrain.ts`) |
+| light jumps on LOD change | only height morphed | morph height **and** normal (`morphNormal`) |
+| jump despite morph | coarse tiles omit fine octaves | sample morph target from real parent level (`buildTileArrays`) |
+| tiles oscillate at boundaries | fixed window / thresholds without hysteresis | hysteresis on split and view distance |
+| cracks on steep slopes | skirts too shallow | skirt depth from largest morph excursion |
+| physics worker hitch | whole 64 m tile in one step (~20 ms at 1 µs/point) | incremental with budget |
+| shadows jump on shift | texel grid in local coordinates | rasterize in absolute coordinates (`SunRig`) |
 
-## 6. Zahlen zum Abgleich
-~120–160 sichtbare Kacheln, 1 Draw Call, ~1,3 Mio. Dreiecke; Höhenfunktion ~1 µs/Punkt (Welt-Preset);
-Erstaufbau ~1,3 s Rechenzeit verteilt auf ≤ 4 Kachel-Worker; Physik 0,2–0,3 ms pro 120-Hz-Schritt.
+## 6. Numbers for comparison
+~120–160 visible tiles, 1 draw call, ~1.3M triangles; height function ~1 µs/point (world preset);
+initial build ~1.3 s compute spread across ≤ 4 tile workers; physics 0.2–0.3 ms per 120 Hz step.

@@ -1,37 +1,37 @@
-# src – Wegweiser
+# src – guide
 
-Dieser Ordner ist **selbsterklärend kopierbar**: Code und Doku liegen zusammen. Wer ihn in ein anderes Projekt
-übernimmt (auch umbenannt), findet hier alles zum Abgleichen.
+This folder is **meant to be copied as-is**: code and docs live together. Anyone porting it into another project
+(renamed or not) can use this as the map.
 
-## Was liegt wo
-| Ordner | Läuft in | Abhängigkeiten | Inhalt | Doku |
+## Layout
+| Folder | Runs in | Dependencies | Contents | Docs |
 |---|---|---|---|---|
-| `shared/` | überall | keine | Konstanten, Floating Origin, Snapshot-Format, Protokoll, Fahrzeug-Typen | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| `shared/terrain/` | überall | keine | **Terrain-Generator** (deterministisch, Schichten) | [docs/TERRAIN.md](docs/TERRAIN.md) |
-| `physics/` | Physik-Worker | Rapier | Simulation, Boden-Collider, Worker-Einstieg | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| `physics/vehicle/` | Physik | Rapier, three.js-Mathe | **Fahrzeug-Baukasten** (10 Aufhängungen) | [docs/VEHICLE_KIT.md](docs/VEHICLE_KIT.md) |
-| `render/terrain/` | Haupt-Thread | three.js (WebGPU/TSL) | **LOD-Terrain** (1 Draw Call, Geomorphing, Kachel-Worker) | [docs/TERRAIN.md](docs/TERRAIN.md) |
-| `render/vehicle/` | Haupt-Thread | three.js | Fahrzeug-Optik aus Daten-Layout | [docs/VEHICLE_KIT.md](docs/VEHICLE_KIT.md) |
-| `render/` (Rest) | Haupt-Thread | three.js | Szene, Kamera-Rig, Sonne mit Schatten | – |
-| `app/` | Haupt-Thread | alles | Verdrahtung dieses Testprojekts: Worker-Client, Eingabe, HUD, Debug | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| `shared/` | everywhere | none | constants, floating origin, snapshot format, protocol, vehicle types | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| `shared/terrain/` | everywhere | none | **terrain generator** (deterministic, layers) | [docs/TERRAIN.md](docs/TERRAIN.md) |
+| `physics/` | physics worker | Rapier | simulation, ground colliders, worker entry | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| `physics/vehicle/` | physics | Rapier, three.js math | **vehicle kit** (10 suspensions) | [docs/VEHICLE_KIT.md](docs/VEHICLE_KIT.md) |
+| `render/terrain/` | main thread | three.js (WebGPU/TSL) | **LOD terrain** (1 draw call, geomorphing, tile workers) | [docs/TERRAIN.md](docs/TERRAIN.md) |
+| `render/vehicle/` | main thread | three.js | vehicle visuals from data layout | [docs/VEHICLE_KIT.md](docs/VEHICLE_KIT.md) |
+| `render/` (rest) | main thread | three.js | scene, camera rig, sun with shadows | – |
+| `app/` | main thread | all of the above | this demo wiring: worker client, input, HUD, debug | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 
-## Übernahme in ein anderes Projekt
-| Ziel | Anleitung |
+## Porting to another project
+| Goal | Guide |
 |---|---|
-| Terrain-Technik (unendlich, LOD, Physik-Kacheln, Floating Origin) | [docs/INTEGRATION_TERRAIN.md](docs/INTEGRATION_TERRAIN.md) |
-| Terrain in **apokalypto** (Stand, Datei-Zuordnung, nächste Schritte) | [docs/INTEGRATION_APOKALYPTO.md](docs/INTEGRATION_APOKALYPTO.md) |
-| Fahrzeug statt Raycast-Vehicle, Anbindung an einen Asset-Editor | [docs/INTEGRATION_VEHICLE.md](docs/INTEGRATION_VEHICLE.md) |
+| Terrain (infinite, LOD, physics tiles, floating origin) | [docs/INTEGRATION_TERRAIN.md](docs/INTEGRATION_TERRAIN.md) |
+| Terrain in **apokalypto** (status, file mapping, next steps) | [docs/INTEGRATION_APOKALYPTO.md](docs/INTEGRATION_APOKALYPTO.md) |
+| Vehicle kit instead of raycast vehicle, asset-editor hookup | [docs/INTEGRATION_VEHICLE.md](docs/INTEGRATION_VEHICLE.md) |
 
-Öffentliche Einstiege (nur diese importieren):
+Public entry points (import only these):
 `shared/terrain/index.ts` · `physics/vehicle/index.ts` · `render/vehicle/index.ts` · `render/terrain/index.ts`
 
-## Stand
-| Doku | Inhalt |
+## Reference
+| Doc | Contents |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Schichten, Threads, Frame-Ablauf, Snapshots, Debug-Tasten, frühere Fehlerursachen |
-| [docs/TERRAIN.md](docs/TERRAIN.md) | Raster, Generator, Schichten, LOD, Geomorphing, Zahlen |
-| [docs/VEHICLE_KIT.md](docs/VEHICLE_KIT.md) | Konzept, Benennung, Bauteile, Joints, Rapier-Regeln |
-| [docs/VEHICLE_PLAN.md](docs/VEHICLE_PLAN.md) | Entscheidungen, umgesetzte und offene Phasen |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, threads, frame flow, snapshots, debug keys, past root causes |
+| [docs/TERRAIN.md](docs/TERRAIN.md) | Grid, generator, layers, LOD, geomorphing, numbers |
+| [docs/VEHICLE_KIT.md](docs/VEHICLE_KIT.md) | Concepts, naming, parts, joints, Rapier rules |
+| [docs/VEHICLE_PLAN.md](docs/VEHICLE_PLAN.md) | Decisions, shipped and open phases |
 
-Versionen, auf die alles abgestimmt ist: `three@0.187` (WebGPURenderer, TSL), `@dimforge/rapier3d-simd-compat@0.21`,
-Vite 8 (Worker per `new Worker(new URL('./x.ts', import.meta.url), { type: 'module' })`). Tests: Vitest (`tests/`, außerhalb von src).
+Versions everything is aligned to: `three@0.187` (WebGPURenderer, TSL), `@dimforge/rapier3d-simd-compat@0.21`,
+Vite 8 (workers via `new Worker(new URL('./x.ts', import.meta.url), { type: 'module' })`). Tests: Vitest (`tests/`, outside `src`).

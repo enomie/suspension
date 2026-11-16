@@ -3,13 +3,13 @@ import type { ChassisSpec, ColliderPrimitive } from '../types';
 import { CHASSIS_GROUPS } from '../groups';
 import { IDENTITY_ROT } from './context';
 
-/** Profil des sichtbaren Leiterrahmens (siehe render/vehicle/frameVisual.ts) */
+/** profile of visible ladder frame (see render/vehicle/frameVisual.ts) */
 export const FRAME_RAIL = 0.1;
 
 /**
- * Kollisionsform = sichtbarer Leiterrahmen (abgerundete flache Box um die Längsträger).
- * Früher: volle Box `size` → unsichtbar, setzte auf Bodenwellen auf und verhakte an
- * Dreieckskanten („unsichtbare Wand“). Rundung lässt den Rahmen über Kanten gleiten.
+ * collision shape = visible ladder frame (rounded flat box around side rails).
+ * Formerly: full box `size` → invisible, landed on ground waves and snagged on
+ * triangle edges ("invisible wall"). rounding lets the frame slide over edges.
  */
 export function frameColliderBox(spec: ChassisSpec, halfLength = spec.size[2] / 2): { half: [number, number, number]; y: number } {
   const [w, h] = spec.size;
@@ -18,7 +18,7 @@ export function frameColliderBox(spec: ChassisSpec, halfLength = spec.size[2] / 
   return { half: [railX + FRAME_RAIL / 2, FRAME_RAIL / 2 + 0.01, halfLength], y };
 }
 
-/** Kollisions-Primitive → Rapier-ColliderDesc (Chassis-lokal) */
+/** collider primitive → Rapier ColliderDesc (chassis-local) */
 export function primitiveDesc(R: typeof RAPIER, p: ColliderPrimitive): RAPIER.ColliderDesc {
   const r = p.rounded ?? 0;
   let d: RAPIER.ColliderDesc;
@@ -47,7 +47,7 @@ export function primitiveDesc(R: typeof RAPIER, p: ColliderPrimitive): RAPIER.Co
   return d;
 }
 
-/** Chassis = gefederte Masse. Masse/Trägheit der vollen Box `size`, Kollision = Rahmen. */
+/** chassis = sprung mass. mass/inertia of full box `size`, collision = frame. */
 export function createChassis(
   R: typeof RAPIER,
   world: RAPIER.World,
@@ -68,7 +68,7 @@ export function createChassis(
   };
   const [cx, cy, cz] = spec.comOffset ?? [0, 0, 0];
   if (spec.colliders?.length) {
-    // Primitives: Masse/Schwerpunkt/Trägheit explizit am Körper, Collider ohne eigene Masse
+    // primitives: mass/COM/inertia on body explicitly, colliders without own mass
     body.setAdditionalMassProperties(m, { x: cx, y: cy, z: cz }, inertia, IDENTITY_ROT, true);
     for (const p of spec.colliders) world.createCollider(primitiveDesc(R, p).setDensity(0).setCollisionGroups(CHASSIS_GROUPS), body);
     return body;
@@ -77,7 +77,7 @@ export function createChassis(
   const border = 0.04;
   const desc = R.ColliderDesc.roundCuboid(half[0] - border, half[1] - border, half[2] - border, border)
     .setTranslation(0, y, 0)
-    // Schwerpunkt ist im Collider-System anzugeben
+    // COM must be specified in collider space
     .setMassProperties(m, { x: cx, y: cy - y, z: cz }, inertia, IDENTITY_ROT)
     .setFriction(0.5)
     .setCollisionGroups(CHASSIS_GROUPS);

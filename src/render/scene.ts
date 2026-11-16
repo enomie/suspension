@@ -6,14 +6,14 @@ import { SunRig } from './SunRig';
 
 const SKY = 0x9cc4ea;
 
-/** Renderer, Szene, Kamera, Licht – alles, was nur der Haupt-Thread kennt. */
+/** renderer, scene, camera, light — main thread only. */
 export async function createStage(container: HTMLElement, opts: { dpr: number }) {
   const scene = new Scene();
   scene.background = new Color(SKY);
   scene.fog = new Fog(SKY, VIEW_DISTANCE * 0.12, VIEW_DISTANCE);
 
   const camera = new PerspectiveCamera(55, innerWidth / innerHeight, 0.3, VIEW_DISTANCE * 1.1);
-  /** Reversed-Z: hohe Tiefenpräzision von 0,3 m bis > 30 km (kein Z-Fighting / Flimmern) */
+  /** reversed-Z: high depth precision from 0.3 m to > 30 km (no z-fighting / shimmer) */
   const renderer = new WebGPURenderer({ antialias: true, reversedDepthBuffer: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, opts.dpr));
   renderer.setSize(innerWidth, innerHeight);
@@ -39,7 +39,7 @@ export async function createStage(container: HTMLElement, opts: { dpr: number })
 
 export type Stage = Awaited<ReturnType<typeof createStage>>;
 
-/** Anzeige: natives WebGPU oder WebGPURenderer-WebGL-Fallback (Chrome ohne WebGPU). */
+/** label: native WebGPU or WebGPURenderer WebGL fallback (Chrome without WebGPU). */
 export function gpuBackendLabel(renderer: WebGPURenderer): string {
   return (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL-Fallback';
 }

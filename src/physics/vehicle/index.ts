@@ -1,9 +1,9 @@
 /**
- * Fahrzeug-Baukasten (Physik) – öffentlicher Einstieg. Braucht nur Rapier (+ three.js-Mathe).
- * Doku: src/docs/INTEGRATION_VEHICLE.md, src/docs/VEHICLE_KIT.md
+ * vehicle kit (physics) — public entry. Needs only Rapier (+ three.js math).
+ * Docs: src/docs/INTEGRATION_VEHICLE.md, src/docs/VEHICLE_KIT.md
  *
  *   const v = new Vehicle(R, world, PRESETS[0], { x, y, z });
- *   // pro Physik-Schritt (120 Hz):
+ *   // per physics step (120 Hz):
  *   v.applyInput(input, 1 / 120); world.step(); v.updateTelemetry();
  */
 export { Vehicle } from './Vehicle';

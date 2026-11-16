@@ -2,13 +2,13 @@ import type { Corner, SteeringSpec, VehicleSpec } from '../types';
 import { STEER_DAMPING, STEER_STIFFNESS } from './suspension/common';
 
 /**
- * Lenkung: glättet den Fahrerinput und berechnet pro Rad den Lenkwinkel.
- * ackermann: Wendekreismittelpunkt liegt auf Höhe der ungelenkten Achsen (bzw. Mitte, wenn alle lenken)
- *            → innere Räder stärker, Achsen hinter dem Bezugspunkt lenken automatisch gegenläufig.
- * crab: alle Räder gleicher Winkel (Hundegang).
+ * steering: smooths driver input and computes steer angle per wheel.
+ * ackermann: turn center on line through fixed axles (or middle if all steer)
+ *            → inner wheels more, axles behind reference steer opposite automatically.
+ * crab: all wheels same angle (crab walk).
  */
 export class Steering {
-  /** geglätteter Input −1…1 */
+  /** smoothed input −1…1 */
   value = 0;
   private refZ: number;
   private refL: number;
@@ -37,7 +37,7 @@ export class Steering {
     this.speedScale = 1 + (hs - 1) * Math.min(1, Math.abs(speed) / maxSpeed);
   }
 
-  /** Referenz-Lenkwinkel der ersten Lenkachse [rad], + = links */
+  /** reference steer angle of first steered axle [rad], + = left */
   get angle(): number {
     return this.value * this.refMax * this.speedScale;
   }

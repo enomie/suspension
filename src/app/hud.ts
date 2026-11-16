@@ -8,7 +8,7 @@ export interface TelemetrySource {
   absPos: { x: number; z: number };
 }
 
-/** HUD: Geschwindigkeit + pro Corner Federweg, Federkraft, Raddrehzahl, Lenkwinkel. */
+/** HUD: speed plus per-corner travel, spring force, wheel speed, steer angle. */
 export class TelemetryHud {
   private el: HTMLPreElement;
   private acc = 0;
@@ -49,15 +49,15 @@ export class TelemetryHud {
       lines.push(
         '',
         `pos abs  x ${v.absPos.x.toFixed(0)}  z ${v.absPos.z.toFixed(0)}   origin ${origin.x}, ${origin.z}`,
-        `terrain  ${terrain.visible} Kacheln sichtbar (1 Draw Call) · ${terrain.cached} im Cache · ${terrain.queue} in Warteschlange`,
+        `terrain  ${terrain.visible} tiles visible (1 draw call) · ${terrain.cached} cached · ${terrain.queue} queued`,
       );
     }
     if (physics)
       lines.push(
-        `physik   ${physics.mode === 'worker' ? 'Worker' : 'Haupt-Thread'} · ${physics.stepMs.toFixed(2)} ms/Schritt · Interp.-Verzögerung ${physics.delayMs.toFixed(1)} ms`,
+        `physics  ${physics.mode === 'worker' ? 'worker' : 'main thread'} · ${physics.stepMs.toFixed(2)} ms/step · interp. delay ${physics.delayMs.toFixed(1)} ms`,
       );
     if (debugLine) lines.push(debugLine);
-    lines.push('', 'Fahrzeug oben rechts · W/S Gas/Bremse · A/D Lenken · Space Handbremse · R Reset');
+    lines.push('', 'Vehicle top-right · W/S throttle/brake · A/D steer · Space handbrake · R reset');
     this.el.textContent = lines.join('\n');
   }
 }

@@ -1,48 +1,48 @@
-# Vehicle Kit – Stand und Phasen
+# Vehicle Kit – status and phases
 
-Konzept, Benennung, Bauteile: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code-Struktur: [ARCHITECTURE.md](ARCHITECTURE.md).
+Concept, naming, parts: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code structure: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Entscheidungen
+## Decisions
 
-| Thema | Entscheidung |
+| Topic | Decision |
 |---|---|
-| Joints | Impulse-Joints; Multibody später per `jointMode`, falls lange Ketten (Sattelzug) zittern |
-| Rad-Collider | `ball` (kein Kantenhaken am Heightfield); `roundCylinder` als Option `wheel.shape` |
-| Antrieb | kein Getriebe: Gas → Ziel-Raddrehzahl `ω = vMax / r`, Moment über `setMotorMaxForce`, Schlupfbegrenzung |
-| Takt | 120 Hz fest im Physik-Worker, `numSolverIterations = 8`, McPherson +16 nur für seine Körper |
-| Collision-Groups | Terrain `0x1`, Chassis `0x2`, Rad `0x4`; Räder ↔ eigenes Chassis kollidieren nicht |
-| Hilfskörper | Strut/Knuckle/Lenker ohne Collider, Masse + Trägheit explizit |
-| Optik | nur Boxen/Zylinder, einfarbig; Physik liefert ein Daten-Layout, die Optik baut daraus die Meshes |
+| Joints | impulse joints; multibody later via `jointMode` if long chains (semi-truck) jitter |
+| wheel collider | `ball` (no edge snag on heightfield); `roundCylinder` as optional `wheel.shape` |
+| drivetrain | no gearbox: throttle → target wheel speed `ω = vMax / r`, torque via `setMotorMaxForce`, slip limiting |
+| tick | fixed 120 Hz in physics worker, `numSolverIterations = 8`, McPherson +16 only for its bodies |
+| collision groups | terrain `0x1`, chassis `0x2`, wheel `0x4`; wheels do not collide with own chassis |
+| helper bodies | strut/knuckle/links without collider, explicit mass + inertia |
+| visuals | boxes/cylinders only, flat color; physics supplies a data layout, render builds meshes from it |
 
-## Phasen
+## Phases
 
-| Phase | Inhalt | Stand |
+| Phase | Contents | Status |
 |---|---|---|
-| 0 Basis | fester Takt, Eingabe, Collision-Groups, IDs, Auslegungsformeln, Kamera-Follow | ✓ |
-| 1 PKW | Chassis, Ball-Räder, Strut, Feder/Dämpfer, Ackermann-Lenkung, Antrieb, Bremse/Handbremse, HUD | ✓ (`tests/vehicle.test.ts`) |
-| 1b Aufhängungen | 10 Prinzipien, Taste 1–0, gleiche Radfederrate über Übersetzung | ✓ (`tests/suspensions.test.ts`) |
-| — Infrastruktur | Physik-Worker, unendliches LOD-Terrain (32 km), Floating Origin, Rahmen-Collider | ✓ |
-| 2 Feinschliff | `antiRollBar`, Teststrecke (Rampe, Wellen, Stufe), Rapier-`debugRender`, `roundCylinder`-Option | offen |
-| 3 Mehrachser | Presets `truck6x4`, `truck6x6aws` (Allrad-/Hundegang-Lenkung), `truck8x4` | offen (Starrachse + Tandem-Pendel vorhanden) |
-| 4 Motorrad | Telegabel mit Nachlauf, Schwinge, `balanceAssist` (Rollwinkel → Lenkwinkel) | offen |
-| 5 Anhänger | `coupling.ts` (hitch / fifthWheel / kingPin), Deichselanhänger, Sattelzug, Taste `T`; einfache Motorkurve | offen |
-| 6 Optional | Getriebe, Differential (open / locked / limited slip) – heute wirkt jedes Rad wie gesperrt | offen |
-| 7 Kette | Laufrollen an Schwingen (Drehstab = Positions-Motor), Antrieb links/rechts getrennt | offen |
-| — Fern-Physik | gröbere Heightfield-Ringe für ferne Objekte (eigene Collision-Group), aus `sampleGrid` | vorbereitet |
+| 0 foundation | fixed tick, input, collision groups, IDs, sizing formulas, camera follow | ✓ |
+| 1 car | chassis, ball wheels, strut, spring/damper, Ackermann steering, drive, brake/handbrake, HUD | ✓ (`tests/vehicle.test.ts`) |
+| 1b suspensions | 10 types, keys 1–0, same wheel spring rate via leverage | ✓ (`tests/suspensions.test.ts`) |
+| — infrastructure | physics worker, infinite LOD terrain (32 km), floating origin, frame collider | ✓ |
+| 2 polish | `antiRollBar`, test track (ramp, waves, step), Rapier `debugRender`, `roundCylinder` option | open |
+| 3 multi-axle | presets `truck6x4`, `truck6x6aws` (all-wheel / crab steering), `truck8x4` | open (solid axle + bogie pivot exist) |
+| 4 motorcycle | telescopic fork with trail, swingarm, `balanceAssist` (roll angle → steer angle) | open |
+| 5 trailers | `coupling.ts` (hitch / fifthWheel / kingPin), drawbar trailer, semi-truck, key `T`; simple engine curve | open |
+| 6 optional | gearbox, differential (open / locked / limited slip) – today every wheel acts locked | open |
+| 7 tracks | road wheels on swingarms (torsion bar = position motor), left/right drive separate | open |
+| — distant physics | coarser heightfield rings for distant objects (own collision group), from `sampleGrid` | prepared |
 
-## Startwerte PKW (Preset `car`)
-- Chassis 1,8 × 0,5 × 4,2 m (Masse/Trägheit), Kollision = Leiterrahmen; 1200 kg, Schwerpunkt −0,2 m
-- Räder r = 0,33 m, 20 kg, Reibung 1,1
-- Achsen z = −1,35 / +1,35, Spur 1,55, Federweg [−0,10, +0,12]
-- Feder 1,6 Hz vorn / 1,8 Hz hinten, ζ = 0,4
-- Lenkung max 0,6 rad, Rate 2,5 rad/s, Rückstellung 4 rad/s
-- Antrieb RWD, 2400 N·m gesamt, vMax 45 m/s, rückwärts 8 m/s
-- Bremse 1500 N·m/Rad vorn, 1000 hinten; Handbremse 3000 N·m/Rad hinten
+## Starting values car (preset `car`)
+- Chassis 1.8 × 0.5 × 4.2 m (mass/inertia), collision = ladder frame; 1200 kg, CoM −0.2 m
+- Wheels r = 0.33 m, 20 kg, friction 1.1
+- Axles z = −1.35 / +1.35, track 1.55, travel [−0.10, +0.12]
+- Springs 1.6 Hz front / 1.8 Hz rear, ζ = 0.4
+- Steering max 0.6 rad, rate 2.5 rad/s, return 4 rad/s
+- Drive RWD, 2400 N·m total, vMax 45 m/s, reverse 8 m/s
+- Brake 1500 N·m/wheel front, 1000 rear; handbrake 3000 N·m/wheel rear
 
-## Risiken
-| Risiko | Gegenmaßnahme |
+## Risks
+| Risk | Mitigation |
 |---|---|
-| Joint-Kette weich/zitternd | Hilfskörper-Massen anheben, Iterationen nur für die Kette, Multibody |
-| Ball-Rad rollt seitlich zu leicht | Reibung hoch; `roundCylinder` |
-| Motorrad-Balance | Stützräder-Flag zum Debuggen |
-| Viele Körper (Sattelzug ~40) | unkritisch: Physik im Worker, ~0,25 ms/Schritt heute |
+| joint chain soft/jittery | raise helper body masses, iterations only for chain, multibody |
+| ball wheel rolls sideways too easily | high friction; `roundCylinder` |
+| motorcycle balance | outrigger flag for debugging |
+| many bodies (semi ~40) | non-critical: physics in worker, ~0.25 ms/step today |

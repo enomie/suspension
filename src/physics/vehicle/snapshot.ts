@@ -3,8 +3,8 @@ import { BODY_STRIDE, CORNER_STRIDE, HEADER, snapshotLength } from '../../shared
 import type { Vehicle } from './Vehicle';
 
 /**
- * Zustand eines Fahrzeugs als Snapshot (Format: shared/snapshot.ts) – für Worker UND für Projekte ohne Worker:
- * Physik und Optik im selben Thread → einfach jeden Frame `visual.apply(writeVehicleSnapshot(...))`.
+ * vehicle state as snapshot (format: shared/snapshot.ts) — for worker AND projects without worker:
+ * physics and rendering on same thread → each frame `visual.apply(writeVehicleSnapshot(...))`.
  * `bodies` = poseBodies(vehicle.built) (Reihenfolge = Layout-Indizes), `origin` = Floating Origin (sonst {0,0}).
  */
 export function writeVehicleSnapshot(

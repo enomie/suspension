@@ -1,7 +1,7 @@
 /**
- * Fahrzeug-Optik – öffentlicher Einstieg. Braucht nur three.js; baut alles aus dem Daten-Layout der Physik.
+ * vehicle rendering — public entry. Needs only three.js; builds everything from physics data layout.
  *   const visual = new VehicleVisual(describeLayout(spec, vehicle.built)); scene.add(visual.root);
- *   // pro Frame: visual.apply(snapshot)   (Snapshot: Worker-Interpolation oder writeVehicleSnapshot)
+ *   // per frame: visual.apply(snapshot)   (snapshot: worker interpolation or writeVehicleSnapshot)
  */
 export { VehicleVisual } from './VehicleVisual';
 export { LinkRenderer, type BodyPoses } from './linkVisual';

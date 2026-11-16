@@ -3,7 +3,7 @@ import type { VehicleSpec } from '../types';
 import { car, makeCar } from './car';
 import { trophyTruck } from './trophyTruck';
 
-/** Preset-Index → Aufhängungsprinzip (gleicher Testträger). */
+/** Preset index → suspension layout (same test chassis). */
 export const PRESETS: VehicleSpec[] = [
   car,
   makeCar('wishbone', VEHICLE_PRESET_LABELS[1], 'doubleWishbone'),

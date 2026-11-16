@@ -2,7 +2,7 @@
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vite';
 
-/** COEP `require-corp`: Vite liefert viele Module-Chunks – ohne CORP blockiert der Browser Worker-Imports (hängender Start). */
+/** COEP `require-corp`: Vite serves many module chunks — without CORP the browser blocks worker imports (hung startup). */
 function crossOriginResourcePolicy(): Plugin {
   const use = (_req: unknown, res: { setHeader: (n: string, v: string) => void }, next: () => void) => {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');

@@ -1,189 +1,189 @@
-# Vehicle Kit – Fahrzeug-Baukasten (Rapier SIMD, Joint-basiert)
+# Vehicle Kit – vehicle building blocks (Rapier SIMD, joint-based)
 
-> Konzept, Benennung und Bauteile des Fahrzeug-Baukastens. Stand der Umsetzung und nächste Phasen: [VEHICLE_PLAN.md](VEHICLE_PLAN.md).
+> Concept, naming, and parts of the vehicle kit. Implementation status and next phases: [VEHICLE_PLAN.md](VEHICLE_PLAN.md).
 
-## 1. Ziel
+## 1. Goal
 
-Ein **ganz einfaches, steuerbares Fahrzeug** in Rapier (`@dimforge/rapier3d-simd-compat@0.21`), **ohne Raycast-Vehicle**
-(`DynamicRayCastVehicleController` wird bewusst NICHT verwendet). Räder sind echte Rigid Bodies mit Collidern,
-verbunden über **Joints**. Federn + Stoßdämpfer sind echte Feder-Dämpfer-Elemente (Joint-Motoren bzw. Spring-Joints).
+A **very simple, controllable vehicle** in Rapier (`@dimforge/rapier3d-simd-compat@0.21`), **without raycast vehicle**
+(`DynamicRayCastVehicleController` is deliberately NOT used). Wheels are real rigid bodies with colliders,
+connected via **joints**. Springs + dampers are real spring-damper elements (joint motors or spring joints).
 
-Daraus soll ein **Baukasten** werden: gleiche Bauteile, sauber benannt, beliebig kombinierbar zu
+This becomes a **kit**: same parts, clean naming, freely combinable into
 
-| Fahrzeug | Achsen | Besonderheit |
+| Vehicle | Axles | Notes |
 |---|---|---|
-| Motorrad | 2 (je 1 Rad) | Telegabel mit Nachlauf, Schwinge hinten, Balance/Lenkhilfe |
-| PKW 2-Achser | 2 | Ackermann-Lenkung vorn, Antrieb FWD/RWD/AWD |
-| 3-Achser (LKW) | 3 | Lenkachse vorn, Tandem hinten |
-| 3-Achser Allradlenkung | 3 | alle Achsen lenken (gegenläufig / Hundegang) |
-| 4-Achser | 4 | 2 Lenkachsen vorn, Tandem hinten |
-| Anhänger (Deichsel) | 1–2 | Deichsel-Gelenk + Drehschemel |
-| Sattelzug | Zugmaschine + Auflieger | Sattelkupplung (Königszapfen) |
-| Kettenfahrzeug (später) | n Laufrollen | Laufrollen gefedert, Kette als Antriebsmodell |
+| Motorcycle | 2 (1 wheel each) | telescopic fork with trail, rear swingarm, balance/steer assist |
+| Car 2-axle | 2 | Ackermann front, FWD/RWD/AWD |
+| 3-axle (truck) | 3 | steer axle front, tandem rear |
+| 3-axle all-wheel steer | 3 | all axles steer (opposite / crab) |
+| 4-axle | 4 | 2 steer axles front, tandem rear |
+| Trailer (drawbar) | 1–2 | drawbar joint + kingpin |
+| Semi-truck | tractor + trailer | fifth wheel (kingpin) |
+| Tracked vehicle (later) | n road wheels | suspended road wheels, track as drive model |
 
-Code-Struktur: siehe [ARCHITECTURE.md](ARCHITECTURE.md). Fahrzeug-Physik liegt in `physics/vehicle/`
-(nur Rapier, keine Optik); die Optik baut `render/vehicle/` aus dem Layout (`physics/vehicle/layout.ts`).
-- Dev-Server: Port **9897** (`npm run dev`)
+Code structure: see [ARCHITECTURE.md](ARCHITECTURE.md). Vehicle physics lives in `physics/vehicle/`
+(Rapier only, no visuals); visuals are built in `render/vehicle/` from the layout (`physics/vehicle/layout.ts`).
+- Dev server: port **9897** (`npm run dev`)
 
-## 2. Steuerung
+## 2. Controls
 
-| Taste | Funktion |
+| Key | Function |
 |---|---|
-| `W` | Gas vorwärts |
-| `S` | Bremsen, bei Stillstand rückwärts |
-| `A` / `D` | Lenken links / rechts (mit Lenkrate + Rückstellung) |
-| `Space` | **Handbremse – nur Hinterachse(n)** (blockiert Räder) |
-| `R` | Reset / Aufrichten an aktueller Position |
-| `1…0` | Aufhängungsprinzip wählen (siehe §4) |
-| später | `C` Kamera, Fahrzeugwahl, `T` Anhänger an-/abkuppeln |
+| `W` | throttle forward |
+| `S` | brake; at standstill reverse |
+| `A` / `D` | steer left / right (steer rate + return) |
+| `Space` | **handbrake – rear axle(s) only** (locks wheels) |
+| `R` | reset / upright at current position |
+| `1…0` | pick suspension type (see §4) |
+| later | `C` camera, vehicle choice, `T` couple/uncouple trailer |
 
-## 3. Grundprinzip (einfachste Variante = „Strut / Schiebe-Federbein“)
+## 3. Basic principle (simplest variant = “strut / sliding strut”)
 
-Pro Radposition (Corner) eine Kette aus Körpern und Joints:
+Per wheel position (corner), a chain of bodies and joints:
 
 ```
-Chassis ──[Prismatic: Feder+Dämpfer]──► Strut (Federbein-Träger)
-Strut   ──[Revolute Y: Lenkung]───────► Knuckle (Achsschenkel)      (nur lenkbare Räder)
-Knuckle ──[Revolute X: Raddrehung]────► Wheel  (Rad mit Collider)
+Chassis ──[Prismatic: spring+damper]──► Strut (strut carrier)
+Strut   ──[Revolute Y: steering]───────► Knuckle (steering knuckle)      (steerable wheels only)
+Knuckle ──[Revolute X: wheel spin]────► Wheel  (wheel with collider)
 ```
 
-Nicht lenkbar: Knuckle entfällt bzw. Strut ↔ Wheel direkt per Revolute.
+Non-steerable: knuckle omitted or Strut ↔ Wheel directly via revolute.
 
-**Feder + Dämpfer = Positions-Motor des Prismatic-Joints:**
-`joint.configureMotorPosition(restPos, k, c)` mit `MotorModel.ForceBased` ⇒ Kraft `F = k·(restPos − x) − c·v`.
-Das ist exakt Feder (k in N/m) + linearer Dämpfer (c in N·s/m), implizit gelöst ⇒ stabil auch bei harten Federn.
-- `setLimits(min, max)` = Ein-/Ausfederweg (Bump-/Rebound-Stop)
-- `restPos` verschieben = **Vorspannung / Niveauregulierung**
-- Alternative für Mehrlenker: `JointData.spring(restLength, k, c, a1, a2)` als separates Federbein zwischen zwei Körpern
+**Spring + damper = prismatic joint position motor:**
+`joint.configureMotorPosition(restPos, k, c)` with `MotorModel.ForceBased` ⇒ force `F = k·(restPos − x) − c·v`.
+That is exactly spring (k in N/m) + linear damper (c in N·s/m), solved implicitly ⇒ stable even with stiff springs.
+- `setLimits(min, max)` = bump/rebound travel
+- shifting `restPos` = **preload / ride height**
+- alternative for multi-link: `JointData.spring(restLength, k, c, a1, a2)` as separate coil between two bodies
 
-**Lenkung** = Positions-Motor am Revolute-Y (`configureMotorPosition(winkel, kSteer, cSteer)`, Limits = max. Lenkeinschlag).
-**Antrieb** = Velocity-Motor am Rad-Revolute (`configureMotorVelocity(ω, factor)` + `setMotorMaxForce(Drehmoment)`).
-**Bremse/Handbremse** = Velocity-Motor mit Ziel 0 und begrenztem Max-Moment (= Bremsmoment).
+**Steering** = position motor on revolute Y (`configureMotorPosition(angle, kSteer, cSteer)`, limits = max steer angle).
+**Drive** = velocity motor on wheel revolute (`configureMotorVelocity(ω, factor)` + `setMotorMaxForce(torque)`).
+**Brake/handbrake** = velocity motor with target 0 and limited max moment (= brake torque).
 
-Warum so: Rapier liefert das Feder-Dämpfer-Verhalten direkt im Solver, kein eigenes Kraft-Integrieren nötig,
-und andere Aufhängungen sind nur andere Joint-Topologien aus denselben Bauteilen.
+Why: Rapier provides spring-damper behavior directly in the solver, no custom force integration,
+and other suspensions are only different joint topologies from the same parts.
 
-## 4. Aufhängungen (umgesetzt, Taste 1–0)
+## 4. Suspensions (implemented, keys 1–0)
 
-Jede Aufhängung = eine Datei in `physics/vehicle/parts/suspension/`, baut eine **ganze Achse** und liefert nur den
-**Radträger** (`carrier`) + Lenker/Federn. Lenk-Knuckle und Rad hängt `finishCorner()` (common.ts) immer gleich an.
-Federraten werden über die Übersetzung (`leverRatio`, MR) auf die Radmitte umgerechnet → alle Prinzipien gleich hart.
+Each suspension = one file in `physics/vehicle/parts/suspension/`, builds a **full axle** and returns only the
+**wheel carrier** (`carrier`) + links/springs. Steer knuckle and wheel are always attached the same way by `finishCorner()` (common.ts).
+Spring rates are converted to the wheel center via leverage (`leverRatio`, MR) → all types equally stiff.
 
-| Taste | `SuspensionType` | Topologie | Feder |
+| Key | `SuspensionType` | Topology | Spring |
 |---|---|---|---|
-| 1 | `strut` | Chassis ─Prismatic −Y→ Strut | Prismatic-Motor |
-| 2 | `doubleWishbone` | Chassis ─Rev Z→ unt. Lenker ─Rev Z→ Radträger; Chassis ─Rev Z→ ob. Lenker ─Spherical→ Radträger | Spring-Joint am unteren Lenker |
-| 3 | `macPherson` | Chassis ─Spherical→ Dom ─Prismatic schräg→ Radträger; Chassis ─Rev Z→ Querlenker ─Rev Z→ Radträger | Prismatic-Motor |
-| 4 | `trailingArm` | Chassis ─Rev X (vor dem Rad)→ Lenker | Spring-Joint |
-| 5 | `semiTrailingArm` | wie 4, Achse 20° gepfeilt | Spring-Joint |
-| 6 | `swingAxle` | Chassis ─Rev Z (Mitte)→ Halbachse | Spring-Joint |
-| 7 | `solidAxle` | Chassis ─Prismatic −Y→ Führung ─Rev Z→ Achskörper (beide Räder) | 2 Spring-Joints |
-| 8 | `twistBeam` | 2 Längslenker + Rev X zwischen den Lenkern mit Positions-Motor (Torsion) | Spring-Joints |
-| 9 | `multiLink` | 5 Stäbe: Chassis ─Spherical→ Stab ─Spherical→ Radträger | Spring-Joint + 2 Ropes (Aus- und Einfeder-Anschlag) |
-| 0 | `bogie` | Chassis ─Prismatic −Y→ Träger ─Rev X→ Wippe → 2 Räder | Prismatic-Motor |
+| 1 | `strut` | Chassis ─Prismatic −Y→ Strut | prismatic motor |
+| 2 | `doubleWishbone` | Chassis ─Rev Z→ lower arm ─Rev Z→ carrier; Chassis ─Rev Z→ upper arm ─Spherical→ carrier | spring joint on lower arm |
+| 3 | `macPherson` | Chassis ─Spherical→ strut top ─Prismatic slanted→ carrier; Chassis ─Rev Z→ lateral link ─Rev Z→ carrier | prismatic motor |
+| 4 | `trailingArm` | Chassis ─Rev X (ahead of wheel)→ arm | spring joint |
+| 5 | `semiTrailingArm` | like 4, axle angled 20° | spring joint |
+| 6 | `swingAxle` | Chassis ─Rev Z (center)→ half-shaft | spring joint |
+| 7 | `solidAxle` | Chassis ─Prismatic −Y→ guide ─Rev Z→ axle body (both wheels) | 2 spring joints |
+| 8 | `twistBeam` | 2 trailing arms + revolute X between arms with position motor (torsion) | spring joints |
+| 9 | `multiLink` | 5 links: Chassis ─Spherical→ link ─Spherical→ carrier | spring joint + 2 ropes (bump/rebound stops) |
+| 0 | `bogie` | Chassis ─Prismatic −Y→ carrier ─Rev X→ rocker → 2 wheels | prismatic motor |
 
-Nicht lenkbare Prinzipien (4, 5, 8, 0) sitzen hinten, vorn bleibt `strut` mit Lenkung.
-Motorrad-Schwinge = `trailingArm` mit `track: 0`.
+Non-steerable types (4, 5, 8, 0) sit rear; front stays `strut` with steering.
+Motorcycle swingarm = `trailingArm` with `track: 0`.
 
-Zusätzlich (Bauteil, keine Aufhängung): `antiRollBar` – Stabilisator als eigene Kraft zwischen linker/rechter Federweg-Differenz
-(`F = kRoll·(xL − xR)`), per `addForceAtPoint` pro Step.
+Additionally (part, not a suspension): `antiRollBar` – stabilizer as force from left/right spring travel difference
+(`F = kRoll·(xL − xR)`), via `addForceAtPoint` per step.
 
-## 5. Benennung (verbindlich)
+## 5. Naming (mandatory)
 
-Englische Code-Namen, deutsche Doku. Ein Bauteil = eine Datei.
+English code names, English documentation. One part = one file.
 
-### Hierarchie
+### Hierarchy
 
 ```
-Vehicle            – Gesamtfahrzeug (Zugmaschine, Anhänger …), Liste von Bodies + Joints, Input-Verarbeitung
- ├─ Chassis        – Hauptkörper (gefederte Masse), Schwerpunkt per Collider-Dichte/Masse
- ├─ Axle[]         – Achse: Index, Position x (längs), Spurweite, Rolle (steer/drive/brake/handbrake)
- │   └─ Corner[]   – Radposition: side = 'L' | 'R' | 'C' (C = Mitte, Motorrad)
- │       ├─ Suspension  – Typ + Federrate, Dämpfung, Weg, Vorspannung
- │       ├─ Knuckle     – Achsschenkel (optional, wenn lenkbar)
- │       └─ Wheel       – Radkörper + Collider, Radius, Breite, Masse, Reibung
- ├─ Steering       – Lenkmodell (ackermann / allWheel / crab / none), Lenkrate, Max-Winkel
- ├─ Drivetrain     – Engine (Drehmomentkurve einfach), Gearbox (optional), Differential pro Achse
- ├─ Brakes         – Betriebsbremse (alle), Handbremse (nur handbrake-Achsen)
- └─ Coupling[]     – Kupplungspunkte: hitch (Deichsel), fifthWheel (Sattel), kingPin (Auflieger)
+Vehicle            – whole vehicle (tractor, trailer …), list of bodies + joints, input handling
+ ├─ Chassis        – main body (sprung mass), CoM via collider density/mass
+ ├─ Axle[]         – axle: index, position x (longitudinal), track, role (steer/drive/brake/handbrake)
+ │   └─ Corner[]   – wheel position: side = 'L' | 'R' | 'C' (C = center, motorcycle)
+ │       ├─ Suspension  – type + spring rate, damping, travel, preload
+ │       ├─ Knuckle     – steering knuckle (optional, when steerable)
+ │       └─ Wheel       – wheel body + collider, radius, width, mass, friction
+ ├─ Steering       – steer model (ackermann / allWheel / crab / none), steer rate, max angle
+ ├─ Drivetrain     – engine (simple torque curve), gearbox (optional), differential per axle
+ ├─ Brakes         – service brake (all), handbrake (handbrake axles only)
+ └─ Coupling[]     – coupling points: hitch (drawbar), fifthWheel (fifth wheel), kingPin (trailer)
 ```
 
-### ID-Schema (Body-/Joint-Namen, für Debug & Lookup)
+### ID schema (body/joint names, for debug & lookup)
 
-`<vehicle>.<axleIndex><side>.<part>` – z. B.
+`<vehicle>.<axleIndex><side>.<part>` – e.g.
 
 - `truck.chassis`
 - `truck.a0L.strut`, `truck.a0L.knuckle`, `truck.a0L.wheel`
 - `truck.a0L.j.suspension`, `truck.a0L.j.steer`, `truck.a0L.j.spin`
-- `truck.c0.fifthWheel` ↔ `trailer.c0.kingPin`, Joint `coupling:truck.c0-trailer.c0`
+- `truck.c0.fifthWheel` ↔ `trailer.c0.kingPin`, joint `coupling:truck.c0-trailer.c0`
 
-Achsen werden **von vorn nach hinten** gezählt (`a0` = vorderste). Seiten: `L` links, `R` rechts, `C` Mitte.
-Koordinaten: **Vorwärts = −Z**, oben = +Y, rechts = +X (wie Ocean-Projekt). Einheiten SI (m, kg, N, N·m, rad).
+Axles counted **front to rear** (`a0` = foremost). Sides: `L` left, `R` right, `C` center.
+Coordinates: **forward = −Z**, up = +Y, right = +X (as in Ocean project). Units SI (m, kg, N, N·m, rad).
 
-## 6. Bauteil-Liste
+## 6. Part list
 
-| Bauteil | Datei (unter `physics/vehicle/`; *kursiv* = noch nicht umgesetzt) | Rapier-Objekte | Parameter |
+| Part | File (under `physics/vehicle/`; *italic* = not yet implemented) | Rapier objects | Parameters |
 |---|---|---|---|
-| `Chassis` | `parts/chassis.ts` | dynamic RigidBody, abgerundeter Rahmen-Collider (= sichtbarer Leiterrahmen) | Maße, Masse, Schwerpunkt-Offset, Collision-Group |
-| `Wheel` | `parts/wheel.ts` | dynamic RigidBody, `cylinder`/`roundCylinder` (um Z gedreht) oder `ball` | Radius, Breite, Masse, Reibung, CCD an |
-| `Knuckle` | `parts/knuckle.ts` | kleiner dynamic Body (kein Collider, Masse manuell) | Masse, Trägheit |
-| `Strut` | `parts/strut.ts` | kleiner dynamic Body | Masse |
-| `Spring`/`Damper` | *`parts/springDamper.ts`* | Motor-Config bzw. `JointData.spring` | k [N/m], c [N·s/m], restLength, Vorspannung |
-| `BumpStop` | *in `springDamper.ts`* | `setLimits` | min/max Federweg |
-| `AntiRollBar` | *`parts/antiRollBar.ts`* | Kraft pro Step | kRoll [N/m] |
-| `Steering` | `parts/steering.ts` | Revolute-Y Positions-Motor | maxAngle, rate, Ackermann-Faktor, Modus |
-| `Engine` | *`parts/engine.ts`* | – (rechnet Moment) | maxTorque, maxRpm, simple Kurve |
-| `Differential` | *`parts/differential.ts`* | verteilt auf Rad-Motoren | open / locked / limitedSlip |
-| `Brake` | *`parts/brake.ts`* | Velocity-Motor Ziel 0 + MaxForce | Bremsmoment je Achse |
-| `Handbrake` | *in `brake.ts`* | wie Brake, nur Hinterachsen | Moment |
-| `Hitch` / `FifthWheel` / `KingPin` | *`parts/coupling.ts`* | Joint zwischen 2 Vehicles | Typ, Winkel-Limits |
-| `Track` (später) | *`parts/track.ts`* | Laufrollen + Antriebsmodell | Rollenanzahl, Kettenspannung |
+| `Chassis` | `parts/chassis.ts` | dynamic rigid body, rounded frame collider (= visible ladder frame) | dimensions, mass, CoM offset, collision group |
+| `Wheel` | `parts/wheel.ts` | dynamic rigid body, `cylinder`/`roundCylinder` (rotated around Z) or `ball` | radius, width, mass, friction, CCD on |
+| `Knuckle` | `parts/knuckle.ts` | small dynamic body (no collider, mass manual) | mass, inertia |
+| `Strut` | `parts/strut.ts` | small dynamic body | mass |
+| `Spring`/`Damper` | *`parts/springDamper.ts`* | motor config or `JointData.spring` | k [N/m], c [N·s/m], restLength, preload |
+| `BumpStop` | *in `springDamper.ts`* | `setLimits` | min/max travel |
+| `AntiRollBar` | *`parts/antiRollBar.ts`* | force per step | kRoll [N/m] |
+| `Steering` | `parts/steering.ts` | revolute-Y position motor | maxAngle, rate, Ackermann factor, mode |
+| `Engine` | *`parts/engine.ts`* | – (computes torque) | maxTorque, maxRpm, simple curve |
+| `Differential` | *`parts/differential.ts`* | split to wheel motors | open / locked / limitedSlip |
+| `Brake` | *`parts/brake.ts`* | velocity motor target 0 + MaxForce | brake torque per axle |
+| `Handbrake` | *in `brake.ts`* | like brake, rear axles only | torque |
+| `Hitch` / `FifthWheel` / `KingPin` | *`parts/coupling.ts`* | joint between 2 vehicles | type, angle limits |
+| `Track` (later) | *`parts/track.ts`* | road wheels + drive model | roller count, track tension |
 
-## 7. Joint-Liste
+## 7. Joint list
 
-| Joint | Rapier | Achse / Freiheitsgrad | Motor | Limits | Zweck |
+| Joint | Rapier | Axis / DOF | Motor | Limits | Purpose |
 |---|---|---|---|---|---|
-| `j.suspension` | `JointData.prismatic` | lokal Y (bzw. Gabel-Achse) | Position (Feder+Dämpfer), ForceBased | Federweg | Federung |
-| `j.steer` | `JointData.revolute` | Y (bzw. Lenkachse mit Nachlauf) | Position (Lenkwinkel) | ±maxAngle | Lenkung |
-| `j.spin` | `JointData.revolute` | X (Radachse) | Velocity (Antrieb/Bremse) + MaxForce | – | Raddrehung |
-| `j.arm` | `JointData.revolute` | X | – | Schwingwinkel | Schwinge / Längslenker / Querlenker |
-| `j.armBall` | `JointData.spherical` | 3 Rot. | – | – | Querlenker ↔ Knuckle |
-| `j.coilover` | `JointData.spring` | Abstand | (Spring-Joint) | – | Federbein bei Lenker-Aufhängungen |
-| `j.axleRoll` | `JointData.revolute` | Z (längs) | optional Position (Stabi) | Verschränkung | Starrachse |
-| `j.bogie` | `JointData.revolute` | X | – | Wippwinkel | Tandem-Pendel |
-| `coupling.hitch` | `JointData.spherical` (bzw. `generic`) | 3 Rot. | – | Knickwinkel | Deichsel-Anhänger |
-| `coupling.fifthWheel` | `JointData.generic` (Rot. Y frei, Rot. X begrenzt, Rest gesperrt) | Yaw + Nicken | – | Nicken ±X° | Sattelkupplung |
+| `j.suspension` | `JointData.prismatic` | local Y (or fork axis) | position (spring+damper), ForceBased | travel | suspension |
+| `j.steer` | `JointData.revolute` | Y (or steer axis with trail) | position (steer angle) | ±maxAngle | steering |
+| `j.spin` | `JointData.revolute` | X (wheel axis) | velocity (drive/brake) + MaxForce | – | wheel rotation |
+| `j.arm` | `JointData.revolute` | X | – | swing angle | swingarm / trailing arm / lateral link |
+| `j.armBall` | `JointData.spherical` | 3 rot. | – | – | lateral link ↔ knuckle |
+| `j.coilover` | `JointData.spring` | distance | (spring joint) | – | coil on link suspensions |
+| `j.axleRoll` | `JointData.revolute` | Z (longitudinal) | optional position (anti-roll) | articulation | solid axle |
+| `j.bogie` | `JointData.revolute` | X | – | rocker angle | tandem rocker |
+| `coupling.hitch` | `JointData.spherical` (or `generic`) | 3 rot. | – | hitch angle | drawbar trailer |
+| `coupling.fifthWheel` | `JointData.generic` (rot. Y free, rot. X limited, rest locked) | yaw + pitch | – | pitch ±X° | fifth wheel |
 
-Allgemein: `joint.setContactsEnabled(false)` zwischen verbundenen Körpern, zusätzlich Collision-Groups
-(Räder ↔ eigenes Chassis kollidieren nicht).
+Generally: `joint.setContactsEnabled(false)` between connected bodies, plus collision groups
+(wheels ↔ own chassis do not collide).
 
-## 8. Fahrzeug-Rezepte (Zielkonfigurationen)
+## 8. Vehicle recipes (target configurations)
 
-- **`motorcycle`**: a0C (`telescopicFork`, lenkbar, Nachlauf ~25°), a1C (`swingArm`, Antrieb, Handbremse). Braucht `BalanceAssist`
-  (Rollwinkel-Regler → Lenkwinkel, Gegenlenken) – sonst fällt es um. Optional Stützräder für ersten Test.
-- **`car`**: a0 L/R `strut` lenkbar (Ackermann), a1 L/R `strut` Antrieb + Handbremse. RWD/FWD/AWD per Differential-Config.
-- **`truck6x4`**: a0 lenkbar, a1+a2 Antrieb (+ optional `bogie`), Handbremse a1+a2.
-- **`truck6x6AllWheelSteer`**: alle 3 Achsen lenkbar, Lenkfaktor pro Achse (a0 = +1, a1 = 0…−0,3, a2 = −0,6) ⇒ gegenläufig;
-  Modus `crab` = alle gleichsinnig.
-- **`truck8x4`**: a0+a1 lenkbar (a1 mit kleinerem Winkel, Ackermann über Längsabstand), a2+a3 Antrieb.
-- **`drawbarTrailer`**: a0 an Drehschemel (Revolute Y) + Deichsel (`hitch`), a1 starr.
-- **`semiTractor` + `semiTrailer`**: Zugmaschine 4x2/6x4 mit `fifthWheel`, Auflieger mit `kingPin` + 2–3 Achsen hinten.
-- **`tank` (später)**: 5–7 Laufrollen/Seite an `swingArm` (Drehstab = Revolute-Positions-Motor), Antrieb per Seite
-  (Differenzial-Lenkung: links/rechts unterschiedliche Geschwindigkeit). Kette zunächst nur visuell + Rollen angetrieben;
-  echte Kettenglieder (Kette aus Boxen + Revolute) ggf. später als Experiment.
+- **`motorcycle`**: a0C (`telescopicFork`, steerable, trail ~25°), a1C (`swingArm`, drive, handbrake). Needs `BalanceAssist`
+  (roll angle controller → steer angle, counter-steer) – otherwise it falls over. Optional outriggers for first test.
+- **`car`**: a0 L/R `strut` steerable (Ackermann), a1 L/R `strut` drive + handbrake. RWD/FWD/AWD via differential config.
+- **`truck6x4`**: a0 steerable, a1+a2 drive (+ optional `bogie`), handbrake a1+a2.
+- **`truck6x6AllWheelSteer`**: all 3 axles steerable, steer factor per axle (a0 = +1, a1 = 0…−0.3, a2 = −0.6) ⇒ opposite;
+  mode `crab` = all same direction.
+- **`truck8x4`**: a0+a1 steerable (a1 smaller angle, Ackermann over wheelbase), a2+a3 drive.
+- **`drawbarTrailer`**: a0 on kingpin (revolute Y) + drawbar (`hitch`), a1 rigid.
+- **`semiTractor` + `semiTrailer`**: tractor 4x2/6x4 with `fifthWheel`, trailer with `kingPin` + 2–3 rear axles.
+- **`tank` (later)**: 5–7 road wheels/side on `swingArm` (torsion bar = revolute position motor), drive per side
+  (skid steering: left/right different speed). Track visual only + driven rollers first;
+  real track links (chain of boxes + revolute) maybe later as experiment.
 
-## 9. Physik-Regeln / Fallstricke (Rapier)
+## 9. Physics rules / pitfalls (Rapier)
 
-- **Fester Timestep**: 1/120 s im Physik-Worker (Wanduhr-Takt `shared/stepClock.ts`), Optik interpoliert nach Zeit.
-- **Chassis-Collider = sichtbare Form.** Ein unsichtbarer, größerer Collider setzt auf Bodenwellen auf → „unsichtbare Wand“.
-- **Massenverhältnisse**: Rad/Knuckle/Strut nicht zu leicht gegenüber Chassis (Ziel ≤ 1:30), sonst federt/zittert die Joint-Kette.
-  Kleine Hilfskörper (Strut, Knuckle) bekommen explizite Masse + Trägheit (`setAdditionalMassProperties`).
-- **Solver**: `world.numSolverIterations` = 8; geschlossene Ketten (McPherson) zusätzlich `setAdditionalSolverIterations` nur auf ihren Körpern, ggf. Joint-Kette als **Multibody** statt Impulse-Joint testen
-  (stabiler bei langen Ketten, z. B. Sattelzug).
-- **CCD** an Rädern (`setCcdEnabled(true)`) für hohe Geschwindigkeit.
-- **Federrate auslegen**: Eigenfrequenz f ≈ 1–2 Hz (PKW) ⇒ `k = m_corner·(2πf)²`; Dämpfung `c = 2·ζ·√(k·m_corner)`, ζ ≈ 0,3–0,5.
-  Vorspannung so, dass Statik-Einfederung ≈ 30–40 % des Federwegs.
-- **Reifenreibung**: Rapier-Kontaktreibung (Coulomb) – kein Pacejka. Reibung Rad ~1,0–1,2, Heightfield 0,95. Rad-Collider
-  `roundCylinder` statt `cylinder` für sanfte Kanten; `ball` als einfachster Start.
-- Lenk- und Feder-Motoren immer `MotorModel.ForceBased`, damit k/c physikalische Einheiten haben.
-- Antriebsmoment begrenzen über `setMotorMaxForce` – ohne Limit ist der Velocity-Motor „unendlich stark“.
+- **Fixed timestep**: 1/120 s in physics worker (wall-clock tick `shared/stepClock.ts`), visuals interpolate in time.
+- **Chassis collider = visible shape.** An invisible, larger collider lands on ground ripples → “invisible wall”.
+- **Mass ratios**: wheel/knuckle/strut not too light vs chassis (target ≤ 1:30), else joint chain bounces/jitters.
+  Small helper bodies (strut, knuckle) get explicit mass + inertia (`setAdditionalMassProperties`).
+- **Solver**: `world.numSolverIterations` = 8; closed chains (McPherson) additionally `setAdditionalSolverIterations` only on their bodies, optionally test joint chain as **multibody** instead of impulse joint
+  (more stable on long chains, e.g. semi-truck).
+- **CCD** on wheels (`setCcdEnabled(true)`) for high speed.
+- **Spring sizing**: natural frequency f ≈ 1–2 Hz (car) ⇒ `k = m_corner·(2πf)²`; damping `c = 2·ζ·√(k·m_corner)`, ζ ≈ 0.3–0.5.
+  Preload so static compression ≈ 30–40% of travel.
+- **Tire friction**: Rapier contact friction (Coulomb) – no Pacejka. Wheel friction ~1.0–1.2, heightfield 0.95. Wheel collider
+  `roundCylinder` instead of `cylinder` for soft edges; `ball` as simplest start.
+- Steer and spring motors always `MotorModel.ForceBased` so k/c have physical units.
+- Limit drive torque via `setMotorMaxForce` – without a limit the velocity motor is “infinitely strong”.

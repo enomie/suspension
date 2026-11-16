@@ -1,38 +1,38 @@
-/** Gemeinsame Konstanten (Physik + Optik). 1 Einheit = 1 Meter. Terrain-Form: src/shared/terrain/. */
+/** shared constants (physics + rendering). 1 unit = 1 meter. terrain shape: src/shared/terrain/. */
 
 /*
- * Terrain-Raster: alles Zweierpotenzen, damit jede Stufe exakt jeden zweiten Punkt der feineren trifft
- * (gleiche Abtastpunkte → gleiche Höhen; grobe Stufe = feine Stufe ohne die ungeraden Punkte).
+ * terrain grid: all powers of two so each LOD level hits exactly every other sample of the finer one
+ * (same samples → same heights; coarse level = fine level without odd-index samples).
  *
- *   Stufe k:  Zellweite CELL·2^k,  Kachelkante TILE_SIZE·2^k
- *   k = 0:    0,5 m,   32 m        (Optik nah = Physik-Raster)
- *   k = 6:    32 m,    2048 m      (Ende des Detailbereichs)
- *   k = 10:   512 m,   32 768 m    (Wurzel, Sichtweite)
+ *   level k:  cell CELL·2^k,  tile edge TILE_SIZE·2^k
+ *   k = 0:    0.5 m,   32 m        (near render = physics grid)
+ *   k = 6:    32 m,    2048 m      (end of detail range)
+ *   k = 10:   512 m,   32 768 m    (root, view distance)
  */
 
-/** Feinstes Raster [m] – Physik und LOD 0 */
+/** finest grid [m] — physics and LOD 0 */
 export const CELL = 0.5;
-/** Segmente pro Render-Kachel (jede LOD-Stufe) */
+/** segments per render tile (each LOD level) */
 export const TILE_SEGMENTS = 64;
-/** Kantenlänge einer LOD-0-Render-Kachel [m] = 64 · 0,5 */
+/** edge length of LOD-0 render tile [m] = 64 · 0.5 */
 export const TILE_SIZE = TILE_SEGMENTS * CELL;
-/** gröbste LOD-Stufe: Kante 32 m · 2^10 = 32 768 m */
+/** coarsest LOD level: edge 32 m · 2^10 = 32 768 m */
 export const MAX_LOD = 10;
-/** Sichtweite = Nebel-Ende [m] (2^15) */
+/** view distance = fog end [m] (2^15) */
 export const VIEW_DISTANCE = 32768;
-/** Bis hierher fein aufgelöst (Quadtree mit dichter Teilung) [m] (2^11) */
+/** fine resolution up to here (quadtree with dense splits) [m] (2^11) */
 export const DETAIL_RANGE = 2048;
 
 /**
- * Kachel der Stufe `lod` wird geteilt, wenn die Kamera näher als lodSplit(lod) · Kante ist.
- * Stufen bis Kante DETAIL_RANGE/2 teilen dicht (0,9) → fein bis ~2 km; darüber grob (0,5) → wenige Kacheln.
+ * tile at level `lod` splits when camera is closer than lodSplit(lod) · edge.
+ * levels with edge ≤ DETAIL_RANGE/2 split tightly (0.9) → fine to ~2 km; above coarse (0.5) → few tiles.
  */
 export function lodSplit(lod: number): number {
   return TILE_SIZE * 2 ** lod <= DETAIL_RANGE / 2 ? 0.9 : 0.5;
 }
 
-/** Physik-Kachel: 128 Zellen à 0,5 m = 64 m (= 2×2 LOD-0-Render-Kacheln, gleiche Punkte) */
+/** physics tile: 128 cells at 0.5 m = 64 m (= 2×2 LOD-0 render tiles, same samples) */
 export const PHYSICS_TILE_SEGMENTS = 128;
 export const PHYSICS_TILE_SIZE = PHYSICS_TILE_SEGMENTS * CELL;
-/** Physik-Kacheln: (2r+1)² um das Fahrzeug */
+/** physics tiles: (2r+1)² around the vehicle */
 export const PHYSICS_TILE_RADIUS = 1;

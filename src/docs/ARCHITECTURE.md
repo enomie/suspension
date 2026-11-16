@@ -1,75 +1,75 @@
-# Architektur
+# Architecture
 
-Drei Threads, vier Schichten. Die Ordner trennen strikt, wer was importieren darf:
+Three threads, four layers. Folders strictly separate who may import what:
 
-| Ordner | Läuft in | Darf importieren | Inhalt |
+| Folder | Runs in | May import | Contents |
 |---|---|---|---|
-| `shared/` | überall | nur `shared/` | Konstanten (`config`), Floating Origin (`origin`, `originShifter`), Geländehöhe (`terrainHeight`), Kachel-Geometrie (`tileGeometry`), Takt (`stepClock`), Nachrichten (`protocol`), Snapshot-Format (`snapshot`), Fahrzeug-Typen (`vehicleSpec`, `vehicleLayout`) |
-| `physics/` | Physik-Worker | `shared/`, Rapier | `worker.ts` (Einstieg), `Simulation.ts`, `terrainColliders.ts`, `vehicle/` (Aufbau, Aufhängungen, Antrieb, Lenkung, Presets, `layout.ts`) |
-| `render/` | Haupt-Thread | `shared/`, three.js | `scene.ts` (Renderer/Kamera/Licht), `CameraRig`, `SunRig`, `terrain/` (LOD + Kachel-Worker), `vehicle/` (Optik aus Layout) |
-| `app/` | Haupt-Thread | alles außer `physics/` (Ausnahme: dynamischer Fallback) | `PhysicsClient` (Worker-Anbindung + Interpolation), `keyboard`, `hud`, `debug` |
+| `shared/` | everywhere | only `shared/` | Constants (`config`), floating origin (`origin`, `originShifter`), terrain height (`terrainHeight`), tile geometry (`tileGeometry`), tick (`stepClock`), messages (`protocol`), snapshot format (`snapshot`), vehicle types (`vehicleSpec`, `vehicleLayout`) |
+| `physics/` | physics worker | `shared/`, Rapier | `worker.ts` (entry), `Simulation.ts`, `terrainColliders.ts`, `vehicle/` (build, suspensions, drivetrain, steering, presets, `layout.ts`) |
+| `render/` | main thread | `shared/`, three.js | `scene.ts` (renderer/camera/light), `CameraRig`, `SunRig`, `terrain/` (LOD + tile worker), `vehicle/` (visuals from layout) |
+| `app/` | main thread | everything except `physics/` (exception: dynamic fallback) | `PhysicsClient` (worker binding + interpolation), `keyboard`, `hud`, `debug` |
 
-`main.ts` verdrahtet nur.
+`main.ts` only wires things up.
 
-**Öffentliche Einstiege** (für andere Projekte nur diese importieren): `shared/terrain/index.ts`,
-`physics/vehicle/index.ts`, `render/vehicle/index.ts`, `render/terrain/index.ts`. Übernahme:
+**Public entry points** (for other projects, import only these): `shared/terrain/index.ts`,
+`physics/vehicle/index.ts`, `render/vehicle/index.ts`, `render/terrain/index.ts`. Adoption:
 [INTEGRATION_TERRAIN.md](INTEGRATION_TERRAIN.md), [INTEGRATION_VEHICLE.md](INTEGRATION_VEHICLE.md).
 
-## Datenfluss
+## Data flow
 ```
-physics/worker ──'vehicle' {layout}──▶ app/PhysicsClient ──▶ render/vehicle/VehicleVisual (Meshes aus Layout)
-               ──'snapshots' [Float64Array]──▶ Interpolation nach Zeit ──▶ VehicleVisual.apply()
+physics/worker ──'vehicle' {layout}──▶ app/PhysicsClient ──▶ render/vehicle/VehicleVisual (meshes from layout)
+               ──'snapshots' [Float64Array]──▶ time interpolation ──▶ VehicleVisual.apply()
 app/keyboard ──'input' / 'spawn'──▶ physics/worker
 ```
-- **Layout** (`shared/vehicleLayout.ts`): reine Daten (Spec, Körper-Indizes, Lenker-Punkte, Montageplatten-Punkte).
-  Der Haupt-Thread lädt kein Rapier mehr (außer `?worker=0`).
-- **Snapshot** (`shared/snapshot.ts`): Generation, Zeitstempel, Telemetrie, absolute Posen je Körper-Index.
+- **Layout** (`shared/vehicleLayout.ts`): pure data (spec, body indices, link points, mount plate points).
+  The main thread no longer loads Rapier (except with `?worker=0`).
+- **Snapshot** (`shared/snapshot.ts`): generation, timestamp, telemetry, absolute poses per body index.
 
-## Haupt-Thread pro Frame (`main.ts`)
-| # | Schritt | Modul |
+## Main thread per frame (`main.ts`)
+| # | Step | Module |
 |---|---|---|
-| 1 | Hotkeys (1–0 Preset, R Reset) → Worker; Input nur bei Änderung senden | `app/PhysicsClient.ts` |
-| 2 | Snapshot bei **`now − delay`** zeitlich interpolieren (zwei umgebende Physik-Schritte) | `app/PhysicsClient.ts`, `shared/snapshot.ts` |
-| 3 | Meshes setzen (absolute Posen − ORIGIN) | `render/vehicle/VehicleVisual.ts` |
-| 4 | Floating-Origin-Shift (Haupt-Thread, unabhängig vom Worker) | `shared/originShifter.ts` |
-| 5 | Kamera + Sonne folgen | `render/CameraRig.ts`, `render/SunRig.ts` |
-| 6 | LOD-Terrain (Auswahl nur bei Kamerabewegung/neuen Kacheln) | `render/terrain/LodTerrain.ts` |
-| 7 | HUD + Render (Reversed-Z) | `app/hud.ts` |
+| 1 | Hotkeys (1–0 preset, R reset) → worker; send input only on change | `app/PhysicsClient.ts` |
+| 2 | Interpolate snapshot at **`now − delay`** (two surrounding physics steps) | `app/PhysicsClient.ts`, `shared/snapshot.ts` |
+| 3 | Set meshes (absolute poses − ORIGIN) | `render/vehicle/VehicleVisual.ts` |
+| 4 | Floating-origin shift (main thread, independent of worker) | `shared/originShifter.ts` |
+| 5 | Camera + sun follow | `render/CameraRig.ts`, `render/SunRig.ts` |
+| 6 | LOD terrain (selection only on camera move / new tiles) | `render/terrain/LodTerrain.ts` |
+| 7 | HUD + render (reversed Z) | `app/hud.ts` |
 
-## Snapshots / Interpolation
-- Snapshot = `Float64Array` per Transfer: Generation, Zeitstempel, Telemetrie, **absolute** Posen aller Körper.
-- Der Worker schickt beim Spawn ein **Layout** (reine Daten); `VehicleVisual` baut daraus die Meshes. Körper = Index im Snapshot.
-- `delay` = größter Abstand zum neuesten Snapshot der letzten 0,5 s (+0,5 ms), steigt sofort, sinkt weich:
-  es liegt immer ein neuerer Snapshot vor → nie Extrapolation. Render-Zeit ist zusätzlich monoton (läuft nie zurück).
-- Generation wechselt bei Respawn/Preset: Snapshots des alten Fahrzeugs werden verworfen (keine „alten Frames“).
-- HUD zeigt Modus, ms pro Physik-Schritt und aktuelle Interpolations-Verzögerung.
+## Snapshots / interpolation
+- Snapshot = `Float64Array` via transfer: generation, timestamp, telemetry, **absolute** poses of all bodies.
+- The worker sends a **layout** (pure data) on spawn; `VehicleVisual` builds meshes from it. Body = index in snapshot.
+- `delay` = largest gap to the newest snapshot in the last 0.5 s (+0.5 ms), rises immediately, decays smoothly:
+  a newer snapshot is always available → never extrapolation. Render time is also monotonic (never runs backward).
+- Generation changes on respawn/preset: snapshots from the old vehicle are discarded (no “stale frames”).
+- HUD shows mode, ms per physics step, and current interpolation delay.
 
-Neue Terrain-Kacheln (Kachel-Worker) und Snapshots (Physik-Worker) kommen zwischen zwei Frames an und werden im
-nächsten Frame übernommen. Physik-Worker: fester 120-Hz-Takt nach Wanduhr (`shared/stepClock.ts`), ein Snapshot pro Schritt.
+New terrain tiles (tile worker) and snapshots (physics worker) arrive between two frames and are applied in the
+next frame. Physics worker: fixed 120 Hz wall-clock tick (`shared/stepClock.ts`), one snapshot per step.
 
-## Instancing und TSL
-- **TSL-Materialien** liegen in `render/tsl/` (bisher: `terrainMaterial.ts` mit Debug-Uniform `morphEnabled`). Neue Node-Materialien dort ablegen, nicht inline in Renderern.
-- **Instancing-Muster:** `render/vehicle/linkVisual.ts` – ein `InstancedMesh` je (Geometrie, Material), Anzahl vorab aus dem Layout, Matrix pro Frame per `setMatrixAt(i, Matrix4.compose(...))`, danach `instanceMatrix.needsUpdate = true`.
-- **Fallen:** `frustumCulled = false` setzen (Bounding-Sphere wird nicht nachgeführt); Posen sind Render-lokal (absolut − `ORIGIN`, Floating Origin); `count` ≤ Kapazität; für per-Instanz-Farbe `setColorAt` bzw. in TSL `instancedBufferAttribute`/`storage()` + `instanceIndex`.
+## Instancing and TSL
+- **TSL materials** live in `render/tsl/` (so far: `terrainMaterial.ts` with debug uniform `morphEnabled`). Put new node materials there, not inline in renderers.
+- **Instancing pattern:** `render/vehicle/linkVisual.ts` – one `InstancedMesh` per (geometry, material), count precomputed from layout, matrix per frame via `setMatrixAt(i, Matrix4.compose(...))`, then `instanceMatrix.needsUpdate = true`.
+- **Pitfalls:** set `frustumCulled = false` (bounding sphere is not updated); poses are render-local (absolute − `ORIGIN`, floating origin); `count` ≤ capacity; for per-instance color use `setColorAt` or in TSL `instancedBufferAttribute`/`storage()` + `instanceIndex`.
 
-## Bekannte Ursachen früherer Flacker-Probleme (nicht wieder einbauen)
-| Symptom | Ursache | Absicherung |
+## Known causes of earlier flicker issues (do not reintroduce)
+| Symptom | Cause | Safeguard |
 |---|---|---|
-| „unsichtbare Wand“ | unsichtbarer Chassis-Collider größer als der Rahmen, hakte an Dreieckskanten | `tests/invisibleWall.test.ts` |
-| Terrain flackert beim Fahren | Verfeinerung verlangte den ganzen Teilbaum → Rückfall bis zur Wurzelkachel | Test „LOD beim Fahren“ |
-| Licht springt bei LOD-Wechsel | nur Höhe gemorpht, nicht die Normale | Morph von Höhe **und** Normale |
-| Kacheln pendeln an Grenzen | festes 3×3-Wurzelfenster, Sichtweite ohne Hysterese | Test „camera jitter …“ |
+| “invisible wall” | invisible chassis collider larger than frame, caught on triangle edges | `tests/invisibleWall.test.ts` |
+| terrain flicker while driving | refinement required whole subtree → fallback to root tile | test “LOD while driving” |
+| light jumps on LOD change | only height morphed, not normal | morph **height and normal** |
+| tiles oscillate at boundaries | fixed 3×3 root window, view distance without hysteresis | test “camera jitter …” |
 
-## Debug (Flackern eingrenzen)
-| Taste | Schalter | Was es eingrenzt |
+## Debug (narrowing down flicker)
+| Key | Toggle | What it narrows down |
 |---|---|---|
-| F1 | Schatten an/aus | blitzt es noch? → nicht der Schatten |
-| F2 | Terrain-Geomorphing an/aus | Terrain-Flackern durch Morph? |
-| F3 | Fahrzeug-Interpolation an/aus (aus = immer neuester Snapshot) | Auto-Aufblitzen durch Interpolation? |
-| F4 | LOD-Auswahl einfrieren | Terrain-Flackern durch Kachelwechsel? |
-| F5 | Terrain-Drahtgitter | Kachelgrenzen / Skirts sichtbar machen |
-| F6 | Sonne einfrieren (folgt dem Auto nicht) | Schatten-Blitzen durch Mitführen der Schattenkamera? |
-| F7 | Schattenfilter durchschalten (PCF → weich → VSM → hart) | Schatten-Blitzen durch Filter/Bias? |
+| F1 | shadows on/off | still flashing? → not the shadow |
+| F2 | terrain geomorphing on/off | terrain flicker from morph? |
+| F3 | vehicle interpolation on/off (off = always newest snapshot) | vehicle pop-in from interpolation? |
+| F4 | freeze LOD selection | terrain flicker from tile swap? |
+| F5 | terrain wireframe | make tile borders / skirts visible |
+| F6 | freeze sun (does not follow vehicle) | shadow flashing from shadow camera follow? |
+| F7 | cycle shadow filter (PCF → soft → VSM → hard) | shadow flashing from filter/bias? |
 
-Vorab abschalten per URL: `?debug=shadows,morph,interp`. HUD zählt Frame-Ausreißer (> 2× Mittel).
-Weitere URL-Parameter: `?worker=0`, `?dpr=1`, `?x=…&z=…`.
+Disable in advance via URL: `?debug=shadows,morph,interp`. HUD counts frame outliers (> 2× mean).
+More URL params: `?worker=0`, `?dpr=1`, `?x=…&z=…`.

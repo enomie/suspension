@@ -14,20 +14,20 @@ import { VehiclePicker } from './app/vehiclePicker';
 import { CustomPanel } from './app/customPanel';
 
 /*
- * Haupt-Thread. Physik läuft im Worker (src/physics/worker.ts), Terrain-Kacheln in Terrain-Workern.
- * Ablauf pro Frame:
- *   1. Hotkeys / Input → Worker   2. interpolierten Snapshot holen (Zeit = now − delay)
- *   3. Fahrzeug-Meshes setzen   4. Floating-Origin (Haupt-Thread, eigener ORIGIN)
- *   5. Kamera + Sonne folgen   6. LOD-Terrain   7. HUD + Render
+ * Main thread. Physics runs in the physics worker (src/physics/worker.ts), terrain tiles in tile workers.
+ * Per frame:
+ *   1. hotkeys / input → worker   2. fetch interpolated snapshot (time = now − delay)
+ *   3. set vehicle meshes   4. floating origin (main thread, own ORIGIN)
+ *   5. camera + sun follow   6. LOD terrain   7. HUD + render
  */
 const params = new URLSearchParams(location.search);
 /** ?x=…&z=… = absolute Startposition [m] */
 ORIGIN.x = Number(params.get('x') ?? 0);
 ORIGIN.z = Number(params.get('z') ?? 0);
-/** ?terrain=<preset>&seed=<zahl> – gilt für alle Threads (wird an die Worker weitergegeben) */
+/** ?terrain=<preset>&seed=<number> — applies to all threads (passed to workers) */
 const preset = TERRAIN_PRESETS[params.get('terrain') ?? 'default'] ?? TERRAIN_PRESETS.default;
 const world = setTerrain({ ...preset, seed: Number(params.get('seed') ?? preset.seed) });
-// ohne ?x/?z: nächster ebener Landpunkt ab 0/0 (Raster 64 m = Origin-Raster → Fahrzeug startet bei lokal 0/0)
+// without ?x/?z: nearest flat land point from 0/0 (64 m grid = origin grid → vehicle starts at local 0/0)
 if (!params.has('x') && !params.has('z')) {
   const p = world.findLand(0, 0, { step: 64 });
   ORIGIN.x = p.x;
@@ -35,7 +35,7 @@ if (!params.has('x') && !params.has('z')) {
 }
 
 async function boot(): Promise<void> {
-/** ?dpr=1 senkt die Auflösung (Fill-Rate) */
+/** ?dpr=1 lowers resolution (fill rate) */
 const stage = await createStage(document.querySelector<HTMLDivElement>('#app')!, {
   dpr: Number(params.get('dpr') ?? 2),
 });
@@ -44,7 +44,7 @@ const { scene, camera, renderer, cameraRig, sun } = stage;
 const terrain = new LodTerrain();
 scene.add(terrain.root);
 
-// ── Physik (Worker; ?worker=0 → Haupt-Thread) ────────────────────
+// ── physics (worker; ?worker=0 → main thread) ────────────────────
 let vehicle: VehicleVisual | null = null;
 let frameVisible = true;
 let jointsVisible = true;
@@ -74,12 +74,12 @@ const showVehicle = () => {
 physics.onVehicle = showVehicle;
 showVehicle();
 
-// ── Floating Origin (Haupt-Thread): Kamera + Terrain ─────────────
+// ── floating origin (main thread): camera + terrain ─────────────
 const origin = new OriginShifter();
 origin.on((dx, dz) => cameraRig.shift(dx, dz));
 origin.on(() => terrain.onOriginShift());
 
-// ── Eingabe / HUD / Debug ────────────────────────────────────────
+// ── input / HUD / debug ────────────────────────────────────────
 const keyboard = new Keyboard();
 const hud = new TelemetryHud(document.querySelector<HTMLDivElement>('#hud')!);
 const debug = new DebugToggles(stage, terrain, physics, keyboard, (params.get('debug') ?? '').split(','));
@@ -109,7 +109,7 @@ renderer.setAnimationLoop((now: number) => {
   if (s && s[0] === physics.gen) {
     v.apply(s);
     const c = v.chassis.position;
-    if (origin.update(c.x, c.z)) v.apply(s); // nach Shift neu in lokale Koordinaten
+    if (origin.update(c.x, c.z)) v.apply(s); // after shift, re-apply in local coordinates
   }
 
   cameraRig.follow(v.chassis.position);

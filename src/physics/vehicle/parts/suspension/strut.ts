@@ -3,8 +3,8 @@ import { AX, add, coilover, finishCorner, helper, prismatic, prismaticSpring, si
 import { sidesOf, type AxleBuilder } from './types';
 
 /**
- * 1 · Schiebe-Federbein
- *   Chassis ─[Prismatic −Y, Motor = Feder+Dämpfer, Limits = Federweg]→ Strut (= Radträger)
+ * 1 · slider strut
+ *   Chassis ─[Prismatic −Y, motor = spring+damper, limits = travel]→ strut (= carrier)
  */
 export const buildStrut: AxleBuilder = (ctx, axle, i) =>
   sidesOf(axle).map((side) => {

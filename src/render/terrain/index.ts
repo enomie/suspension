@@ -1,7 +1,7 @@
 /**
- * LOD-Terrain (Optik) – öffentlicher Einstieg. Braucht three.js (WebGPU/TSL) und das aktive Terrain
- * aus src/shared/terrain. Doku: src/docs/INTEGRATION_TERRAIN.md, src/docs/TERRAIN.md
+ * LOD terrain (rendering) — public entry. Needs three.js (WebGPU/TSL) and active terrain
+ * from src/shared/terrain. Docs: src/docs/INTEGRATION_TERRAIN.md, src/docs/TERRAIN.md
  *   const lod = new LodTerrain(); scene.add(lod.root);
- *   // pro Frame (nach Kamera-Update): lod.update(camera.position.x, camera.position.y, camera.position.z)
+ *   // per frame (after camera update): lod.update(camera.position.x, camera.position.y, camera.position.z)
  */
 export { LodTerrain, morphEnabled } from './LodTerrain';

@@ -7,38 +7,38 @@ import type { Simulation } from '../physics/Simulation';
 import { terrain } from '../shared/terrain';
 
 const MAX_BUFFER = 32;
-/** Fenster für die Verzögerungs-Messung [ms] */
+/** window for delay measurement [ms] */
 const GAP_WINDOW = 500;
 
 export type VehicleListener = (layout: VehicleLayout, gen: number, preset: number) => void;
 
 /**
- * Haupt-Thread-Seite der Physik. Standard: Physik-Worker. Fallback (`?worker=0`, Tests):
- * dieselbe Simulation im Haupt-Thread (dynamisch geladen) mit derselben Snapshot-Strecke.
+ * Main-thread side of physics. Default: physics worker. Fallback (`?worker=0`, tests):
+ * same simulation on the main thread (dynamic import) with the same snapshot pipeline.
  *
- * Render-Interpolation nach ZEIT: gerendert wird der Zustand bei `now − delay`, gemischt aus den zwei
- * umgebenden Snapshots. `delay` passt sich an (kleinster Wert, bei dem immer ein neuerer Snapshot
- * vorliegt) → keine Sprünge zurück, auch bei Frame-/Timer-Jitter.
+ * Render interpolation by TIME: draw state at `now − delay`, blended from the two
+ * surrounding snapshots. `delay` adapts (smallest value where a newer snapshot always
+ * exists) → no backward jumps, even with frame/timer jitter.
  */
 export class PhysicsClient {
   gen = 0;
   preset = 0;
   layout!: VehicleLayout;
-  /** Physik-Zeit pro Schritt [ms] */
+  /** physics time per step [ms] */
   stepMs = 0;
-  /** aktuelle Render-Verzögerung [ms] */
+  /** current render delay [ms] */
   delayMs = 0;
-  /** Debug: true = immer den neuesten Snapshot zeigen (keine Interpolation) */
+  /** debug: true = always show newest snapshot (no interpolation) */
   raw = false;
   readonly mode: 'worker' | 'main';
-  /** neues Fahrzeug (Start, Respawn, Preset) */
+  /** new vehicle (start, respawn, preset) */
   onVehicle: VehicleListener = () => {};
 
   private buf: Float64Array[] = [];
   private out: Float64Array | null = null;
-  /** beobachtete Abstände zum neuesten Snapshot [Zeit, Abstand] der letzten GAP_WINDOW ms */
+  /** observed gaps to newest snapshot [time, gap] over the last GAP_WINDOW ms */
   private gaps: [number, number][] = [];
-  /** zuletzt gerenderter Zeitpunkt (monoton je Fahrzeug) */
+  /** last rendered time (monotonic per vehicle) */
   private renderTime = -Infinity;
   private worker: Worker | null = null;
   private local: Simulation | null = null;
@@ -59,8 +59,8 @@ export class PhysicsClient {
           w.terminate();
           reject(new Error(msg));
         };
-        w.onerror = () => fail('Physik-Worker konnte nicht starten (siehe Konsole)');
-        w.onmessageerror = () => fail('Physik-Worker: ungültige Nachricht');
+        w.onerror = () => fail('physics worker failed to start (see console)');
+        w.onmessageerror = () => fail('physics worker: invalid message');
         w.onmessage = (e: MessageEvent<FromWorker>) => {
           const m = e.data;
           if (m.type === 'snapshots') {
@@ -76,7 +76,7 @@ export class PhysicsClient {
       });
       return c;
     }
-    // Fallback: Physik im Haupt-Thread (nur hier wird Rapier in den Haupt-Thread geladen)
+    // fallback: physics on main thread (only here is Rapier loaded on main thread)
     const [{ initRapier }, { Simulation }] = await Promise.all([
       import('../physics/rapier'),
       import('../physics/Simulation'),
@@ -103,7 +103,7 @@ export class PhysicsClient {
   }
 
   private push(s: Float64Array): void {
-    if (s[0] !== this.gen) return; // Snapshot eines alten Fahrzeugs
+    if (s[0] !== this.gen) return; // snapshot from an old vehicle
     this.buf.push(s);
     if (this.buf.length > MAX_BUFFER) this.buf.shift();
   }
@@ -125,8 +125,8 @@ export class PhysicsClient {
   }
 
   /**
-   * Interpolierter Zustand für `now` (absolut, Layout wie Snapshot) oder null, solange keiner da ist.
-   * Im Fallback-Modus werden hier auch die fälligen Schritte gerechnet.
+   * Interpolated state for `now` (absolute, layout like snapshot) or null until one exists.
+   * In fallback mode, due steps are advanced here too.
    */
   sample(now = wallClock()): Float64Array | null {
     if (this.local) {
@@ -141,16 +141,16 @@ export class PhysicsClient {
     const b = this.buf;
     if (!b.length) return null;
     if (this.raw) return b[b.length - 1];
-    // delay = größter Abstand zum neuesten Snapshot im Fenster (nach Rucklern schnell wieder klein)
+    // delay = largest gap to newest snapshot in window (shrinks quickly after stutter)
     const g = this.gaps;
     g.push([now, now - b[b.length - 1][1]]);
     while (g.length && g[0][0] < now - GAP_WINDOW) g.shift();
     let gapMax = 0;
     for (const [, v] of g) gapMax = Math.max(gapMax, v);
-    // weich nachführen, damit sich die Render-Zeit nicht sprunghaft ändert (sonst Ruckeln)
+    // ease in so render time does not jump (otherwise jitter)
     const target = Math.min(60, Math.max(0, gapMax + 0.5));
     this.delayMs += target > this.delayMs ? target - this.delayMs : (target - this.delayMs) * 0.05;
-    // Render-Zeit läuft NIE rückwärts (sonst blitzt eine ältere Pose auf); notfalls kurz anhalten
+    // render time NEVER runs backward (otherwise an older pose flashes); pause briefly if needed
     const t = Math.max(this.renderTime, now - this.delayMs);
     this.renderTime = t;
 
@@ -162,12 +162,12 @@ export class PhysicsClient {
     const span = s1[1] - s0[1];
     const a = span > 0 ? Math.min(1, Math.max(0, (t - s0[1]) / span)) : 1;
     blendSnapshots(s0, s1, a, this.layout.corners.length, this.out);
-    // ältere Snapshots als s0 werden nicht mehr gebraucht
+    // snapshots older than s0 are no longer needed
     if (i > 1) b.splice(0, i - 1);
     return this.out;
   }
 
-  /** Debug-Zugriff im Fallback-Modus */
+  /** debug access in fallback mode */
   get simulation(): Simulation | null {
     return this.local;
   }

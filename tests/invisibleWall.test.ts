@@ -8,12 +8,12 @@ import { PRESETS } from '../src/physics/vehicle/presets';
 await RAPIER.init();
 
 /**
- * „Unsichtbare Wand“: früher setzte die (unsichtbare) volle Chassis-Box auf Bodenwellen auf
- * und verhakte an Dreieckskanten → Verzögerungen bis −1000 m/s². Jetzt Kollision = Rahmen.
+ * "Invisible wall": formerly the (invisible) full chassis box landed on ground waves
+ * and snagged on triangle edges → deceleration down to −1000 m/s². Now collision = frame only.
  */
 describe('no invisible wall', () => {
   for (const [i, spec] of PRESETS.entries()) {
-    it(`${spec.name}: 20 s Vollgas über welliges Terrain ohne harten Stoß`, () => {
+    it(`${spec.name}: 20 s full throttle over wavy terrain without hard jolt`, () => {
       const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
       world.timestep = 1 / 120;
       world.numSolverIterations = 8;
@@ -39,7 +39,7 @@ describe('no invisible wall', () => {
           });
         });
       }
-      // Rahmen darf nach Sprüngen kurz aufsetzen (Verbundlenker nach Kuppe), aber nie hängenbleiben
+      // frame may briefly land after jumps (twist beam over crest) but must not hang up
       expect(chassisHits).toBeLessThan(30);
       expect(worst).toBeGreaterThan(-300);
     }, 30000);

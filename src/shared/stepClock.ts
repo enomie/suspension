@@ -1,9 +1,9 @@
-/** Physik-Takt [s] */
+/** physics tick [s] */
 export const PHYSICS_DT = 1 / 120;
 
 /**
- * Takt mit Wanduhr: Schritt n gehört zum Zeitpunkt start + n·dt. `due(now)` = wie viele Schritte jetzt fällig.
- * Nach Hängern (> maxSteps) wird die Uhr nachgezogen statt aufzuholen.
+ * wall-clock tick: step n belongs at start + n·dt. `due(now)` = how many steps due now.
+ * after hitches (> maxSteps) clock is pulled forward instead of catching up.
  */
 export class StepClock {
   private start: number;
@@ -23,12 +23,12 @@ export class StepClock {
     }
     return Math.max(0, k);
   }
-  /** Zeitstempel nach dem nächsten Schritt */
+  /** timestamp after the next step */
   stampNext(): number {
     this.n++;
     return this.start + this.n * this.dtMs;
   }
-  /** Zeitpunkt des nächsten fälligen Schritts */
+  /** time of next due step */
   nextAt(): number {
     return this.start + (this.n + 1) * this.dtMs;
   }

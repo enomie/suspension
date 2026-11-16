@@ -8,7 +8,7 @@ import type { TileRequest, TileWorkerMessage } from './tileWorker';
 import { terrain } from '../../shared/terrain';
 import { MAX_LOD, VIEW_DISTANCE, lodSplit } from '../../shared/config';
 
-/** Kachel-Plätze im BatchedMesh (sichtbar ~150, Rest = Cache) */
+/** tile slots in BatchedMesh (visible ~150, rest = cache) */
 const SLOTS = 320;
 const INDEX = buildTileIndex();
 
@@ -25,24 +25,24 @@ interface Chunk {
   lod: number;
   ix: number;
   iz: number;
-  /** Platz im BatchedMesh (Geometrie- = Instanz-Index) */
+  /** slot in BatchedMesh (geometry index = instance index) */
   slot: number;
-  /** Höhenspanne [min, max] (absolut = lokal, y wird nicht verschoben) */
+  /** height span [min, max] (absolute = local, y is not shifted) */
   minY: number;
   maxY: number;
   lastUsed: number;
 }
 
 /**
- * Unendliches LOD-Terrain: Quadtree aus Kacheln mit je 64×64 Segmenten, Kanten 32 m · 2^k.
- * LOD 0 = 0,5-m-Raster = Physik-Raster (gleiche Punkte, gleiche Diagonale). Fein bis ~2 km
- * (`lodSplit`), dahinter grob bis 32 km. ALLE Kacheln liegen in EINEM BatchedMesh → 1 Draw Call.
- * Kacheln werden im Worker-Pool berechnet (grob zuerst, nah zuerst); ohne Worker synchron mit Zeitbudget.
+ * Infinite LOD terrain: quadtree of tiles with 64×64 segments each, edge 32 m · 2^k.
+ * LOD 0 = 0.5 m grid = physics grid (same samples, same diagonal). Fine to ~2 km
+ * (`lodSplit`), then coarse to 32 km. ALL tiles in ONE BatchedMesh → 1 draw call.
+ * Tiles computed in worker pool (coarse first, near first); without workers sync with time budget.
  */
 export class LodTerrain {
   readonly material = terrainMaterial();
   readonly mesh: BatchedMesh;
-  /** Szenen-Wurzel (= das BatchedMesh) */
+  /** scene root (= the BatchedMesh) */
   get root(): BatchedMesh {
     return this.mesh;
   }
@@ -50,21 +50,21 @@ export class LodTerrain {
   private freeSlots: number[] = [];
   private queue: { lod: number; ix: number; iz: number; d: number }[] = [];
   private frame = 0;
-  /** im letzten Durchlauf geteilte Knoten (für Hysterese) */
+  /** nodes split in the last pass (for hysteresis) */
   private splitSet = new Set<number>();
   private inView = new Set<number>();
-  /** Bau-Budget pro Frame [ms] (nur ohne Worker) */
+  /** build budget per frame [ms] (only without workers) */
   budgetMs = 3;
   stats = { visible: 0, cached: 0, built: 0, queue: 0, drawCalls: 1 };
-  /** Debug: Auswahl einfrieren */
+  /** debug: freeze selection */
   frozen = false;
 
   private workers: Worker[] = [];
   private idle: Worker[] = [];
   private pending = new Set<number>();
-  /** Worker → Kachel, an der er gerade rechnet (für Fehlerfall / Timeout) */
+  /** worker → tile currently being built (for errors / timeout) */
   private busy = new Map<Worker, { id: number; since: number }>();
-  /** Worker, die so lange nicht antworten, gelten als hängend [ms] */
+  /** workers silent this long are considered hung [ms] */
   workerTimeoutMs = 5000;
   private dirty = true;
   private lastCam = { x: NaN, y: NaN, z: NaN };
@@ -75,15 +75,15 @@ export class LodTerrain {
     const idx = INDEX.length;
     this.mesh = new BatchedMesh(SLOTS, SLOTS * TILE_VERTS, SLOTS * idx, this.material);
     this.mesh.receiveShadow = true;
-    this.mesh.frustumCulled = false; // Gesamt-Hülle ändert sich laufend
+    this.mesh.frustumCulled = false; // overall bounds change constantly
     /**
-     * Kein Culling pro Kachel durch three.js: Die Draw-Liste wird pro Pass (Schatten, Hauptbild) neu berechnet,
-     * die Indirect-Textur aber nur einmal hochgeladen → Hauptbild zeichnet mit veralteter Liste, Kacheln fehlen.
-     * Sichtbarkeit steuert `update()` (LOD + Sichtweite), die Draw-Liste baut `beforeRender()` einmal pro Frame.
+     * No per-tile culling by three.js: draw list is recomputed per pass (shadow, main view),
+     * but indirect texture uploaded once → main view draws stale list, tiles missing.
+     * Visibility controlled by `update()` (LOD + view range); draw list built in `beforeRender()` once per frame.
      */
     this.mesh.perObjectFrustumCulled = false;
     this.mesh.sortObjects = false;
-    // Plätze einmal reservieren (Neu-Hinzufügen würde Puffer-Speicher verbrauchen), dann nur überschreiben
+    // reserve slots once (adding new ones would burn buffer memory), then only overwrite
     const blank = this.geometryFrom(buildTileArrays(MAX_LOD, 1e6, 1e6));
     for (let s = 0; s < SLOTS; s++) {
       const g = this.mesh.addGeometry(blank, TILE_VERTS, idx);
@@ -96,7 +96,7 @@ export class LodTerrain {
     if (typeof Worker === 'undefined') return;
     for (let i = 0; i < workerCount; i++) {
       const w = new Worker(new URL('./tileWorker.ts', import.meta.url), { type: 'module' });
-      // gleiche Terrain-Konfiguration wie dieser Thread
+      // same terrain config as this thread
       w.postMessage({ type: 'terrain', config: terrain().config } satisfies TileWorkerMessage);
       w.onmessage = (e: MessageEvent<TileRequest & TileArrays>) => {
         const { key, lod, ix, iz } = e.data;
@@ -107,7 +107,7 @@ export class LodTerrain {
       };
       w.onerror = (e) => {
         e.preventDefault?.();
-        console.error('[terrain] Kachel-Worker ausgefallen – baue im Haupt-Thread weiter', e.message ?? e);
+        console.error('[terrain] tile worker failed — building on main thread', e.message ?? e);
         this.dropWorker(w);
       };
       w.onmessageerror = () => this.dropWorker(w);
@@ -128,12 +128,12 @@ export class LodTerrain {
     return g;
   }
 
-  /** Kachel als eigene Geometrie (Tests / Analyse) */
+  /** tile as standalone geometry (tests / analysis) */
   buildGeometry(lod: number, ix: number, iz: number): BufferGeometry {
     return this.geometryFrom(buildTileArrays(lod, ix, iz));
   }
 
-  /** Platz holen: frei, sonst die am längsten unbenutzte unsichtbare Kachel verdrängen */
+  /** acquire slot: free, else evict longest-unused invisible tile */
   private takeSlot(): number | null {
     if (this.freeSlots.length) return this.freeSlots.pop()!;
     let oldest: Chunk | null = null;
@@ -148,7 +148,7 @@ export class LodTerrain {
     const id = tileId(lod, ix, iz);
     if (this.cache.has(id)) return;
     const slot = this.takeSlot();
-    if (slot === null) return; // voll – kommt beim nächsten Durchlauf wieder
+    if (slot === null) return; // full — retries next pass
     const g = this.geometryFrom(a);
     this.mesh.setGeometryAt(slot, g);
     g.dispose();
@@ -172,26 +172,26 @@ export class LodTerrain {
     this.mesh.setMatrixAt(c.slot, this._m);
   }
 
-  /** nach Floating-Origin-Shift alle Kacheln neu platzieren */
+  /** after floating-origin shift, reposition all tiles */
   onOriginShift(): void {
     for (const c of this.cache.values()) this.place(c);
     this.dirty = true;
   }
 
-  /** Debug: Drahtgitter */
+  /** debug: wireframe */
   set wireframe(on: boolean) {
     this.material.wireframe = on;
   }
 
-  /** sichtbare Kacheln als "lod,ix,iz" (Tests / Debug) */
+  /** visible tiles as "lod,ix,iz" (tests / debug) */
   visibleKeys(): string[] {
     return [...this.visible].map((c) => c.key).sort();
   }
 
   /**
-   * Einmal pro Frame vor `renderer.render`: Draw-Liste aus der aktuellen Sichtbarkeit bauen und
-   * die Indirect-Textur zum Hochladen markieren. Danach ist `_visibilityChanged` false, alle Passes
-   * (Schatten + Hauptbild, WebGPU und WebGL-Fallback) zeichnen dieselbe, aktuelle Liste.
+   * Once per frame before `renderer.render`: build draw list from current visibility and
+   * mark indirect texture for upload. Then `_visibilityChanged` is false; all passes
+   * (shadow + main, WebGPU and WebGL fallback) draw the same up-to-date list.
    */
   beforeRender(renderer: WebGPURenderer, camera: PerspectiveCamera): void {
     const m = this.mesh as BatchedMesh & {
@@ -205,7 +205,7 @@ export class LodTerrain {
     if (m._indirectTexture) m._indirectTexture.needsUpdate = true;
   }
 
-  /** Worker entfernen (Fehler / hängt); ohne Worker baut update() im Haupt-Thread. */
+  /** remove worker (error / hung); without workers update() builds on main thread. */
   private dropWorker(w: Worker): void {
     const job = this.busy.get(w);
     if (job) this.pending.delete(job.id);
@@ -216,13 +216,13 @@ export class LodTerrain {
     this.dirty = true;
   }
 
-  /** Kamera (lokal) → Kacheln wählen, bauen, sichtbar schalten. */
+  /** camera (local) → select tiles, build, toggle visibility. */
   update(camX: number, camY: number, camZ: number): void {
     this.frame++;
     const now = performance.now();
     for (const [w, job] of this.busy)
       if (now - job.since > this.workerTimeoutMs) {
-        console.error('[terrain] Kachel-Worker antwortet nicht – baue im Haupt-Thread weiter', job.id);
+        console.error('[terrain] tile worker not responding — building on main thread', job.id);
         this.dropWorker(w);
       }
     const moved = Math.abs(camX - this.lastCam.x) + Math.abs(camY - this.lastCam.y) + Math.abs(camZ - this.lastCam.z);
@@ -243,8 +243,8 @@ export class LodTerrain {
     const key = tileId;
     const ready = (lod: number, ix: number, iz: number) => this.cache.has(tileId(lod, ix, iz));
     /**
-     * Abstand Kamera ↔ Kachel in 3D: über die Höhenspanne der Kachel (Berg 2 km höher zählt mit).
-     * Noch nicht gebaute Kachel: Kamerahöhe über dem Boden darunter als Näherung.
+     * camera ↔ tile distance in 3D: uses tile height span (mountain 2 km higher counts).
+     * tile not built yet: camera height above ground below as approximation.
      */
     const dist = (lod: number, ix: number, iz: number) => {
       const s = tileSize(lod);
@@ -254,7 +254,7 @@ export class LodTerrain {
       const dy = c ? Math.max(0, c.minY - camY, camY - c.maxY) : camH;
       return Math.sqrt(dx * dx + dz * dz + dy * dy);
     };
-    /** Sichtweiten-Grenze ebenfalls mit Hysterese (sonst Pendeln am Nebel-Ende) */
+    /** view-range boundary with hysteresis too (else oscillation at fog edge) */
     const nextInView = new Set<number>();
     const outOfView = (lod: number, ix: number, iz: number) => {
       const k = key(lod, ix, iz);
@@ -262,7 +262,7 @@ export class LodTerrain {
       if (!out) nextInView.add(k);
       return out;
     };
-    /** Teilen mit Hysterese: einmal geteilt erst bei +15 % Abstand wieder zusammenfassen */
+    /** split with hysteresis: once split, merge only at +15% distance */
     const nextSplit = new Set<number>();
     const split = (lod: number, ix: number, iz: number) => {
       if (lod === 0) return false;
@@ -278,19 +278,19 @@ export class LodTerrain {
       if (!ready(lod, ix, iz)) want.push({ lod, ix, iz, d: dist(lod, ix, iz) });
     };
     /**
-     * Verfeinern Ebene für Ebene: eine Kachel wird nur durch ihre 4 Kinder ersetzt, wenn diese 4 fertig sind.
-     * Fehlt ein Kind, bleibt NUR diese Kachel stehen (nicht der ganze Teilbaum bis zur Wurzel) und die Kinder
-     * werden angefordert. So fehlt beim Fahren höchstens kurz eine Stufe Detail – nichts springt großflächig.
+     * refine level by level: a tile is replaced by its 4 children only when all 4 are ready.
+     * If a child is missing, ONLY this tile stays (not the whole subtree to root) and children
+     * are requested. While driving at most one LOD level is briefly missing — no large pops.
      */
     const select = (lod: number, ix: number, iz: number): void => {
       if (outOfView(lod, ix, iz)) return;
       const c = this.cache.get(key(lod, ix, iz));
-      if (!c) return request(lod, ix, iz); // Elternteil bleibt sichtbar (siehe unten)
+      if (!c) return request(lod, ix, iz); // parent stays visible (see below)
       c.lastUsed = this.frame;
       if (split(lod, ix, iz)) {
         const kids = children(lod, ix, iz).filter(([l, x, z]) => !outOfView(l, x, z));
         const kidChunks = kids.map(([l, x, z]) => this.cache.get(key(l, x, z)));
-        for (const k of kidChunks) if (k) k.lastUsed = this.frame; // gebraucht → nicht verdrängen
+        for (const k of kidChunks) if (k) k.lastUsed = this.frame; // in use → do not evict
         if (kidChunks.every((k) => k)) {
           for (const [l, x, z] of kids) select(l, x, z);
           return;
@@ -299,7 +299,7 @@ export class LodTerrain {
       }
       visible.add(c);
     };
-    // alle Wurzel-Kacheln, die die Sichtweite berühren (kein festes 3×3-Fenster → kein Springen an Wurzelgrenzen)
+    // all root tiles touching view range (no fixed 3×3 window → no pops at root boundaries)
     const R = VIEW_DISTANCE * 1.05;
     for (let z = Math.floor((az - R) / rootSize); z <= Math.floor((az + R) / rootSize); z++)
       for (let x = Math.floor((ax - R) / rootSize); x <= Math.floor((ax + R) / rootSize); x++)
@@ -307,7 +307,7 @@ export class LodTerrain {
     this.splitSet = nextSplit;
     this.inView = nextInView;
 
-    // Sichtbarkeit nur bei Änderung umschalten (vor dem Bauen, damit sichtbare nicht verdrängt werden)
+    // toggle visibility only on change (before build so visible tiles are not evicted)
     for (const c of this.visible) if (!visible.has(c) && this.cache.get(c.id) === c) this.mesh.setVisibleAt(c.slot, false);
     for (const c of visible) {
       c.lastUsed = this.frame;
@@ -315,7 +315,7 @@ export class LodTerrain {
     }
     this.visible = visible;
 
-    // Bau-Warteschlange: grob vor fein, nah vor fern
+    // build queue: coarse before fine, near before far
     const seen = new Set<number>();
     this.queue = want.filter((w) => {
       const k = key(w.lod, w.ix, w.iz);
@@ -347,5 +347,5 @@ export class LodTerrain {
   }
 }
 
-/** Debug-Schalter lebt in `render/tsl/terrainMaterial.ts`; hier re-exportiert (bisheriger Importpfad). */
+/** debug toggle lives in `render/tsl/terrainMaterial.ts`; re-exported here (legacy import path). */
 export { morphEnabled } from '../tsl/terrainMaterial';

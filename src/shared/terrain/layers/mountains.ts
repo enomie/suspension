@@ -2,44 +2,44 @@ import { fbm, hashString, simplex2, smoothstep } from '../noise';
 import type { Layer, SampleContext } from '../types';
 
 /**
- * Gebirge: einzelne Gebirgszüge (nicht flächendeckend), aus drei Teilen:
- *   1. Masse     – glattes Rauschen (massWavelength): Gebirgsstock, hebt das Gelände an
- *   2. Grate     – wenige große „ridged“-Oktaven mit abgerundetem Kamm (|n| weich: √(n² + k²)),
- *                  jede Oktave gewichtet mit der vorigen → Hauptgrate mit Seitengraten
- *   3. Feinform  – normales Rauschen, an steilen Stellen gedämpft (Hänge glatt wie erodiert, Kämme bleiben)
- *   Maske = großräumiges Rauschen über Schwelle × `inland`, quadratisch auslaufend → sanfte Vorberge.
- * Masken: `mountain` (0…1) für spätere Schichten. Rechenzeit nur, wo die Maske > 0 ist.
+ * mountains: individual ranges (not blanket coverage), three parts:
+ *   1. mass     – smooth noise (massWavelength): mountain bulk, raises terrain
+ *   2. ridges   – few large ridged octaves with rounded crest (soft |n|: √(n² + k²)),
+ *                 each octave weighted by previous → main ridges with side ridges
+ *   3. fine     – normal noise, damped on steep slopes (smooth eroded flanks, crests stay)
+ *   mask = large-scale noise above threshold × `inland`, quadratic falloff → gentle foothills.
+ * masks: `mountain` (0…1) for later layers. work only where mask > 0.
  */
 export interface MountainLayerConfig {
   type: 'mountains';
   name?: string;
-  /** Höhe der höchsten Gipfel über dem Land [m] */
+  /** height of highest peaks above land [m] */
   maxHeight: number;
-  /** Wellenlänge der Gebirgs-Maske [m] (≈ Abstand der Gebirgszüge) */
+  /** wavelength of mountain mask [m] (≈ spacing of ranges) */
   rangeWavelength: number;
-  /** Masken-Schwelle (höher = seltener) */
+  /** mask threshold (higher = rarer) */
   rangeThreshold: number;
-  /** Breite des Übergangs Ebene → Gebirge (in Masken-Einheiten) */
+  /** width of plain → mountain transition (mask units) */
   rangeFalloff: number;
-  /** Wellenlänge der Gebirgsmasse [m] */
+  /** wavelength of mountain mass [m] */
   massWavelength: number;
-  /** Wellenlänge des größten Grats [m] */
+  /** wavelength of largest ridge [m] */
   ridgeWavelength: number;
-  /** Anzahl Grat-Oktaven (2–3) */
+  /** number of ridge octaves (2–3) */
   ridgeOctaves: number;
-  /** Feinform-Oktaven nach den Graten */
+  /** fine-detail octaves after ridges */
   detailOctaves: number;
-  /** Stärke der Feinform an den Kämmen (Anteil von maxHeight, z. B. 0,02) */
+  /** fine detail strength on crests (fraction of maxHeight, e.g. 0.02) */
   fineAmount: number;
-  /** Rundung der Kämme (0 = messerscharf, 0,1–0,3 = gerundet) */
+  /** crest rounding (0 = sharp, 0.1–0.3 = rounded) */
   crestRound: number;
-  /** Streckung entlang der Kammrichtung (1 = keine) */
+  /** stretch along ridge direction (1 = none) */
   stretch: number;
-  /** Domain-Warp-Stärke [m] */
+  /** domain warp strength [m] */
   warp: number;
 }
 
-// Kammrichtung (≈ 30°)
+// ridge direction (≈ 30°)
 const DC = 0.8660254037844387;
 const DS = 0.5;
 
@@ -63,21 +63,21 @@ export function mountainLayer(cfg: MountainLayerConfig, seed: number): Layer {
       const inland = ctx.masks.inland ?? 1;
       if (inland <= 0) return;
       const raw = smoothstep(cfg.rangeThreshold, cfg.rangeThreshold + cfg.rangeFalloff, fbm(ctx.x, ctx.z, sMask, maskP));
-      const m = raw * raw * inland * (1 - (ctx.masks.spawn ?? 0)); // quadratisch → lange, sanfte Vorberge
+      const m = raw * raw * inland * (1 - (ctx.masks.spawn ?? 0)); // quadratic → long gentle foothills
       if (m <= 0) return;
       ctx.masks.mountain = m;
       const minWl = ctx.minWavelength;
 
-      // 1. Masse: 0 … 1
+      // 1. mass: 0 … 1
       const mass = 0.5 + 0.5 * fbm(ctx.x, ctx.z, sMass, massP, minWl);
 
-      // Koordinaten für Grate: leichter Warp + leichte Streckung entlang der Kammrichtung
+      // ridge coordinates: light warp + stretch along ridge direction
       const wx = ctx.x + cfg.warp * fbm(ctx.x, ctx.z, sWx, warpP, minWl);
       const wz = ctx.z + cfg.warp * fbm(ctx.x, ctx.z, sWz, warpP, minWl);
       const u = (DC * wx + DS * wz) / cfg.stretch;
       const w = -DS * wx + DC * wz;
 
-      // 2. Grate: weicher Betrag → runde Kämme; Gewichtung mit voriger Oktave → Seitengrate an Hauptgraten
+      // 2. ridges: soft magnitude → round crests; weight with prior octave → side ridges on main ridges
       let f = 1 / cfg.ridgeWavelength;
       let wl = cfg.ridgeWavelength;
       let amp = 1;
@@ -88,7 +88,7 @@ export function mountainLayer(cfg: MountainLayerConfig, seed: number): Layer {
         norm += amp;
         if (wl >= minWl) {
           const n = simplex2(u * f, w * f, (sRidge + Math.imul(o, 0x9e3779b1)) | 0);
-          let r = 1 - Math.sqrt(n * n + k2) + cfg.crestRound; // 1 am Kamm, gerundet
+          let r = 1 - Math.sqrt(n * n + k2) + cfg.crestRound; // 1 at crest, rounded
           r = r < 0 ? 0 : r;
           r *= r * weight;
           weight = r > 1 ? 1 : r;
@@ -100,7 +100,7 @@ export function mountainLayer(cfg: MountainLayerConfig, seed: number): Layer {
       }
       ridge /= norm; // 0 … ~1
 
-      // 3. Feinform: nur an Kämmen (felsig), Flanken und Täler bleiben glatt (wie erodiert)
+      // 3. fine detail: only on crests (rocky), flanks and valleys stay smooth (eroded look)
       const fineP = { wavelength: wl, octaves: cfg.detailOctaves, gain: 0.45, lacunarity: 2.1 };
       const fine = ridge > 0.05 ? fbm(u, w, sFine, fineP, minWl) * ridge * ridge : 0;
 

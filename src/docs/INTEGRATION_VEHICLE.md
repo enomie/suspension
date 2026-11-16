@@ -1,25 +1,25 @@
-# Fahrzeug-Baukasten in ein anderes Projekt übernehmen
+# Adopting the vehicle kit in another project
 
-Ziel: einen **Raycast-Vehicle-Controller** durch echte Physik ersetzen. Räder sind Rigid Bodies mit Collidern,
-Aufhängungen echte Joint-Ketten, Federn und Dämpfer laufen im Rapier-Solver. Dazu kommt die Anbindung an einen
-**Asset-Editor**, der Fahrzeuge aus Primitives baut.
+Goal: replace a **raycast vehicle controller** with real physics. Wheels are rigid bodies with colliders,
+suspensions are real joint chains, springs and dampers run in the Rapier solver. Plus hookup to an
+**asset editor** that builds vehicles from primitives.
 
-## 1. Raycast-Vehicle vs. dieser Baukasten
-| | Raycast-Vehicle | Baukasten hier |
+## 1. Raycast vehicle vs. this kit
+| | Raycast vehicle | This kit |
 |---|---|---|
-| Rad | Strahl + gedachter Zylinder | Rigid Body mit Collider (Kugel oder Rund-Zylinder), echte Reibung |
-| Feder/Dämpfer | eigene Kraft-Rechnung pro Frame | Joint-Motor (`ForceBased`) oder Spring-Joint, implizit im Solver → stabil auch bei harten Federn |
-| Aufhängung | nur „senkrecht federn“ | 10 Prinzipien mit echter Kinematik (Sturz, Spur, Verschränkung, Wippen) |
-| Kanten/Stufen | Strahl „springt“ | Rad rollt über die Kante |
-| Kosten | sehr gering | 15–40 Körper je Fahrzeug, ~0,2 ms pro Schritt (Rapier SIMD) |
+| Wheel | ray + imagined cylinder | rigid body with collider (sphere or round cylinder), real friction |
+| Spring/damper | custom force math per frame | joint motor (`ForceBased`) or spring joint, implicit in solver → stable with stiff springs |
+| Suspension | only “vertical spring” | 10 types with real kinematics (camber, track, articulation, rocker) |
+| Edges/steps | ray “hops” | wheel rolls over edge |
+| Cost | very low | 15–40 bodies per vehicle, ~0.2 ms per step (Rapier SIMD) |
 
-## 2. Minimal-Einbindung (ohne Worker)
-Getestet in `tests/integration.test.ts`:
+## 2. Minimal integration (without worker)
+Tested in `tests/integration.test.ts`:
 ```ts
 import { Vehicle, PRESETS, describeLayout, poseBodies, writeVehicleSnapshot } from './physics/vehicle';
 import { VehicleVisual } from './render/vehicle';
 
-world.timestep = 1 / 120;          // abgestimmt auf 120 Hz
+world.timestep = 1 / 120;          // matched to 120 Hz
 world.numSolverIterations = 8;
 const spec = PRESETS[0];
 const vehicle = new Vehicle(R, world, spec, { x, y: groundY + 1.2, z });
@@ -27,134 +27,134 @@ const bodies = poseBodies(vehicle.built);
 const visual = new VehicleVisual(describeLayout(spec, vehicle.built));
 scene.add(visual.root);
 
-// je Physik-Schritt (fester Takt!):
+// per physics step (fixed tick!):
 vehicle.applyInput({ throttle, brake, steer, handbrake }, 1 / 120);
 world.step();
 vehicle.updateTelemetry();          // optional (HUD)
 
-// je Frame:
+// per frame:
 visual.apply(writeVehicleSnapshot(vehicle, bodies, { origin: ORIGIN }));
 ```
-Wechsel/Reset: `vehicle.dispose()` (entfernt alle Körper), `visual.dispose()`, neu bauen.
-Mit Worker (wie hier): `physics/worker.ts` + `app/PhysicsClient.ts` übernehmen. Dort sind Interpolation nach Zeit,
-Generationen gegen „alte Frames“ und das Layout per Nachricht schon gelöst, siehe [ARCHITECTURE.md](ARCHITECTURE.md).
+Switch/reset: `vehicle.dispose()` (removes all bodies), `visual.dispose()`, rebuild.
+With worker (as here): adopt `physics/worker.ts` + `app/PhysicsClient.ts`. Time interpolation,
+generations against “stale frames”, and layout via message are already solved there; see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## 3. Konventionen
-| Thema | Wert |
+## 3. Conventions
+| Topic | Value |
 |---|---|
-| Achsen | **vorwärts = −Z**, oben = +Y, rechts = +X; links = Seite `L` (−X) |
-| Einheiten | SI: m, kg, N, N·m, rad, s |
-| Takt | 120 Hz fest, 8 Solver-Iterationen (McPherson setzt +16 nur für seine Körper). Bei 60 Hz Federn weicher stellen und testen. |
-| Collision-Groups | Bits `0x1` Terrain, `0x2` Chassis, `0x4` Rad (`physics/vehicle/groups.ts`). Bei Kollision mit eigenen Gruppen anpassen. |
-| Boden | Reibung ~0,95; Räder 1,1 |
-| Input | `throttle` 0…1, `brake` 0…1 (im Stand = rückwärts), `steer` −1 (rechts) … +1 (links), `handbrake` bool |
-| IDs | `<fahrzeug>.a<achse><seite>.<teil>`, z. B. `car.a0L.wheel` (`ids.ts`) |
+| Axes | **forward = −Z**, up = +Y, right = +X; left = side `L` (−X) |
+| Units | SI: m, kg, N, N·m, rad, s |
+| Tick | fixed 120 Hz, 8 solver iterations (McPherson sets +16 only for its bodies). At 60 Hz soften springs and test. |
+| Collision groups | bits `0x1` terrain, `0x2` chassis, `0x4` wheel (`physics/vehicle/groups.ts`). Adjust when colliding with own groups. |
+| Ground | friction ~0.95; wheels 1.1 |
+| Input | `throttle` 0…1, `brake` 0…1 (at rest = reverse), `steer` −1 (right) … +1 (left), `handbrake` bool |
+| IDs | `<vehicle>.a<axle><side>.<part>`, e.g. `car.a0L.wheel` (`ids.ts`) |
 
-## 4. Asset-Editor anbinden
-Der Editor baut Fahrzeuge aus Primitives. Hier werden Fahrzeuge aus einer **`VehicleSpec`** gebaut
-(`shared/vehicleSpec.ts`, reine Daten). Die Brücke ist also eine Funktion `editorAsset → VehicleSpec`.
+## 4. Hooking up the asset editor
+The editor builds vehicles from primitives. Here vehicles are built from a **`VehicleSpec`**
+(`shared/vehicleSpec.ts`, pure data). The bridge is a function `editorAsset → VehicleSpec`.
 
-### 4.0 Editor mit Raycast-Radpunkten (nur „hier ist ein Rad“): `specFromWheelPoints()`
-Ein Punkt pro Rad reicht. Daraus entsteht die komplette Spec (`physics/vehicle/fromWheelPoints.ts`, getestet in
+### 4.0 Editor with raycast wheel points (only “here is a wheel”): `specFromWheelPoints()`
+One point per wheel is enough. From that comes the full spec (`physics/vehicle/fromWheelPoints.ts`, tested in
 `tests/integration.test.ts`):
 ```ts
 const { spec, warnings } = specFromWheelPoints(
   editorWheels.map((w) => ({ position: [w.x, w.y, w.z], radius: w.radius, width: w.width })),
   {
     name: 'buggy',
-    pointIs: 'suspensionTop', // Raycast-Startpunkt am Chassis …
-    restLength: 0.25,         // … Radmitte liegt so weit darunter (= Ruhelänge des Raycasts)
-    suspension: ['doubleWishbone', 'multiLink'], // je Achse, Standard 'strut'
-    // steer: [0], drive: [1], handbrake: [1]     // Standard: vorn lenkt, hinten treibt + Handbremse
+    pointIs: 'suspensionTop', // raycast start at chassis …
+    restLength: 0.25,         // … wheel center this far below (= raycast rest length)
+    suspension: ['doubleWishbone', 'multiLink'], // per axle, default 'strut'
+    // steer: [0], drive: [1], handbrake: [1]     // default: front steers, rear drives + handbrake
     chassis: { mass: 900, size: [1.7, 0.5, 3.8], colliders: editorColliders },
   },
 );
 ```
-| Schritt | Regel |
+| Step | Rule |
 |---|---|
-| Achsen bilden | Punkte mit gleicher Längsposition z (± `axleTolerance`, 0,25 m) = eine Achse; vorn = kleinstes z |
-| Spurweite | Abstand linkes ↔ rechtes Rad in X; 1 Punkt = Einzelrad mittig (`track 0`) |
-| Höhe | Radmitte = Punkt (`wheelCenter`) bzw. Punkt − `restLength` (`suspensionTop`, typisch beim Raycast) |
-| Rollen | vorderste Achse lenkt, hinterste treibt an + Handbremse; mehrere Antriebsachsen teilen das Moment gleich |
-| Federn, Bremsen, Lenkung, Antrieb | Werte wie `makeCar()`, über `options` bzw. danach an `spec` änderbar |
-| Unsauberes Modell | asymmetrische Achse, ungleiche Höhen, > 2 Räder pro Achse → Mittelwerte + Eintrag in `warnings` |
+| Form axles | points with same longitudinal z (± `axleTolerance`, 0.25 m) = one axle; front = smallest z |
+| Track | distance left ↔ right wheel in X; 1 point = single centered wheel (`track 0`) |
+| Height | wheel center = point (`wheelCenter`) or point − `restLength` (`suspensionTop`, typical for raycast) |
+| Roles | frontmost axle steers, rearmost drives + handbrake; multiple drive axles share torque equally |
+| Springs, brakes, steering, drive | values like `makeCar()`, via `options` or mutate `spec` after |
+| Messy model | asymmetric axle, unequal heights, > 2 wheels per axle → averages + entry in `warnings` |
 
-Umrechnung typischer Raycast-Parameter:
-| Raycast-Vehicle | hier |
+Mapping typical raycast parameters:
+| Raycast vehicle | here |
 |---|---|
-| `suspensionRestLength` | `restLength` (nur für die Radmitte) + `spring.travel` (Ein-/Ausfederweg) |
-| `suspensionStiffness` (oft „pro Masse“) | `spring.frequencyHz` (1,2–2 Hz) – Rate wird aus der Achslast berechnet |
-| `dampingCompression/Relaxation` | `spring.dampingRatio` (ζ 0,3–0,5, symmetrisch) |
-| `frictionSlip` | `wheel.friction` (Coulomb-Reibung, ~1,0–1,2) |
-| `maxSuspensionForce` | entfällt (Anschläge über `travel`) |
-| `rollInfluence` | entfällt – echte Kinematik; Stabilisator ist geplant (VEHICLE_PLAN Phase 2) |
-| Motorkraft je Rad | `drive.maxTorque` (gesamt) × `drive.share` (je Achse) |
+| `suspensionRestLength` | `restLength` (wheel center only) + `spring.travel` (bump/rebound) |
+| `suspensionStiffness` (often “per mass”) | `spring.frequencyHz` (1.2–2 Hz) – rate computed from axle load |
+| `dampingCompression/Relaxation` | `spring.dampingRatio` (ζ 0.3–0.5, symmetric) |
+| `frictionSlip` | `wheel.friction` (Coulomb friction, ~1.0–1.2) |
+| `maxSuspensionForce` | omitted (stops via `travel`) |
+| `rollInfluence` | omitted – real kinematics; anti-roll bar planned (VEHICLE_PLAN phase 2) |
+| motor force per wheel | `drive.maxTorque` (total) × `drive.share` (per axle) |
 
-Hinweis Einzelräder (Motorrad): baut korrekt, fällt aber ohne Balance-Regler um (VEHICLE_PLAN Phase 4).
+Note single-track (motorcycle): builds correctly but falls without balance controller (VEHICLE_PLAN phase 4).
 
-### 4.1 Was der Editor liefern muss → wohin es gehört
-| Im Editor | in `VehicleSpec` | Bemerkung |
+### 4.1 What the editor must supply → where it goes
+| In editor | in `VehicleSpec` | Note |
 |---|---|---|
-| Karosserie-/Rahmen-Primitives (Kollision) | `chassis.colliders: ColliderPrimitive[]` | box / sphere / capsule / cylinder, Position + Rotation chassis-lokal, `rounded` für Kantenrundung. **So nah wie möglich an der sichtbaren Form**, sonst „unsichtbare Wand“. |
-| Gesamtmasse, Schwerpunkt | `chassis.mass`, `chassis.comOffset` | Masse kommt aus der Spec, **nicht** aus dem Volumen der Primitives (Collider haben Dichte 0) |
-| Abmessungen (Trägheit) | `chassis.size` | Box-Näherung für die Trägheit |
-| Rad-Position (Mitte) | Achse: `z` (längs), `y` (Höhe), `track` (Spurweite) | Räder einer Achse **symmetrisch** links/rechts; `track: 0` = ein Rad mittig (Motorrad) |
-| Rad-Maße | `axles[i].wheel`: `radius`, `width`, `mass`, `friction`, `shape` | `ball` = robust auf Terrain, `roundCylinder` = realistischer |
-| Aufhängungstyp je Achse | `axles[i].suspension` | einer von 10, siehe 4.2 |
-| Federung | `axles[i].spring`: `frequencyHz`, `dampingRatio`, `travel: [ein, aus]` | Frequenz statt Federrate. Die Rate wird aus der Achslast berechnet → jedes Gewicht steht richtig. Alternativ `stiffness`/`damping` direkt. |
-| Lenkung | `axles[i].steer.maxAngle`, global `steering` | Ackermann je Achse automatisch; Hinterachsen lenken gegenläufig, `crab` = gleichsinnig |
-| Antrieb | `axles[i].drive.share`, global `drive` (`maxTorque`, `maxSpeed`, `reverseSpeed`, `rollingResistance`) | Momentverteilung über `share` |
-| Bremsen | `axles[i].brake.torque`, `handbrake.torque` | Handbremse nur auf Achsen mit `handbrake` |
-| Tandem | `bogieSpacing` | nur `bogie` |
-| Sichtbare Meshes | **nicht** in der Spec | Editor-Meshes an die Körper hängen, siehe 4.3 |
+| body/frame primitives (collision) | `chassis.colliders: ColliderPrimitive[]` | box / sphere / capsule / cylinder, position + rotation chassis-local, `rounded` for edge rounding. **As close as possible to visible shape**, else “invisible wall”. |
+| total mass, CoM | `chassis.mass`, `chassis.comOffset` | mass from spec, **not** from primitive volume (colliders have density 0) |
+| dimensions (inertia) | `chassis.size` | box approximation for inertia |
+| wheel position (center) | axle: `z` (longitudinal), `y` (height), `track` | wheels per axle **symmetric** left/right; `track: 0` = single centered wheel (motorcycle) |
+| wheel dimensions | `axles[i].wheel`: `radius`, `width`, `mass`, `friction`, `shape` | `ball` = robust on terrain, `roundCylinder` = more realistic |
+| suspension type per axle | `axles[i].suspension` | one of 10, see 4.2 |
+| springs | `axles[i].spring`: `frequencyHz`, `dampingRatio`, `travel: [bump, rebound]` | frequency instead of spring rate. Rate from axle load → correct ride height per weight. Or `stiffness`/`damping` directly. |
+| steering | `axles[i].steer.maxAngle`, global `steering` | Ackermann per axle automatic; rear axles steer opposite, `crab` = same direction |
+| drive | `axles[i].drive.share`, global `drive` (`maxTorque`, `maxSpeed`, `reverseSpeed`, `rollingResistance`) | torque split via `share` |
+| brakes | `axles[i].brake.torque`, `handbrake.torque` | handbrake only on axles with `handbrake` |
+| tandem | `bogieSpacing` | `bogie` only |
+| visible meshes | **not** in spec | hang editor meshes on bodies, see 4.3 |
 
-Ausgangspunkt für eigene Fahrzeuge: `makeCar(name, label, type)` aus `presets/car.ts` liefert eine vollständige Spec,
-der Editor überschreibt einzelne Werte. Getestet in `tests/integration.test.ts`.
+Starting point for custom vehicles: `makeCar(name, label, type)` from `presets/car.ts` returns a full spec;
+editor overrides individual fields. Tested in `tests/integration.test.ts`.
 
-### 4.2 Aufhängungen: was der Editor einstellen kann und was fest ist
-Die Anlenkpunkte (Lenker-Längen, Dom-Position usw.) erzeugen die Builder **selbst** aus Achse (`z`, `y`, `track`),
-Rad und Federweg. Der Editor wählt Typ und Parameter, **nicht** die einzelnen Gelenkpunkte.
+### 4.2 Suspensions: what the editor can set vs. what is fixed
+Mount points (link lengths, strut top position, etc.) are generated by builders from axle (`z`, `y`, `track`),
+wheel, and travel. Editor picks type and parameters, **not** individual joint points.
 
-| Typ | lenkbar | im Builder fest verdrahtet |
+| Type | steerable | fixed in builder |
 |---|---|---|
-| `strut` Schiebe-Federbein | ja | senkrechte Führung |
-| `doubleWishbone` Doppelquerlenker | ja | Lenkerlängen/-höhen relativ zur Spur |
-| `macPherson` | ja | Dom-Position, Querlenker; Übersetzung per Statik |
-| `trailingArm` / `semiTrailingArm` | nein | Armlänge 0,55 m, Pfeilung 20° |
-| `swingAxle` Pendelachse | ja | Drehpunkt Fahrzeugmitte |
-| `solidAxle` Starrachse | ja | Achskörper über beide Räder |
-| `twistBeam` Verbundlenker | nein | Armlänge 0,55 m, Torsionssteifigkeit 0,6 × Radrate |
-| `multiLink` Mehrlenker | ja | 5 Stab-Punkte (Tabelle in `multiLink.ts`) |
-| `bogie` Tandem-Pendel | nein | Wippe, Radabstand `bogieSpacing` |
+| `strut` sliding strut | yes | vertical guide |
+| `doubleWishbone` | yes | link lengths/heights relative to track |
+| `macPherson` | yes | strut top, lateral link; leverage from statics |
+| `trailingArm` / `semiTrailingArm` | no | arm length 0.55 m, angle 20° |
+| `swingAxle` | yes | pivot at vehicle center |
+| `solidAxle` | yes | axle body across both wheels |
+| `twistBeam` | no | arm length 0.55 m, torsion stiffness 0.6 × wheel rate |
+| `multiLink` | yes | 5 link points (table in `multiLink.ts`) |
+| `bogie` tandem rocker | no | rocker, wheel spacing `bogieSpacing` |
 
-**Wenn der Editor eigene Gelenkpunkte („Hardpoints“) setzen soll:** Erweiterungspunkt ist `AxleSpec` um ein optionales
-`hardpoints`-Objekt je Typ, das der jeweilige Builder statt seiner festen Werte nutzt
-(`physics/vehicle/parts/suspension/<typ>.ts`). Die Federrate muss dann weiter über `leverRatio`/`springFor`
-auf die Radmitte umgerechnet werden, sonst stehen die Prinzipien unterschiedlich hoch.
+**If the editor should set custom joint points (“hardpoints”):** extension point is optional `hardpoints` object on `AxleSpec`
+per type, used by the respective builder instead of fixed values
+(`physics/vehicle/parts/suspension/<type>.ts`). Spring rate must still be converted to wheel center via `leverRatio`/`springFor`,
+else types sit at different ride heights.
 
-### 4.3 Optik aus dem Editor statt der Standard-Optik
-`VehicleVisual` zeichnet einen Leiterrahmen, Räder, Lenker, Federn und Dämpfer. Für Editor-Modelle:
-- **Karosserie**: Editor-Mesh als Kind von `visual.chassis` (Group, folgt dem Chassis-Körper), Rahmen ausblenden.
-- **Räder**: je Corner `layout.corners[i].wheel` = Körper-Index → Pose über `visual.position(index, v)` / `visual.rotation(index, q)`.
-  Rad-Mesh dreht um die lokale X-Achse.
-- **Lenker/Federn**: `layout.links` enthält je Teil zwei Körperpunkte (`a`, `b` mit Körper-Index + lokalem Punkt).
-  Damit lassen sich eigene Meshes strecken (Muster: `stretch()` in `render/vehicle/linkVisual.ts`).
-- Wichtig: Posen kommen **immer** aus dem Snapshot, auch ohne Worker, damit Optik und Physik dieselbe Quelle haben.
+### 4.3 Visuals from editor instead of default visuals
+`VehicleVisual` draws ladder frame, wheels, links, springs, and dampers. For editor models:
+- **Body**: editor mesh as child of `visual.chassis` (group, follows chassis body), hide default frame.
+- **Wheels**: per corner `layout.corners[i].wheel` = body index → pose via `visual.position(index, v)` / `visual.rotation(index, q)`.
+  Wheel mesh rotates around local X.
+- **Links/springs**: `layout.links` lists two body points per part (`a`, `b` with body index + local point).
+  Custom meshes can stretch (pattern: `stretch()` in `render/vehicle/linkVisual.ts`).
+- Important: poses always come from the snapshot, even without worker, so visuals and physics share one source.
 
-### 4.4 Checkliste für die Editor-Brücke
-1. Koordinaten: vorwärts = −Z? Sonst beim Export drehen.
-2. Räder einer Achse auf gleicher `z`/`y`, symmetrisch? Sonst Achse aufteilen oder Builder erweitern.
-3. Collider-Primitives deckungsgleich mit der sichtbaren Form, unten **abgerundet** (`rounded` ≥ 0,03 m).
-4. Bodenfreiheit: Chassis-Collider-Unterkante ≥ Rad-Unterkante + Einfederweg + Reserve.
-5. Masse/Schwerpunkt aus dem Editor, nicht aus den Primitives.
-6. Federn als Frequenz (1,2–2 Hz PKW, 2–3 Hz Sport), Dämpfung ζ 0,3–0,5.
-7. Test anlegen: Fahrzeug steht ruhig auf Konstruktionshöhe, fährt, lenkt, bleibt aufrecht
-   (Vorlage: `tests/suspensions.test.ts`, `tests/invisibleWall.test.ts`).
+### 4.4 Editor bridge checklist
+1. Coordinates: forward = −Z? If not, rotate on export.
+2. Wheels per axle on same `z`/`y`, symmetric? Else split axle or extend builder.
+3. Collider primitives match visible shape, bottom **rounded** (`rounded` ≥ 0.03 m).
+4. Ground clearance: chassis collider bottom ≥ wheel bottom + bump travel + margin.
+5. Mass/CoM from editor, not from primitives.
+6. Springs as frequency (1.2–2 Hz car, 2–3 Hz sport), damping ζ 0.3–0.5.
+7. Add test: vehicle rests at design height, drives, steers, stays upright
+   (template: `tests/suspensions.test.ts`, `tests/invisibleWall.test.ts`).
 
-## 5. Wichtige Regeln (Rapier)
-- Fester Takt, sonst ändert sich das Federverhalten mit der Bildrate.
-- Hilfskörper (Strut, Knuckle, Lenker) haben **keinen Collider**, aber explizite Masse/Trägheit, nicht zu leicht
-  gegenüber dem Chassis (≤ 1:30), sonst zittert die Kette.
-- Räder mit CCD. Antriebsmoment immer begrenzen (`setMotorMaxForce`), sonst ist der Motor „unendlich stark“.
-- Joint-Kontakte zwischen verbundenen Körpern sind aus, Räder kollidieren nicht mit dem eigenen Chassis.
+## 5. Important rules (Rapier)
+- Fixed tick, else spring behavior changes with frame rate.
+- Helper bodies (strut, knuckle, links) have **no collider**, but explicit mass/inertia, not too light
+  vs chassis (≤ 1:30), else the chain jitters.
+- Wheels with CCD. Always limit drive torque (`setMotorMaxForce`), else motor is “infinitely strong”.
+- Joint contacts between connected bodies off; wheels do not collide with own chassis.
 - Details: [VEHICLE_KIT.md](VEHICLE_KIT.md) §9.

@@ -2,8 +2,8 @@ import type { Layer, SampleContext, TerrainConfig } from './types';
 import { createLayer } from './layers';
 
 /**
- * Grenzen: oben weich (unverändert bis `knee` unter max, danach asymptotisch – Gipfel werden rund statt abgeschnitten),
- * unten hart (Meeresboden ist dort ohnehin flach).
+ * bounds: soft top (unchanged until `knee` below max, then asymptotic — peaks round instead of clipped),
+ * hard bottom (sea floor is flat there anyway).
  */
 export function softLimit(h: number, min: number, max: number, knee: number): number {
   const hi = max - knee;
@@ -13,16 +13,16 @@ export function softLimit(h: number, min: number, max: number, knee: number): nu
 
 export interface Terrain {
   readonly config: TerrainConfig;
-  /** Höhe [m] an absoluter Position (volle Auflösung) */
+  /** height [m] at absolute position (full resolution) */
   height(x: number, z: number): number;
   /**
-   * (n+1)² Höhen ab absolutem (x0, z0) mit Abstand d, Zeile = Z, Spalte = X (Index j·W+i), mit `border` Rand.
-   * Wellenlängen < 2·d werden weggelassen (bandbegrenzt), außer `full` = true (Physik).
+   * (n+1)² heights from absolute (x0, z0) with spacing d, row = Z, column = X (index j·W+i), with `border` margin.
+   * wavelengths < 2·d omitted (band-limited), unless `full` = true (physics).
    */
   sampleGrid(x0: number, z0: number, d: number, n: number, border?: number, full?: boolean): Float64Array;
   /**
-   * Nächster ebener Landpunkt (Höhe minHeight … maxHeight, Gefälle < maxSlope) ab (x, z), Suche spiralförmig im
-   * Raster `step`. Deterministisch. Ergebnis liegt auf dem Raster.
+   * nearest flat land point (height minHeight … maxHeight, slope < maxSlope) from (x, z), spiral search on
+   * grid `step`. deterministic. result lies on grid.
    */
   /**
    * (n+1)² values of mask `name` (0…1) from absolute (x0, z0) with spacing d (index j·W+i); band-limited to ≥ 2·d.
@@ -33,8 +33,8 @@ export interface Terrain {
 }
 
 /**
- * Unendliches, deterministisches Terrain aus einer Schicht-Kette. Keine Karte, kein Zustand:
- * gleiche Konfiguration → überall und in jedem Thread exakt gleiche Höhen.
+ * infinite deterministic terrain from a layer chain. no map, no state:
+ * same config → identical heights everywhere and in every thread.
  */
 export function createTerrain(config: TerrainConfig): Terrain {
   const layers: Layer[] = config.layers.map((l) => createLayer(l, config.seed));
@@ -91,7 +91,7 @@ export function createTerrain(config: TerrainConfig): Terrain {
         const sz = (run(px, pz + 8, 0) - run(px, pz - 8, 0)) / 16;
         return Math.sqrt(sx * sx + sz * sz) < maxSlope;
       };
-      // Ringe wachsender Größe (Chebyshev-Abstand r), bis 2000 Ringe (~500 km bei 256 m)
+      // rings of growing size (Chebyshev distance r), up to 2000 rings (~500 km at 256 m)
       for (let r = 0; r <= 2000; r++)
         for (let i = -r; i <= r; i++)
           for (const [dx, dz] of [[i, -r], [i, r], [-r, i], [r, i]]) {

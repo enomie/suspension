@@ -1,20 +1,20 @@
-/** Auslegungsformeln für Feder/Dämpfer. Einheiten SI. */
+/** design formulas for spring/damper. SI units. */
 export const G = 9.81;
 
-/** Federrate aus Eigenfrequenz: k = m·(2πf)² [N/m] */
+/** spring rate from natural frequency: k = m·(2πf)² [N/m] */
 export function springRate(massKg: number, frequencyHz: number): number {
   const w = 2 * Math.PI * frequencyHz;
   return massKg * w * w;
 }
 
-/** Dämpfung aus Dämpfungsgrad: c = 2ζ·√(k·m) [N·s/m] */
+/** damping from damping ratio: c = 2ζ·√(k·m) [N·s/m] */
 export function dampingCoeff(stiffness: number, massKg: number, ratio: number): number {
   return 2 * ratio * Math.sqrt(stiffness * massKg);
 }
 
 /**
- * Statische Last je Achse (Anteil der gefederten Masse).
- * 2 Achsen: Hebelgesetz über Schwerpunkt; sonst gleichmäßig (Tandem/Bogie gleicht aus).
+ * static load per axle (share of sprung mass).
+ * 2 axles: lever law over COM; else even split (tandem/bogie averages).
  */
 export function axleLoadShares(axleZ: number[], comZ: number): number[] {
   if (axleZ.length === 1) return [1];

@@ -3,7 +3,7 @@ import type { AxleSpec, SuspensionType, VehicleSpec, WheelSpec } from '../types'
 
 const wheel: WheelSpec = { radius: 0.33, width: 0.22, mass: 20, friction: 1.1, shape: 'ball' };
 
-/** Prinzipien, die nicht lenken können → vorn bleibt das Schiebe-Federbein */
+/** layouts that cannot steer → front stays strut */
 const NON_STEERABLE: SuspensionType[] = ['trailingArm', 'semiTrailingArm', 'twistBeam', 'bogie'];
 
 function frontAxle(type: SuspensionType): AxleSpec {
@@ -34,7 +34,7 @@ function rearAxle(type: SuspensionType): AxleSpec {
   };
 }
 
-/** PKW-Testträger: gleicher Rahmen, Antrieb hinten, nur die Aufhängung wechselt. */
+/** car test rig: same frame, rear drive, only suspension changes. */
 export function makeCar(name: string, label: string, type: SuspensionType): VehicleSpec {
   return {
     name,
@@ -46,5 +46,5 @@ export function makeCar(name: string, label: string, type: SuspensionType): Vehi
   };
 }
 
-/** Standard-PKW (Schiebe-Federbein) */
+/** default car (strut) */
 export const car = makeCar('car', VEHICLE_PRESET_LABELS[0], 'strut');

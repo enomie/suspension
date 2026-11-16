@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
-// NUR öffentliche Einstiege – so sieht die Einbindung in einem anderen Projekt aus (ohne Worker)
+// ONLY public entry points — how integration looks in another project (without worker)
 import { Vehicle, PRESETS, describeLayout, poseBodies, writeVehicleSnapshot, makeCar, specFromWheelPoints } from '../src/physics/vehicle';
 import { VehicleVisual } from '../src/render/vehicle';
 import { createTerrain, HILLS_TERRAIN } from '../src/shared/terrain';
 
 await RAPIER.init();
 
-describe('Integration ohne Worker (Minimalbeispiel aus src/docs/INTEGRATION_VEHICLE.md)', () => {
-  it('eigener Boden + Fahrzeug + Optik im selben Thread', () => {
+describe('integration without worker (minimal example from src/docs/INTEGRATION_VEHICLE.md)', () => {
+  it('custom ground + vehicle + visuals on the same thread', () => {
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     world.timestep = 1 / 120;
     world.numSolverIterations = 8;
-    // Boden: ein eigenes Heightfield aus dem Terrain-Generator (beliebige Quelle möglich)
+    // ground: a custom heightfield from the terrain generator (any source works)
     const terrain = createTerrain(HILLS_TERRAIN);
     const n = 128;
     const size = 64;
@@ -33,12 +33,12 @@ describe('Integration ohne Worker (Minimalbeispiel aus src/docs/INTEGRATION_VEHI
     }
     visual.apply(writeVehicleSnapshot(v, bodies));
     expect(v.forwardSpeed).toBeGreaterThan(3);
-    expect(visual.chassis.position.z).toBeLessThan(-2); // vorwärts = −Z
+    expect(visual.chassis.position.z).toBeLessThan(-2); // forward = −Z
     expect(visual.root.visible).toBe(true);
   });
 
-  it('eigenes Fahrzeug aus makeCar (z. B. aus einem Asset-Editor befüllt)', () => {
-    const spec = makeCar('custom', 'Eigenbau', 'doubleWishbone');
+  it('custom vehicle from makeCar (e.g. filled from an asset editor)', () => {
+    const spec = makeCar('custom', 'Custom build', 'doubleWishbone');
     spec.chassis.mass = 900;
     spec.axles[0].wheel = { ...spec.axles[0].wheel, radius: 0.3 };
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
@@ -54,8 +54,8 @@ describe('Integration ohne Worker (Minimalbeispiel aus src/docs/INTEGRATION_VEHI
   });
 });
 
-describe('Chassis-Collider aus Primitives (Asset-Editor)', () => {
-  it('Box + Kugel als Collider, fährt und steht auf ebenem Boden', () => {
+describe('chassis colliders from primitives (asset editor)', () => {
+  it('box + sphere as colliders, drives and rests on flat ground', () => {
     const spec = makeCar('editor', 'Editor-Chassis', 'strut');
     spec.chassis.colliders = [
       { shape: 'box', position: [0, -0.1, 0], size: [1.0, 0.14, 4.2], rounded: 0.04 },
@@ -69,15 +69,15 @@ describe('Chassis-Collider aus Primitives (Asset-Editor)', () => {
       v.applyInput({ throttle: i > 240 ? 1 : 0, brake: 0, steer: 0, handbrake: false }, 1 / 120);
       world.step();
     }
-    expect(v.chassis.mass()).toBeCloseTo(spec.chassis.mass, 0); // Masse aus Spec, nicht aus den Primitives
+    expect(v.chassis.mass()).toBeCloseTo(spec.chassis.mass, 0); // mass from spec, not from primitives
     expect(v.forwardSpeed).toBeGreaterThan(3);
     const r = v.chassis.rotation();
     expect(Math.abs(r.x) + Math.abs(r.z)).toBeLessThan(0.1);
   });
 });
 
-describe('specFromWheelPoints (Editor mit Raycast-Radpunkten)', () => {
-  it('4 Punkte → 2 Achsen, Spur, Rollen; Fahrzeug steht und fährt', () => {
+describe('specFromWheelPoints (editor with raycast wheel points)', () => {
+  it('4 points → 2 axles, track, roles; vehicle rests and drives', () => {
     const { spec, warnings } = specFromWheelPoints(
       [
         { position: [-0.78, 0.0, -1.35] },
@@ -107,7 +107,7 @@ describe('specFromWheelPoints (Editor mit Raycast-Radpunkten)', () => {
     expect(v.forwardSpeed).toBeGreaterThan(3);
   });
 
-  it('6 Räder (LKW), Motorrad-Einzelräder, Warnung bei Asymmetrie', () => {
+  it('6 wheels (truck), motorcycle single wheels, warning on asymmetry', () => {
     const truck = specFromWheelPoints(
       [-2, 1.2, 2.5].flatMap((z) => [{ position: [-1, 0, z] as [number, number, number] }, { position: [1, 0, z] as [number, number, number] }]),
       { name: 'truck', drive: [1, 2], handbrake: [1, 2] },

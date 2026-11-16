@@ -10,11 +10,11 @@ const _qi = new Quaternion();
 const _v = new Vector3();
 const _w = new Vector3();
 
-/** Laufzeit-Fahrzeug (nur Physik): Input → Motoren, Telemetrie. */
+/** runtime vehicle (physics only): input → motors, telemetry. */
 export class Vehicle {
   readonly built: BuiltVehicle;
   readonly steering: Steering;
-  /** Vorwärtsgeschwindigkeit [m/s] (+ = −Z des Chassis) */
+  /** forward speed [m/s] (+ = chassis −Z) */
   forwardSpeed = 0;
 
   constructor(
@@ -47,13 +47,13 @@ export class Vehicle {
     applyDrive(this.corners, this.spec.drive, input, this.forwardSpeed);
   }
 
-  /** Nach world.step(): Telemetrie aktualisieren. */
+  /** after world.step(): refresh telemetry. */
   updateTelemetry(): void {
     const ct = this.chassis.translation();
     const cr = this.chassis.rotation();
     _qi.set(cr.x, cr.y, cr.z, cr.w).invert();
     for (const c of this.corners) {
-      // Federweg generisch über Radmitte im Chassis-System (+ = ausgefedert)
+      // suspension travel generically via wheel center in chassis space (+ = extended)
       const wt = c.wheel.translation();
       _v.set(wt.x - ct.x, wt.y - ct.y, wt.z - ct.z).applyQuaternion(_qi);
       const travel = -(_v.y - c.anchor[1]);

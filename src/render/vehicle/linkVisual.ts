@@ -3,7 +3,7 @@ import type { BodyPoint, VehicleLayout } from '../../shared/vehicleLayout';
 import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HELIX_GEOMETRY } from '../geometries/unitGeometries';
 import { MAT } from './materials';
 
-/** Posen der Körper (Render-lokal), adressiert über den Snapshot-Index */
+/** body poses (render-local), addressed by snapshot index */
 export interface BodyPoses {
   position(body: number, out: Vector3): Vector3;
   rotation(body: number, out: Quaternion): Quaternion;
@@ -17,12 +17,12 @@ const _d = new Vector3();
 const _m = new Vector3();
 const _t = new Vector3();
 
-/** Durchmesser bzw. Boxmaße [m] der Teile; Länge kommt aus den Endpunkten */
+/** diameter or box size [m] of parts; length from endpoints */
 const SIZE = { rod: 0.044, beam: 0.08, spring: 0.13, tube: 0.064, piston: 0.028 };
 const SEAT_DIAMETER = 0.15;
 const SEAT_THICKNESS = 0.012;
 const KNUCKLE: [number, number, number] = [0.07, 0.24, 0.12];
-/** Achsschenkel-Box sitzt so weit nach innen (Knuckle-lokal X) versetzt, dass sie hinter der Bremsscheibe steht [m] */
+/** knuckle box offset inboard (knuckle-local X) to sit behind brake disc [m] */
 export const KNUCKLE_INBOARD = 0.05;
 const DAMPER_TUBE = 0.2;
 
@@ -36,7 +36,7 @@ const _p = new Vector3();
 const _s = new Vector3();
 const _mat = new Matrix4();
 
-/** Instanz `i` von `batch` als Zylinder/Box von `a` nach `b` setzen (Unit-Zylinder entlang Y, Länge |b−a|, Durchmesser `d`). */
+/** set instance `i` of `batch` as cylinder/box from `a` to `b` (unit cylinder along Y, length |b−a|, diameter `d`). */
 function stretch(batch: InstancedMesh, i: number, a: Vector3, b: Vector3, d: number): void {
   _d.subVectors(b, a);
   const l = _d.length();
@@ -45,33 +45,33 @@ function stretch(batch: InstancedMesh, i: number, a: Vector3, b: Vector3, d: num
   batch.setMatrixAt(i, _mat.compose(_p, _q, _s.set(d, Math.max(l, 1e-4), d)));
 }
 
-/** Ein Draw Call pro (Geometrie, Material); `count` = Anzahl Instanzen, `next` = Schreib-Index beim Aufbau */
+/** one draw call per (geometry, material); `count` = instance count, `next` = write index while building */
 function batch(geo: BufferGeometry, mat: InstancedMesh['material'], count: number): InstancedMesh {
   const m = new InstancedMesh(geo, mat, Math.max(count, 1));
   m.count = count;
   m.castShadow = true;
-  // Bounding-Sphere wird nicht nachgeführt (Matrizen ändern sich pro Frame) → nie wegculled
+  // bounding sphere not updated (matrices change each frame) → never culled
   m.frustumCulled = false;
   return m;
 }
 
 /**
- * Generische Darstellung aller Aufhängungs-Teile: jedes Link = Zylinder zwischen zwei Körperpunkten.
- * Die Physik beschreibt nur Punkte (Layout), nicht die Optik.
+ * generic rendering of all suspension parts: each link = cylinder between two body points.
+ * physics only describes points (layout), not visuals.
  *
- * Instancing: alle Teile gleicher Geometrie + Material teilen sich ein `InstancedMesh`
- * (statt je Teil ein `Mesh`) → ~6 Draw Calls für das ganze Fahrgestell, unabhängig von der Anzahl der Links.
- * Jede Instanz-Gruppe wird in `sync()` einmal befüllt und per `instanceMatrix.needsUpdate` hochgeladen.
+ * instancing: parts sharing geometry + material use one `InstancedMesh`
+ * (not one `Mesh` per part) → ~6 draw calls for whole undercarriage, regardless of link count.
+ * each instance group filled once in `sync()` and uploaded via `instanceMatrix.needsUpdate`.
  */
 export class LinkRenderer {
   readonly root = new Group();
-  /** Je Link: Instanz-Indizes in `rod`/`beam`/`spring`/`tube`/`piston` (Damper = tube + piston) */
+  /** per link: instance indices in `rod`/`beam`/`spring`/`tube`/`piston` (damper = tube + piston) */
   private items: { v: VehicleLayout['links'][number]; main: InstancedMesh; i: number; piston?: number; kind: 'rod' | 'beam' | 'spring' }[] = [];
   private knuckles: { body: number; wheel: number; i: number; inboard: number }[] = [];
   private readonly rods: InstancedMesh;
   private readonly beams: InstancedMesh;
   private readonly springs: InstancedMesh;
-  /** Federteller oben + unten (je Feder 2 Instanzen) */
+  /** spring seats top + bottom (2 instances per spring) */
   private readonly seats: InstancedMesh;
   private readonly tubes: InstancedMesh;
   private readonly pistons: InstancedMesh;
@@ -102,7 +102,7 @@ export class LinkRenderer {
     this.root.add(this.rods, this.beams, this.springs, this.seats, this.tubes, this.pistons, this.knuckleMesh);
   }
 
-  /** Seite je Rad: +1 / −1 = Richtung zum Chassis in Rad-lokal X (setzt `VehicleVisual` einmal) */
+  /** per wheel side: +1 / −1 = toward chassis in wheel-local X (`VehicleVisual` sets once) */
   setInboard(signs: number[]): void {
     signs.forEach((s, i) => (this.knuckles[i].inboard = s));
   }
@@ -112,7 +112,7 @@ export class LinkRenderer {
       world(poses, v.a, _a);
       world(poses, v.b, _b);
       if (piston !== undefined) {
-        // Damper: kurzes Rohr am Anfang, Kolbenstange bis zum Ende
+        // damper: short tube at start, piston rod to end
         _d.subVectors(_b, _a);
         const l = _d.length();
         _t.copy(_d).multiplyScalar(Math.min(1, DAMPER_TUBE / (l || 1))).add(_a);
@@ -121,14 +121,14 @@ export class LinkRenderer {
       } else {
         stretch(main, i, _a, _b, SIZE[kind]);
         if (main === this.springs) {
-          // Federteller an beiden Enden, gleiche Ausrichtung wie die Feder (`_q` stammt aus `stretch`)
+          // spring seats at both ends, same orientation as spring (`_q` from `stretch`)
           this.seats.setMatrixAt(2 * i, _mat.compose(_a, _q, _s.set(SEAT_DIAMETER, SEAT_THICKNESS, SEAT_DIAMETER)));
           this.seats.setMatrixAt(2 * i + 1, _mat.compose(_b, _q, _s));
         }
       }
     }
     for (const { body, wheel, i, inboard } of this.knuckles) {
-      // Ort = Radmitte, Ausrichtung = Radträger (beim Tandempendel trägt EIN Körper zwei Räder, sein Ursprung liegt dazwischen)
+      // position = wheel center, orientation = carrier (bogie: ONE body carries two wheels, origin between them)
       poses.position(wheel, _p);
       poses.rotation(body, _q);
       _p.add(_t.set(inboard * KNUCKLE_INBOARD, 0, 0).applyQuaternion(_q));

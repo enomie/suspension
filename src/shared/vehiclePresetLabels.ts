@@ -1,14 +1,14 @@
-/** Anzeigenamen für preset index 0…10 (Reihenfolge = physics/vehicle/presets). */
+/** Display names for preset index 0…10 (order = physics/vehicle/presets). */
 export const VEHICLE_PRESET_LABELS = [
-  'Schiebe-Federbein',
-  'Doppelquerlenker',
-  'McPherson',
-  'Längslenker (hinten)',
-  'Schräglenker (hinten)',
-  'Pendelachse',
-  'Starrachse',
-  'Verbundlenker (hinten)',
-  'Mehrlenker',
-  'Tandem-Pendel (hinten)',
+  'Sliding strut',
+  'Double wishbone',
+  'MacPherson strut',
+  'Trailing arm (rear)',
+  'Semi-trailing arm (rear)',
+  'Swing axle',
+  'Solid axle',
+  'Twist beam (rear)',
+  'Multi-link',
+  'Tandem bogie (rear)',
   'Trophy Truck',
 ] as const;

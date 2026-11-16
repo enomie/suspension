@@ -15,7 +15,7 @@ export interface BuiltVehicle {
   names: Map<number, string>;
 }
 
-/** VehicleSpec → Rapier-Körper + Joints (keine Optik). `pos` = Welt-Position des Chassis-Ursprungs. */
+/** VehicleSpec → Rapier bodies + joints (no visuals). `pos` = world position of chassis origin. */
 export function buildVehicle(
   R: typeof RAPIER,
   world: RAPIER.World,

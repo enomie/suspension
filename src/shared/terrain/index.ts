@@ -1,6 +1,6 @@
 /**
- * Öffentlicher Einstieg des Terrain-Generators (rein, ohne three.js/Rapier).
- * Jeder Thread setzt beim Start dieselbe Konfiguration: `setTerrain(config)`.
+ * public entry of the terrain generator (pure, no three.js/Rapier).
+ * each thread sets the same config at start: `setTerrain(config)`.
  */
 import { createTerrain, type Terrain } from './generator';
 import { DEFAULT_TERRAIN } from './presets';
@@ -12,10 +12,10 @@ export type { TerrainConfig, LayerConfig, Layer, SampleContext } from './types';
 
 let active: Terrain = createTerrain(DEFAULT_TERRAIN);
 
-/** aktives Terrain dieses Threads */
+/** active terrain of this thread */
 export const terrain = (): Terrain => active;
 
-/** Terrain dieses Threads setzen (Haupt-Thread, Physik-Worker und jeder Kachel-Worker mit derselben Konfiguration) */
+/** set terrain for this thread (main thread, physics worker, each tile worker — same config) */
 export function setTerrain(config: TerrainConfig): Terrain {
   active = createTerrain(config);
   return active;

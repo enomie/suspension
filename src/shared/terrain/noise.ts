@@ -1,9 +1,9 @@
 /**
- * Deterministische Noise-Bausteine. Nur + − × ÷, floor, sqrt und 32-Bit-Integer-Operationen
- * (Math.imul, Bit-Shifts) → bitgleiche Ergebnisse in jeder JS-Engine. KEIN Math.pow/sin/exp.
+ * deterministic noise building blocks. only + − × ÷, floor, sqrt and 32-bit integer ops
+ * (Math.imul, bit shifts) → bit-identical results in every JS engine. NO Math.pow/sin/exp.
  */
 
-/** 32-Bit-Hash zweier Gitter-Koordinaten + Seed (alles als int32) */
+/** 32-bit hash of two grid coords + seed (all as int32) */
 export function hash2(ix: number, iz: number, seed: number): number {
   let h = (seed | 0) ^ Math.imul(ix | 0, 0x27d4eb2d) ^ Math.imul(iz | 0, 0x165667b1);
   h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
@@ -11,17 +11,17 @@ export function hash2(ix: number, iz: number, seed: number): number {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
-/** Seed aus Text (FNV-1a) – z. B. Schicht-Name → eigener, stabiler Seed */
+/** seed from text (FNV-1a) — e.g. layer name → own stable seed */
 export function hashString(s: string, seed = 0): number {
   let h = (0x811c9dc5 ^ seed) >>> 0;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
   return h;
 }
 
-// 2D-Simplex: Schiefe-Konstanten (sqrt ist IEEE-exakt gerundet → deterministisch)
+// 2D simplex: skew constants (sqrt is IEEE-rounded exactly → deterministic)
 const F2 = (Math.sqrt(3) - 1) / 2;
 const G2 = (3 - Math.sqrt(3)) / 6;
-// 16 Gradienten gleichmäßig auf dem Kreis (cos/sin vorab als Konstanten, nicht zur Laufzeit)
+// 16 gradients evenly on the circle (cos/sin precomputed as constants, not at runtime)
 const GRAD = new Float64Array([
   1, 0, 0.9238795325112867, 0.3826834323650898, 0.7071067811865476, 0.7071067811865476, 0.3826834323650898,
   0.9238795325112867, 0, 1, -0.3826834323650898, 0.9238795325112867, -0.7071067811865476, 0.7071067811865476,
@@ -38,7 +38,7 @@ function corner(ix: number, iz: number, x: number, z: number, seed: number): num
   return t * t * (GRAD[g] * x + GRAD[g + 1] * z);
 }
 
-/** Gradient-Noise (2D-Simplex), Ergebnis ≈ −1 … 1, Wellenlänge ≈ 1 Einheit */
+/** gradient noise (2D simplex), result ≈ −1 … 1, wavelength ≈ 1 unit */
 export function simplex2(x: number, z: number, seed: number): number {
   const s = (x + z) * F2;
   const i = Math.floor(x + s);
@@ -56,22 +56,22 @@ export function simplex2(x: number, z: number, seed: number): number {
 }
 
 export interface FbmParams {
-  /** Wellenlänge der gröbsten Oktave [m] */
+  /** wavelength of coarsest octave [m] */
   wavelength: number;
   octaves: number;
-  /** Amplitudenfaktor je Oktave (0,5 = klassisch) */
+  /** amplitude factor per octave (0.5 = classic) */
   gain?: number;
-  /** Frequenzfaktor je Oktave */
+  /** frequency factor per octave */
   lacunarity?: number;
 }
 
-// feste Drehung je Oktave (≈ 37°) gegen achsparallele Muster
+// fixed rotation per octave (≈ 37°) against axis-aligned patterns
 const ROT_C = 0.7986355100472928;
 const ROT_S = 0.6018150231520483;
 
 /**
- * Fraktales Rauschen (Summe von Oktaven), normiert auf ≈ −1 … 1.
- * `minWavelength` (optional): Oktaven mit kürzerer Wellenlänge werden weggelassen (Bandbegrenzung für grobe LOD-Stufen).
+ * fractal noise (sum of octaves), normalized to ≈ −1 … 1.
+ * `minWavelength` (optional): octaves with shorter wavelength omitted (band limit for coarse LOD levels).
  */
 export function fbm(x: number, z: number, seed: number, p: FbmParams, minWavelength = 0): number {
   const gain = p.gain ?? 0.5;
@@ -87,7 +87,7 @@ export function fbm(x: number, z: number, seed: number, p: FbmParams, minWavelen
     if (wl >= minWavelength) {
       sum += a * simplex2(px * f, pz * f, (seed + Math.imul(o, 0x9e3779b1)) | 0);
     }
-    norm += a; // Normierung immer über alle Oktaven → Weglassen ändert nur Feinheiten, nicht den Pegel
+    norm += a; // normalize over all octaves → dropping octaves changes fine detail only, not level
     a *= gain;
     f *= lac;
     wl /= lac;

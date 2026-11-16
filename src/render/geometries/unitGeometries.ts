@@ -2,13 +2,13 @@ import { BoxGeometry, BufferGeometry, CylinderGeometry, Float32BufferAttribute, 
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
- * Unit-Primitives, 1:1 wie in apokalypto (`game-geometries/unit-*-geometry.ts`): Kantenlänge / Durchmesser / Höhe = 1.
- * Größe immer über die Instanz-Matrix (scale) – so passt der Code später direkt ins Apokalypto-Instancing.
+ * unit primitives, 1:1 as in apokalypto (`game-geometries/unit-*-geometry.ts`): edge / diameter / height = 1.
+ * size always via instance matrix (scale) — code drops into apokalypto instancing later.
  */
 export const UNIT_BOX_GEOMETRY = new BoxGeometry(1, 1, 1);
 export const UNIT_CYLINDER_GEOMETRY = new CylinderGeometry(0.5, 0.5, 1, 32);
 
-/** Hohlzylinder wie in apokalypto: Außenradius 0,5, Innenradius 0,3 (Verhältnis 0,6), Höhe 1, innen nach innen gewendet */
+/** hollow cylinder as in apokalypto: outer radius 0.5, inner 0.3 (ratio 0.6), height 1, inner faces flipped */
 export const UNIT_HOLLOW_INNER_RATIO = 0.6;
 export const UNIT_HOLLOW_CYLINDER_GEOMETRY = (() => {
   const rOut = 0.5;
@@ -28,22 +28,22 @@ export const UNIT_HOLLOW_CYLINDER_GEOMETRY = (() => {
 })();
 
 export const HELIX_TURNS = 6;
-/** Nennlänge [m], für die der Draht beim Strecken per scale rund aussieht */
+/** nominal length [m] for wire to look round when scaled */
 const HELIX_NOMINAL_LENGTH = 0.35;
 const HELIX_NOMINAL_DIAMETER = 0.13;
 const HELIX_WIRE_RADIUS = 0.007;
 
 /**
- * Unit-Wendel (Feder): Außendurchmesser 1, Länge 1 entlang Y (zentriert, Y −0,5…+0,5 wie der Unit-Zylinder), `HELIX_TURNS` Windungen.
- * Über scale (d, l, d) pro Instanz auf Durchmesser und Länge bringen – die Steigung folgt der Länge.
- * Der Drahtquerschnitt ist vorab für Nenn-Maße gegengerechnet, damit er unter der Nicht-Uniform-Skalierung
- * rund bleibt (bei stark abweichender Länge leicht oval).
+ * unit helix (spring): outer diameter 1, length 1 along Y (centered, Y −0.5…+0.5 like unit cylinder), `HELIX_TURNS` turns.
+ * scale (d, l, d) per instance for diameter and length — pitch follows length.
+ * wire cross-section precomputed for nominal size so non-uniform scale
+ * stays round (slightly oval at extreme lengths).
  */
 export const UNIT_HELIX_GEOMETRY = (() => {
   const steps = HELIX_TURNS * 40;
   const around = 8;
-  const rx = HELIX_WIRE_RADIUS / HELIX_NOMINAL_DIAMETER; // Drahtradius in Unit-X/Z
-  const ry = HELIX_WIRE_RADIUS / HELIX_NOMINAL_LENGTH; // … in Unit-Y
+  const rx = HELIX_WIRE_RADIUS / HELIX_NOMINAL_DIAMETER; // wire radius in unit X/Z
+  const ry = HELIX_WIRE_RADIUS / HELIX_NOMINAL_LENGTH; // … in unit Y
   const R = 0.5 - rx;
   const pos: number[] = [];
   const index: number[] = [];
@@ -52,7 +52,7 @@ export const UNIT_HELIX_GEOMETRY = (() => {
     const th = t * HELIX_TURNS * Math.PI * 2;
     const c = Math.cos(th);
     const sn = Math.sin(th);
-    // Drahtmitte läuft von y = −0,5 + ry bis 0,5 − ry, damit die Enden nicht über die Federteller hinausragen
+    // wire centerline from y = −0.5 + ry to 0.5 − ry so ends stay inside spring seats
     const y = -0.5 + ry + t * (1 - 2 * ry);
     for (let j = 0; j < around; j++) {
       const phi = (j / around) * Math.PI * 2;

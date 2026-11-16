@@ -6,9 +6,9 @@ import type { Side } from '../../types';
 const ARM_LENGTH = 0.55;
 
 /**
- * 8 · Verbundlenker
- *   2 Längslenker (Revolute X am Chassis) + Torsionsprofil:
- *   Lenker L ─[Revolute X, Positions-Motor = Torsionssteifigkeit]→ Lenker R  (wirkt als Stabilisator)
+ * 8 · twist beam
+ *   2 trailing arms (revolute X on chassis) + torsion profile:
+ *   arm L ─[Revolute X, position motor = torsion stiffness]→ arm R  (acts as stabilizer)
  */
 export const buildTwistBeam: AxleBuilder = (ctx, axle, i) => {
   const rate = wheelRate(ctx, axle, i, 2);
@@ -31,14 +31,14 @@ export const buildTwistBeam: AxleBuilder = (ctx, axle, i) => {
     arms[side] = arm;
     pivots[side] = pivot;
   }
-  // Torsion: Drehung der Lenker gegeneinander um die gemeinsame Schwenkachse
+  // torsion: arms twist relative to each other about common swing axis
   const mid = lerp(pivots.L, pivots.R, 0.5);
   // No joint marker (marks = []): on a real twist beam this is the profile twisting, not a hinge
   const tj = revolute(ctx, arms.L, arms.R, mid, AX.X, []);
   const kRoll = 0.6 * rate.kWheel * ARM_LENGTH * ARM_LENGTH; // N·m/rad
   tj.configureMotorModel(ctx.R.MotorModel.ForceBased);
   tj.configureMotorPosition(0, kRoll, kRoll * 0.05);
-  // Profil sichtbar auf 35 % Lenkerlänge
+  // profile visible over 35% of arm length
   const bl = lerp(pivots.L, W(ctx, wheelLocal(axle, 'L')), 0.35);
   const br = lerp(pivots.R, W(ctx, wheelLocal(axle, 'R')), 0.35);
   visuals.push(link('beam', arms.L, bl, arms.R, br));

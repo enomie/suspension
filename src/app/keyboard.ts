@@ -1,16 +1,16 @@
 import type { DriverInput } from '../shared/vehicleSpec';
 
-/** Tastenzustand → DriverInput. W/S Gas/Bremse, A/D Lenkung, Space Handbremse (hinten), Shift Boost (doppelte Leistung und Höchstgeschwindigkeit). */
+/** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake (rear), Shift boost (double torque and top speed). */
 export class Keyboard {
   private down = new Set<string>();
-  /** einmalige Tastendrücke (z. B. Reset) */
+  /** one-shot key presses (e.g. reset) */
   private pressed = new Set<string>();
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
       // typing in the panel fields must not drive the car or switch presets
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-      // Space/Pfeile scrollen nicht; F1–F7 sind Debug-Schalter (statt Hilfe/Neu laden)
+      // Space/arrows do not scroll; F1–F7 are debug toggles (not help/reload)
       if (e.code === 'Space' || e.code.startsWith('Arrow') || /^F[1-7]$/.test(e.code)) e.preventDefault();
       if (!this.down.has(e.code)) this.pressed.add(e.code);
       this.down.add(e.code);
@@ -23,7 +23,7 @@ export class Keyboard {
     return this.down.has(code);
   }
 
-  /** true genau einmal pro Tastendruck */
+  /** true exactly once per key press */
   consume(code: string): boolean {
     const had = this.pressed.has(code);
     this.pressed.delete(code);

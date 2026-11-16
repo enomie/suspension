@@ -3,9 +3,9 @@ import { AX, add, coilover, finishCorner, helper, link, prismatic, revolute, spr
 import type { AxleBuilder } from './types';
 
 /**
- * 7 · Starrachse
- *   Chassis ─[Prismatic −Y, Limits]→ Führung ─[Revolute Z, Verschränkung]→ Achskörper (= Radträger beider Räder)
- *   2 Federn Chassis ↔ Achskörper. Lenkbar über Knuckle je Rad (LKW-Vorderachse).
+ * 7 · solid axle
+ *   Chassis ─[Prismatic −Y, limits]→ guide ─[Revolute Z, panhard]→ axle body (= carrier of both wheels)
+ *   2 springs chassis ↔ axle body. steerable via knuckle per wheel (truck front axle).
  */
 export const buildSolidAxle: AxleBuilder = (ctx, axle, i) => {
   const center = W(ctx, v(0, axle.y, axle.z));

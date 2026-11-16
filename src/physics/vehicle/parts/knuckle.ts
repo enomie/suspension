@@ -2,8 +2,8 @@ import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import { IDENTITY_ROT } from './context';
 
 /**
- * Kleiner Hilfskörper ohne Collider (Strut, Achsschenkel, Lenker).
- * Masse + Trägheit explizit, damit die Joint-Kette nicht zu leicht wird.
+ * small helper body without collider (strut, knuckle, arm).
+ * explicit mass + inertia so joint chain is not too light.
  */
 export function createHelperBody(
   R: typeof RAPIER,

@@ -1,26 +1,26 @@
 import type { Vec3, VehicleSpec, WheelSpec } from './vehicleSpec';
 
 /**
- * Was die Optik über ein Fahrzeug wissen muss – reine Daten, vom Physik-Worker erzeugt
- * (`physics/vehicle/layout.ts`) und an den Haupt-Thread geschickt. Körper werden über ihren
- * Index im Snapshot adressiert (Reihenfolge = `poseBodies`).
+ * what rendering needs about a vehicle — plain data, produced by physics worker
+ * (`physics/vehicle/layout.ts`) and sent to main thread. bodies addressed by their
+ * snapshot index (order = `poseBodies`).
  */
 export interface BodyPoint {
   body: number;
-  /** Punkt im Körper-System */
+  /** point in body space */
   local: Vec3;
 }
 
 export interface VehicleLayout {
   spec: VehicleSpec;
-  /** Anzahl Körper im Snapshot */
+  /** number of bodies in snapshot */
   bodyCount: number;
   chassis: number;
   corners: {
     id: string;
     wheel: number;
     wheelSpec: WheelSpec;
-    /** Körper, an dem der Achsschenkel sitzt (Knuckle oder Radträger) */
+    /** body where knuckle attaches (steer knuckle or wheel carrier) */
     knuckle: number;
   }[];
   links: { kind: 'rod' | 'beam' | 'spring' | 'damper'; a: BodyPoint; b: BodyPoint }[];

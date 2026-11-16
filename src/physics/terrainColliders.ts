@@ -5,7 +5,7 @@ import { CELL, PHYSICS_TILE_RADIUS, PHYSICS_TILE_SEGMENTS, PHYSICS_TILE_SIZE } f
 
 const S1 = PHYSICS_TILE_SEGMENTS + 1;
 
-/** Höhen einer Physik-Kachel in Rapier-Reihenfolge (Spalte = X, column-major), volle Auflösung */
+/** heights of a physics tile in Rapier order (column = X, column-major), full resolution */
 function fillColumns(h: Float32Array, ix: number, iz: number, fromCol: number, toCol: number): void {
   const x0 = ix * PHYSICS_TILE_SIZE;
   const z0 = iz * PHYSICS_TILE_SIZE;
@@ -13,7 +13,7 @@ function fillColumns(h: Float32Array, ix: number, iz: number, fromCol: number, t
     for (let row = 0; row < S1; row++) h[col * S1 + row] = sampleTerrainHeightWorld(x0 + col * CELL, z0 + row * CELL);
 }
 
-/** Heightfield-Kachel (absolutes Raster, 0,5 m), komplett */
+/** heightfield tile (absolute grid, 0.5 m), complete */
 export function tileHeights(ix: number, iz: number): Float32Array {
   const h = new Float32Array(S1 * S1);
   fillColumns(h, ix, iz, 0, S1);
@@ -33,12 +33,12 @@ const HEIGHT_CACHE = 24;
 const WANT = (2 * PHYSICS_TILE_RADIUS + 1) ** 2;
 
 /**
- * Streamt (2r+1)² Heightfield-Kacheln (64 m, 128 Zellen) um das Fahrzeug.
- * Die Kachel unter dem Fahrzeug wird sofort gebaut; Nachbarn stückweise mit festem Budget pro Aufruf
- * (`sampleBudget` Punkte), damit kein Physik-Schritt hängt – das Terrain kostet ~1 µs pro Punkt.
- * Nachbarn in Fahrtrichtung kommen zuerst; fertige Höhenfelder bleiben in einem kleinen LRU-Cache.
- * Beim Origin-Shift wandern die Körper mit der Welt.
- * Später: gröbere Ringe für ferne Objekte über dieselbe Höhenfunktion.
+ * Streams (2r+1)² heightfield tiles (64 m, 128 cells) around the vehicle.
+ * Tile under the vehicle is built immediately; neighbours incrementally with fixed budget per call
+ * (`sampleBudget` samples) so no physics step stalls — terrain costs ~1 µs per sample.
+ * Neighbours ahead in travel direction first; finished heightfields stay in a small LRU cache.
+ * On origin shift, bodies move with the world.
+ * Later: coarser rings for distant objects via the same height function.
  */
 export class PhysicsTiles {
   private tiles = new Map<string, RAPIER.RigidBody>();
@@ -62,14 +62,14 @@ export class PhysicsTiles {
     return this.tiles.size;
   }
 
-  /** true, solange noch Nachbarkacheln entstehen */
+  /** true while neighbour tiles are still being built */
   get busy(): boolean {
     return this.job !== null;
   }
 
   /**
-   * lokale Fahrzeug-Position → fehlende Kacheln bauen, ferne entfernen.
-   * sampleBudget = Infinity: alles sofort (Spawn, Tests).
+   * local vehicle position → build missing tiles, remove distant ones.
+   * sampleBudget = Infinity: everything immediately (spawn, tests).
    */
   update(localX: number, localZ: number, sampleBudget = Infinity): void {
     const ax = localX + ORIGIN.x;
@@ -80,7 +80,7 @@ export class PhysicsTiles {
     this.lastAbsZ = az;
     const cx = Math.floor(ax / PHYSICS_TILE_SIZE);
     const cz = Math.floor(az / PHYSICS_TILE_SIZE);
-    // Normalfall (jeder Physik-Schritt): gleiche Kachel, alles da, nichts in Arbeit → nichts zu tun
+    // normal case (each physics step): same tile, all present, nothing in progress → noop
     if (cx === this.cx && cz === this.cz && !this.job && this.tiles.size === WANT) return;
     this.cx = cx;
     this.cz = cz;
@@ -94,7 +94,7 @@ export class PhysicsTiles {
         want.add(key);
         if ((dx || dz) && !this.tiles.has(key)) missing.push([cx + dx, cz + dz]);
       }
-    // Nachbarn in Fahrtrichtung zuerst (Skalarprodukt Kachel-Offset · Bewegung), stabil sortiert
+    // neighbours in travel direction first (tile offset · motion dot product), stable sort
     if (dirX || dirZ) {
       const ahead = (t: [number, number]) => (t[0] - cx) * dirX + (t[1] - cz) * dirZ;
       missing.sort((a, b) => ahead(b) - ahead(a));
@@ -106,20 +106,20 @@ export class PhysicsTiles {
       }
     if (this.job && !want.has(this.job.key)) this.job = null;
 
-    // Kachel unter dem Fahrzeug: sofort (fertigstellen bzw. komplett bauen)
+    // tile under vehicle: immediately (finish or build complete)
     const centerKey = `${cx},${cz}`;
     if (!this.tiles.has(centerKey)) {
       const job = this.job?.key === centerKey ? this.job : this.newJob(cx, cz);
       this.advance(job, Infinity);
     }
-    // Nachbarn: stückweise
+    // neighbours: incrementally
     let budget = sampleBudget;
     for (const [ix, iz] of missing) {
       if (budget <= 0) break;
       const key = `${ix},${iz}`;
       if (this.tiles.has(key)) continue;
       if (!this.job || this.job.key !== key) {
-        if (this.job) continue; // laufenden Auftrag erst fertig machen
+        if (this.job) continue; // finish running job first
         this.job = this.newJob(ix, iz);
       }
       budget = this.advance(this.job, budget);
@@ -133,7 +133,7 @@ export class PhysicsTiles {
     return { key, ix, iz, h: new Float32Array(S1 * S1), col: 0 };
   }
 
-  /** rechnet bis zu `budget` Punkte; gibt das Restbudget zurück */
+  /** samples up to `budget` points; returns remaining budget */
   private advance(job: Job, budget: number): number {
     const cols = budget === Infinity ? S1 - job.col : Math.max(1, Math.floor(budget / S1));
     const to = Math.min(S1, job.col + cols);

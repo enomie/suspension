@@ -3,16 +3,16 @@ import { sampleGrid } from './terrainHeight';
 import { CELL, MAX_LOD, TILE_SEGMENTS, TILE_SIZE, lodSplit } from './config';
 
 /**
- * Reine Kachel-Berechnung (ohne three.js) – läuft im Kachel-Worker und im Main-Thread (Fallback/Tests).
- * Positionen relativ zur Kachelmitte. Zusätzlich für CDLOD-Geomorphing: Höhe UND Normale der
- * nächstgröberen Stufe (exakt wie die Elternkachel sie zeigt, inkl. Bandbegrenzung) sowie der Morph-Bereich.
+ * Pure tile math (no three.js) — runs in the tile worker and on the main thread (fallback/tests).
+ * Positions relative to tile center. Also for CDLOD geomorphing: height AND normal of the
+ * next coarser LOD level (exactly as the parent tile shows it, including band limiting) plus the morph range.
  */
 export const N = TILE_SEGMENTS;
 export const VERTS = (N + 1) * (N + 1);
 export const SKIRT_VERTS = 4 * (N + 1);
 export const TILE_VERTS = VERTS + SKIRT_VERTS;
 
-/** Randring (entlang der 4 Kanten) – Quelle der Skirt-Vertices */
+/** Edge ring (along all four edges) — source of skirt vertices */
 export const RING: number[] = (() => {
   const v = (i: number, j: number) => j * (N + 1) + i;
   const r: number[] = [];
@@ -23,17 +23,17 @@ export const RING: number[] = (() => {
   return r;
 })();
 
-/** Indexpuffer – für alle Kacheln gleich */
+/** Index buffer — identical for every tile */
 export function buildTileIndex(): Uint32Array {
   const idx: number[] = [];
-  const v = (i: number, j: number) => j * (N + 1) + i; // i entlang X, j entlang Z
+  const v = (i: number, j: number) => j * (N + 1) + i; // i along X, j along Z
   for (let j = 0; j < N; j++) {
     for (let i = 0; i < N; i++) {
       const a = v(i, j);
       const b = v(i + 1, j);
       const c = v(i + 1, j + 1);
       const d = v(i, j + 1);
-      // Diagonale (x1,z0)–(x0,z1) wie Rapier-Heightfield (per Test geprüft), CCW von oben
+      // Diagonal (x1,z0)–(x0,z1) matches Rapier heightfield (verified by test), CCW from above
       idx.push(a, d, b, b, d, c);
     }
   }
@@ -50,9 +50,9 @@ const TILE_SIZES = Array.from({ length: MAX_LOD + 1 }, (_, k) => TILE_SIZE * 2 *
 export const tileSize = (lod: number) => TILE_SIZES[lod] ?? TILE_SIZE * 2 ** lod;
 
 /**
- * Morph-Bereich [start, end] (Abstand Vertex–Kamera): bei `end` sieht die Kachel exakt wie ihr Elternteil aus.
- * end = Teilungs-Abstand des Elternteils → beim Teilen sind die Kinder voll gemorpht (= Elternform),
- * beim Zusammenfassen (Hysterese ≥ end) ebenfalls → kein sichtbarer Wechsel.
+ * Morph range [start, end] (vertex–camera distance): at `end` the tile looks exactly like its parent.
+ * end = parent's split distance → on split the children are fully morphed (= parent shape),
+ * on merge (hysteresis ≥ end) likewise → no visible pop.
  */
 export function morphRange(lod: number): [number, number] {
   if (lod >= MAX_LOD) return [1e9, 2e9];
@@ -63,15 +63,15 @@ export function morphRange(lod: number): [number, number] {
 export interface TileArrays {
   position: Float32Array;
   normal: Float32Array;
-  /** Höhe der gröberen Stufe minus eigene Höhe */
+  /** Coarser LOD height minus this level's height */
   morph: Float32Array;
-  /** Normale der gröberen Stufe */
+  /** Normal of the coarser LOD level */
   morphNormal: Float32Array;
   /** Road coverage 0…1 per vertex (render only: colours the road) */
   road: Float32Array;
-  /** [start, end] je Vertex (konstant je Kachel) */
+  /** [start, end] per vertex (constant per tile) */
   morphRange: Float32Array;
-  /** [min, max] Höhe der Kachel inkl. Morph-Ziel (für LOD-Abstand in 3D) */
+  /** [min, max] tile height incl. morph target (for 3D LOD distance) */
   bounds: Float32Array;
 }
 
@@ -80,11 +80,11 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
   const d = CELL * 2 ** lod;
   const x0 = ix * size;
   const z0 = iz * size;
-  // eigene Stufe (bandbegrenzt auf ≥ 2d), 1 Punkt Rand für Normalen
+  // this LOD level (band-limited to ≥ 2d), 1-point border for normals
   const W = N + 3;
   const h = sampleGrid(x0, z0, d, N, 1);
   const H = (i: number, j: number) => h[(j + 1) * W + (i + 1)];
-  // gröbere Stufe = genau das, was die Elternkachel zeigt (Abstand 2d, bandbegrenzt auf ≥ 4d), 1 Punkt Rand
+  // coarser level = exactly what the parent tile shows (spacing 2d, band-limited to ≥ 4d), 1-point border
   const M = N / 2;
   const CW = M + 3;
   const hc = sampleGrid(x0, z0, 2 * d, M, 1);
@@ -105,7 +105,7 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     out[k * 3 + 1] = ny / l;
     out[k * 3 + 2] = nz / l;
   };
-  // grobe Normale an grobem Punkt (ci, cj): zentrale Differenzen im groben Raster
+  // coarse normal at coarse grid point (ci, cj): central differences on the coarse grid
   const coarseN = (ci: number, cj: number): number[] => [C(ci - 1, cj) - C(ci + 1, cj), 4 * d, C(ci, cj - 1) - C(ci, cj + 1)];
   const add = (a: number[], b: number[]) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
@@ -117,7 +117,7 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
       pos[k * 3 + 2] = j * d - half;
       setN(nor, k, H(i - 1, j) - H(i + 1, j), 2 * d, H(i, j - 1) - H(i, j + 1));
 
-      // gröbere Stufe an diesem Vertex: grobe Punkte; dazwischen linear entlang Kante bzw. Diagonale (x1,z0)–(x0,z1)
+      // coarser level at this vertex: coarse grid points; in between, linear along edge or diagonal (x1,z0)–(x0,z1)
       const ci = i >> 1;
       const cj = j >> 1;
       const oi = i & 1;
@@ -142,7 +142,7 @@ export function buildTileArrays(lod: number, ix: number, iz: number): TileArrays
     }
   }
 
-  // Höhenspanne + größter Morph-Ausschlag → Skirt-Tiefe deckt Risse auch an steilen Hängen
+  // height span + largest morph offset → skirt depth covers cracks on steep slopes too
   let minY = Infinity;
   let maxY = -Infinity;
   let maxMorph = 0;

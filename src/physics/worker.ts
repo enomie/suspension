@@ -6,8 +6,8 @@ import { wallClock } from '../shared/snapshot';
 import type { FromWorker, ToWorker } from '../shared/protocol';
 
 /**
- * Physik-Worker: Rapier läuft hier mit eigenem 120-Hz-Takt (Wanduhr), unabhängig von der Bildrate.
- * Jeder Schritt erzeugt einen Snapshot mit Zeitstempel; der Haupt-Thread interpoliert nach Zeit.
+ * Physics worker: Rapier runs here on its own 120 Hz wall-clock tick, independent of frame rate.
+ * Each step produces a timestamped snapshot; the main thread interpolates by time.
  */
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 const post = (m: FromWorker, transfer: Transferable[] = []) => scope.postMessage(m, transfer);
@@ -54,6 +54,6 @@ function tick(): void {
     }
     post({ type: 'snapshots', list, stepMs: (performance.now() - t0) / k }, list.map((a) => a.buffer));
   }
-  // bis zum nächsten fälligen Schritt schlafen (Timer-Auflösung ~1–4 ms)
+  // sleep until the next due step (timer resolution ~1–4 ms)
   setTimeout(tick, Math.max(0, clock.nextAt() - wallClock()));
 }

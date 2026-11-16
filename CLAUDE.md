@@ -1,12 +1,11 @@
-# Hinweise für Claude
+# Notes for Claude
 
-## Git-Workflow
-- Alle Änderungen landen auf `main`. Der Nutzer will alles immer auf `main` haben und lokal nur `git pull` machen.
-- Arbeitet Claude auf einem eigenen Branch, wird die Änderung danach per PR nach `main` gemergt, ohne Rückfrage.
-- Nach dem Merge dem Nutzer die Befehle zum Holen geben (`git checkout main`, `git pull`, Dev-Server neu starten).
-- Kein Force-Push auf `main`.
+## Git workflow
+- All changes land on `main`. The user wants everything on `main` and locally only runs `git pull`.
+- If Claude works on a separate branch, merge the change to `main` via PR afterward, without asking back.
+- After the merge, give the user the commands to pull (`git checkout main`, `git pull`, restart dev server).
+- No force-push to `main`.
 
-## Sprache
-- Antworten und Gespräch auf Deutsch.
-- Code, Identifier, Code-Kommentare und Anzeigetexte (UI-Labels) immer nur auf Englisch.
-- Bestehende deutsche Dateien nur dann ins Englische übersetzen, wenn sie ohnehin angefasst werden (nach und nach, kein Massen-Umbau).
+## Language
+- Conversation, answers, documentation, comments, and UI labels: **English only**.
+- Code identifiers stay as they are (already English).

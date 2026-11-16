@@ -1,13 +1,13 @@
 import type { Corner, DriveSpec, DriverInput } from '../types';
 
-/** Dämpfungsfaktor des Velocity-Motors [N·m·s/rad] – hoch = steif, Moment wird über MaxForce begrenzt. */
+/** velocity motor damping factor [N·m·s/rad] — high = stiff, torque capped via MaxForce. */
 const MOTOR_FACTOR = 1e4;
 /**
- * Schlupfbegrenzung (ASR): Rad-Umfangsgeschwindigkeit höchstens so viel über der Fahrgeschwindigkeit [m/s].
- * Ohne sie dreht ein entlastetes Rad bis vMax hoch (jedes Rad hat eigenen Motor = wie offenes Diff ohne Last).
+ * slip limit (ASR): wheel tangential speed at most this much above vehicle speed [m/s].
+ * Without it an unloaded wheel spins to vMax (each wheel has its own motor = open diff with no load).
  */
 const MAX_SLIP_SPEED = 2.5;
-/** unter dieser Geschwindigkeit [m/s] wechselt S von Bremse auf Rückwärts */
+/** below this speed [m/s], S switches from brake to reverse */
 const REVERSE_THRESHOLD = 0.6;
 /** Boost (Shift): factor on drive torque and top speed */
 const BOOST_FACTOR = 2;
@@ -15,9 +15,9 @@ const BOOST_FACTOR = 2;
 const drivenOnAxle: number[] = [];
 
 /**
- * Antrieb + Betriebsbremse + Handbremse pro Rad über den Velocity-Motor des Spin-Joints.
- * Kein Getriebe (Phase 1): Gas = Ziel-Raddrehzahl vMax/r, Moment begrenzt.
- * Priorität: Handbremse (nur Achsen mit `handbrake`) > Bremse > Antrieb > Rollwiderstand.
+ * drive + service brake + handbrake per wheel via spin joint velocity motor.
+ * No gearbox (phase 1): throttle = target wheel speed vMax/r, torque limited.
+ * priority: handbrake (axles with `handbrake` only) > brake > drive > rolling resistance.
  */
 export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInput, forwardSpeed: number): void {
   const boost = input.boost ? BOOST_FACTOR : 1;

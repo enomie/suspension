@@ -1,6 +1,6 @@
 import type { TerrainConfig } from './types';
 
-/** Nur Hügel 1,5 … 7,5 m (flache Testwelt; Fahrwerks-Tests laufen darauf) */
+/** hills only 1.5 … 7.5 m (flat test world; suspension tests run on it) */
 export const HILLS_TERRAIN: TerrainConfig = {
   seed: 421337,
   layers: [{ type: 'detail', base: 1.5, amplitude: 6, wavelength: 50, octaves: 5, gain: 0.4 }],

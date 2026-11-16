@@ -1,7 +1,7 @@
 import { Vector3, type PerspectiveCamera } from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-/** Orbit-Kamera, die einem Ziel folgt: Kamera wird um die Zielbewegung mitverschoben, Orbit bleibt frei. */
+/** orbit camera following a target: camera shifts with target motion, orbit stays free. */
 export class CameraRig {
   private last = new Vector3();
   private initialized = false;

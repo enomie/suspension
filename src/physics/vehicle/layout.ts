@@ -4,13 +4,13 @@ import type { Attach, Vec3, VehicleSpec } from './types';
 import type { BuiltVehicle } from './buildVehicle';
 
 /**
- * Alle Körper mit sichtbarer Pose, in fester Reihenfolge = Index im Snapshot.
+ * all bodies with visible pose, fixed order = index in snapshot.
  */
 export function poseBodies(built: BuiltVehicle): RAPIER.RigidBody[] {
   return [...new Set([built.chassis, ...built.corners.flatMap((c) => [c.carrier, ...c.bodies])])];
 }
 
-/** Physik-Fahrzeug → reines Daten-Layout für die Optik */
+/** physics vehicle → plain data layout for rendering */
 export function describeLayout(spec: VehicleSpec, built: BuiltVehicle): VehicleLayout {
   const bodies = poseBodies(built);
   const index = new Map(bodies.map((b, i) => [b.handle, i]));

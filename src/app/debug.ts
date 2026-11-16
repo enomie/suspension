@@ -6,16 +6,16 @@ import type { PhysicsClient } from './PhysicsClient';
 import type { Keyboard } from './keyboard';
 
 /**
- * Debug-Schalter zum Eingrenzen von Flackern (F-Tasten, auch per URL `?debug=shadows,morph,…` vorab AUS):
- *   F1 Schatten · F2 Terrain-Morph · F3 Fahrzeug-Interpolation · F4 LOD-Auswahl einfrieren · F5 Drahtgitter
- *   F6 Sonne einfrieren (folgt dem Auto nicht) · F7 Schattenfilter durchschalten (PCF → weich → VSM → hart)
- * Zusätzlich: Frame-Ausreißer (> 2× Mittel) werden gezählt und im HUD angezeigt.
+ * Debug toggles to isolate flicker (F-keys; URL `?debug=shadows,morph,…` can pre-disable):
+ *   F1 shadows · F2 terrain morph · F3 vehicle interpolation · F4 freeze LOD selection · F5 wireframe
+ *   F6 freeze sun (does not follow car) · F7 cycle shadow filter (PCF → soft → VSM → hard)
+ * Also: frame hitches (> 2× average) counted and shown in HUD.
  */
 const SHADOW_TYPES: [string, ShadowMapType][] = [
   ['PCF', PCFShadowMap],
-  ['PCF weich', PCFSoftShadowMap],
+  ['PCF soft', PCFSoftShadowMap],
   ['VSM', VSMShadowMap],
-  ['hart', BasicShadowMap],
+  ['hard', BasicShadowMap],
 ];
 
 export class DebugToggles {
@@ -26,7 +26,7 @@ export class DebugToggles {
   wireframe = false;
   sunFrozen = false;
   shadowType = 0;
-  /** Frames, die > 2× so lang wie der Mittelwert dauerten */
+  /** frames that took > 2× the running average */
   hitches = 0;
   lastHitchMs = 0;
   private avgMs = 8;
@@ -44,7 +44,7 @@ export class DebugToggles {
     this.apply();
   }
 
-  /** einmal pro Frame */
+  /** once per frame */
   update(frameMs: number): void {
     const k = this.keyboard;
     let changed = false;
@@ -75,7 +75,7 @@ export class DebugToggles {
     const type = SHADOW_TYPES[this.shadowType][1];
     if (this.stage.renderer.shadowMap.type !== type) {
       this.stage.renderer.shadowMap.type = type;
-      // Schatten-Shader neu bauen
+      // rebuild shadow shaders
       this.stage.sun.light.shadow.map?.dispose();
       this.stage.sun.light.shadow.map = null;
       this.stage.scene.traverse((o) => {
@@ -85,14 +85,14 @@ export class DebugToggles {
     }
   }
 
-  /** eine HUD-Zeile */
+  /** one HUD line */
   get summary(): string {
-    const f = (on: boolean) => (on ? 'an ' : 'AUS');
+    const f = (on: boolean) => (on ? 'on ' : 'OFF');
     return (
-      `debug    F1 Schatten ${f(this.shadows)} · F2 Morph ${f(this.morph)} · F3 Interp. ${f(this.interpolation)}` +
-      ` · F4 LOD ${this.lodFrozen ? 'FEST' : 'frei'} · F5 Gitter ${this.wireframe ? 'an' : 'aus'}` +
-      ` · F6 Sonne ${this.sunFrozen ? 'FEST' : 'folgt'} · F7 ${SHADOW_TYPES[this.shadowType][0]}` +
-      ` · Ausreißer ${this.hitches} (zuletzt ${this.lastHitchMs.toFixed(0)} ms)`
+      `debug    F1 shadows ${f(this.shadows)} · F2 morph ${f(this.morph)} · F3 interp. ${f(this.interpolation)}` +
+      ` · F4 LOD ${this.lodFrozen ? 'LOCK' : 'live'} · F5 grid ${this.wireframe ? 'on' : 'off'}` +
+      ` · F6 sun ${this.sunFrozen ? 'LOCK' : 'follow'} · F7 ${SHADOW_TYPES[this.shadowType][0]}` +
+      ` · hitches ${this.hitches} (last ${this.lastHitchMs.toFixed(0)} ms)`
     );
   }
 }

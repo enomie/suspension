@@ -79,7 +79,7 @@ describe('physics tiles', () => {
     expect(tiles.count).toBe(9);
   });
 
-  it('Budget: Kachel unter dem Fahrzeug sofort, Nachbarn stückweise; Ergebnis identisch', () => {
+  it('budget: tile under vehicle immediately, neighbours incrementally; result identical', () => {
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     const tiles = new PhysicsTiles(RAPIER, world);
     tiles.update(0, 0, 2500);
@@ -90,7 +90,7 @@ describe('physics tiles', () => {
       calls++;
     }
     expect(tiles.count).toBe(9);
-    expect(calls).toBeGreaterThan(8 * 6); // je Nachbar ~7 Aufrufe
+    expect(calls).toBeGreaterThan(8 * 6); // ~7 calls per neighbour
     world.step();
     let worst = 0;
     for (let i = 0; i < 100; i++) {
@@ -127,7 +127,7 @@ describe('LOD 0 mesh = physics (same grid + diagonal)', () => {
     for (let i = 0; i < 200; i++) {
       const x = ((i * 7.31) % TILE_SIZE) + 0.01;
       const z = ((i * 11.7) % TILE_SIZE) + 0.01;
-      // Mesh-Höhe: Dreieck suchen, baryzentrisch interpolieren
+      // mesh height: find triangle, barycentric interpolate
       let meshY = NaN;
       for (let t = 0; t < idx.count && Number.isNaN(meshY); t += 3) {
         const p = [0, 1, 2].map((k) => {
@@ -173,7 +173,7 @@ describe('floating origin', () => {
     run(360);
     const before = v.forwardSpeed;
     const absBefore = v.chassis.translation().z + ORIGIN.z;
-    // Shift um 100 m
+    // shift by 100 m
     ORIGIN.z += -100;
     world.forEachRigidBody((b) => {
       const p = b.translation();
@@ -212,10 +212,10 @@ describe('LOD stability (no flicker)', () => {
     const t = new LodTerrain();
     t.budgetMs = 1e9;
     let toggling = 0;
-    // Kamera in 0,5-m-Schritten über mehrere LOD-Grenzen schieben, an jeder Stelle ±0,3 m zittern
+    // sweep camera in 0.5 m steps across LOD boundaries, jitter ±0.3 m at each stop
     for (let x = 0; x < 120; x += 0.5) {
       const at = (dx: number) => {
-        // Verfeinerung geht eine Ebene pro Durchlauf → bis zum eingeschwungenen Zustand laufen lassen
+        // refinement adds one LOD level per pass → run until settled
         for (let i = 0; i < 14; i++) t.update(x + dx + i * 1e-3, 8, 20);
         return visibleKeys(t);
       };
@@ -227,8 +227,8 @@ describe('LOD stability (no flicker)', () => {
   });
 });
 
-describe('LOD beim Fahren (Kacheln kommen verzögert wie aus dem Worker)', () => {
-  it('Gebirge (Welt): kein Hin-und-her-Schalten', () => {
+describe('LOD while driving (tiles arrive delayed like from worker)', () => {
+  it('mountains (world): no back-and-forth switching', () => {
     setTerrain(WORLD_TERRAIN);
     ORIGIN.x = -54321;
     ORIGIN.z = 98765;
@@ -260,16 +260,16 @@ describe('LOD beim Fahren (Kacheln kommen verzögert wie aus dem Worker)', () =>
     }
   }, 60000);
 
-  it('kein Hin-und-her-Schalten zwischen grob und fein', () => {
+  it('no back-and-forth switching between coarse and fine', () => {
     const t = new LodTerrain();
     t.budgetMs = 1e9;
     for (let i = 0; i < 20; i++) t.update(0, 10, 0);
-    t.budgetMs = 0; // ~1 Kachel pro Frame
+    t.budgetMs = 0; // ~1 tile per frame
     const hist = new Map<string, number[]>();
     let prev = new Set(t.visibleKeys());
     let flips = 0;
     for (let f = 0; f < 2000; f++) {
-      const z = -f * 0.2 + 9; // 24 m/s bei 120 fps
+      const z = -f * 0.2 + 9; // 24 m/s at 120 fps
       t.update(6, sampleTerrainHeightWorld(6, z) + 4, z);
       const cur = new Set(t.visibleKeys());
       for (const k of new Set([...cur, ...prev]))
@@ -277,7 +277,7 @@ describe('LOD beim Fahren (Kacheln kommen verzögert wie aus dem Worker)', () =>
           const h = hist.get(k) ?? [];
           h.push(f);
           hist.set(k, h);
-          // dieselbe Kachel innerhalb von 60 Frames an → aus → an = Flackern
+          // same tile on within 60 frames → off → on = flicker
           if (h.length >= 3 && h[h.length - 1] - h[h.length - 3] < 60) flips++;
         }
       prev = cur;

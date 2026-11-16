@@ -6,7 +6,7 @@ import { mountainLayer } from './mountains';
 import { testHillsLayer } from './testHills';
 import { roadsLayer } from './roads';
 
-/** Schicht-Typ → Fabrik. Neue Schicht: Datei in layers/, hier eintragen, Typ in types.ts ergänzen. */
+/** layer type → factory. New layer: file in layers/, register here, add type in types.ts. */
 export function createLayer(cfg: LayerConfig, seed: number): Layer {
   switch (cfg.type) {
     case 'continent':

@@ -1,17 +1,17 @@
 import { DirectionalLight, Vector3 } from 'three';
 import { ORIGIN } from '../shared/origin';
 
-const SHADOW_EXTENT = 64; // ±m um das Fahrzeug
+const SHADOW_EXTENT = 64; // ±m around the vehicle
 const SHADOW_MAP = 2048;
 
 /**
- * Sonne mit Schatten, die dem Fahrzeug folgt – im Licht-Raum auf ganze Shadow-Texel gerastert,
- * damit Schattenkanten nicht „schwimmen“. Gerastert wird in ABSOLUTEN Koordinaten, sonst springt
- * das Raster bei jedem Floating-Origin-Shift. Bias gegen Schatten-Akne.
+ * sun with shadows following the vehicle — snapped to whole shadow texels in light space
+ * so shadow edges do not swim. snapping uses ABSOLUTE coordinates, else the grid jumps
+ * on each floating-origin shift. bias against shadow acne.
  */
 export class SunRig {
   readonly light = new DirectionalLight(0xfff4e0, 1.4);
-  /** Debug: Sonne folgt nicht mehr */
+  /** debug: sun no longer follows */
   frozen = false;
   private dir: Vector3;
   private right = new Vector3();

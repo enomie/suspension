@@ -6,7 +6,7 @@ import type { BuildContext } from '../context';
 
 const ARM_LENGTH = 0.55;
 
-/** Gemeinsamer Builder für Längs- und Schräglenker (yaw = Pfeilung der Schwenkachse). */
+/** shared builder for trailing and semi-trailing arms (yaw = swing axis heading). */
 function buildArm(ctx: BuildContext, axle: AxleSpec, i: number, yaw: number) {
   return sidesOf(axle).map((side) => {
     const s = sideSign(side);
@@ -23,7 +23,7 @@ function buildArm(ctx: BuildContext, axle: AxleSpec, i: number, yaw: number) {
     const j = revolute(ctx, ctx.chassis, arm, pivot, axis);
     armLimits(j, axis, pivot, wc, axle.spring.travel);
 
-    // Federpunkt innen neben dem Rad, 85 % Richtung Rad
+    // spring point inboard beside wheel, 85% toward wheel
     const sp = add(lerp(pivot, wc, 0.85), v(inb - px * 0.15, 0, 0));
     const top = add(sp, v(0, 0.45, 0));
     springJoint(ctx, ctx.chassis, top, arm, sp, springFor(rate, leverRatio(axis, pivot, sp, wc)));
@@ -39,10 +39,10 @@ function buildArm(ctx: BuildContext, axle: AxleSpec, i: number, yaw: number) {
 }
 
 /**
- * 4 · Längslenker (Motorrad: Schwinge)
- *   Chassis ─[Revolute X, vor dem Rad]→ Lenker (= Radträger); Feder Chassis ↔ Lenker
+ * 4 · trailing arm (motorcycle: swingarm)
+ *   Chassis ─[Revolute X, ahead of wheel]→ arm (= carrier); spring chassis ↔ arm
  */
 export const buildTrailingArm: AxleBuilder = (ctx, axle, i) => buildArm(ctx, axle, i, 0);
 
-/** 5 · Schräglenker – Schwenkachse um 20° gepfeilt → Sturz + Vorspur ändern sich beim Einfedern */
+/** 5 · semi-trailing arm — swing axis yawed 20° → camber + toe change on jounce */
 export const buildSemiTrailingArm: AxleBuilder = (ctx, axle, i) => buildArm(ctx, axle, i, 0.35);

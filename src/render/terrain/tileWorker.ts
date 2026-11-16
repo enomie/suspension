@@ -2,7 +2,7 @@
 import { buildTileArrays } from '../../shared/tileGeometry';
 import { setTerrain, type TerrainConfig } from '../../shared/terrain';
 
-/** Kachel-Auftrag */
+/** tile job */
 export interface TileRequest {
   type: 'tile';
   key: string;
@@ -10,10 +10,10 @@ export interface TileRequest {
   ix: number;
   iz: number;
 }
-/** Haupt-Thread → Kachel-Worker: erst `terrain` (Konfiguration), dann beliebig viele `tile` */
+/** main thread → tile worker: first `terrain` (config), then any number of `tile` */
 export type TileWorkerMessage = { type: 'terrain'; config: TerrainConfig } | TileRequest;
 
-/** Kachel-Worker: Kachel berechnen, Puffer ohne Kopie (transfer) zurückgeben. */
+/** tile worker: compute tile, return buffers via transfer (no copy). */
 self.onmessage = (e: MessageEvent<TileWorkerMessage>) => {
   const m = e.data;
   if (m.type === 'terrain') return void setTerrain(m.config);

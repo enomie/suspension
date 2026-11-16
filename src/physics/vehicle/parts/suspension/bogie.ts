@@ -3,9 +3,9 @@ import { AX, add, coilover, finishCorner, helper, link, prismatic, prismaticSpri
 import { sidesOf, type AxleBuilder, type BuiltCorner } from './types';
 
 /**
- * 0 · Tandem-Pendel (Bogie)
- *   Chassis ─[Prismatic −Y, Feder+Dämpfer]→ Träger ─[Revolute X, ±0,3 rad]→ Wippe ─[Revolute X]→ 2 Räder
- *   Grundlage für LKW-Tandem und Kettenfahrzeug-Laufwerk.
+ * 0 · tandem bogie
+ *   Chassis ─[Prismatic −Y, spring+damper]→ carrier ─[Revolute X, ±0.3 rad]→ rocker ─[Revolute X]→ 2 wheels
+ *   basis for truck tandem and tracked running gear.
  */
 export const buildBogie: AxleBuilder = (ctx, axle, i) => {
   const out: BuiltCorner[] = [];
@@ -14,7 +14,7 @@ export const buildBogie: AxleBuilder = (ctx, axle, i) => {
     const s = sideSign(side);
     const id = cornerId(ctx.name, i, side);
     const wc = W(ctx, wheelLocal(axle, side));
-    const rate = wheelRate(ctx, axle, i, sidesOf(axle).length); // eine Feder trägt beide Räder
+    const rate = wheelRate(ctx, axle, i, sidesOf(axle).length); // one spring carries both wheels
     const carrier = helper(ctx, axle, wc, partId(id, 'carrier'));
     const beam = helper(ctx, axle, wc, partId(id, 'walkingBeam'), 1);
     const pj = prismatic(ctx, ctx.chassis, carrier, wc, AX.DOWN);

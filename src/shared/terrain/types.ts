@@ -1,6 +1,6 @@
 /**
- * Terrain-Generator: Typen. Alles hier ist reine Daten bzw. reine Funktionen (kein three.js, kein Rapier),
- * damit dieselbe Konfiguration in jedem Thread und in anderen Projekten denselben Boden ergibt.
+ * terrain generator: types. Pure data and pure functions here (no three.js, no Rapier),
+ * so the same config yields the same ground in every thread and other projects.
  */
 import type { CalmLayerConfig } from './layers/calm';
 import type { ContinentLayerConfig } from './layers/continent';
@@ -9,35 +9,35 @@ import type { MountainLayerConfig } from './layers/mountains';
 import type { RoadsLayerConfig } from './layers/roads';
 import type { TestHillsLayerConfig } from './layers/testHills';
 
-/** Konfiguration einer Schicht – reine Daten (per postMessage übertragbar) */
+/** layer configuration — plain data (transferable via postMessage) */
 export type LayerConfig = ContinentLayerConfig | MountainLayerConfig | DetailLayerConfig | CalmLayerConfig | RoadsLayerConfig | TestHillsLayerConfig;
 
 export interface TerrainConfig {
-  /** Grund-Seed; jede Schicht leitet daraus ihren eigenen ab (Name + Seed) */
+  /** base seed; each layer derives its own (name + seed) */
   seed: number;
-  /** Schichten in Reihenfolge der Auswertung */
+  /** layers in evaluation order */
   layers: LayerConfig[];
-  /** Grenzen [m]: max weich (asymptotisch ab max − knee), min hart */
+  /** bounds [m]: soft max (asymptotic from max − knee), hard min */
   limits?: { min: number; max: number; knee: number };
 }
 
 /**
- * Zustand eines Abtastpunkts, den die Schichten nacheinander bearbeiten.
- * Spätere Schichten lesen Masken früherer (z. B. `land`, `mountain`).
+ * state of a sample point that layers process in sequence.
+ * Later layers read masks from earlier ones (e.g. `land`, `mountain`).
  */
 export interface SampleContext {
   /** absolute Position [m] */
   x: number;
   z: number;
-  /** Höhe [m] über Sea Level (y = 0) */
+  /** height [m] above sea level (y = 0) */
   height: number;
-  /** Masken 0…1 von früheren Schichten */
+  /** masks 0…1 from earlier layers */
   masks: Record<string, number>;
-  /** Wellenlängen darunter weglassen (grobe LOD-Stufen); 0 = volle Auflösung (Physik) */
+  /** omit wavelengths below this (coarse LOD levels); 0 = full resolution (physics) */
   minWavelength: number;
 }
 
-/** Eine Schicht: verändert ctx.height (und ggf. Masken). Muss deterministisch sein. */
+/** one layer: modifies ctx.height (and masks if needed). Must be deterministic. */
 export interface Layer {
   readonly name: string;
   /** Names of the masks this layer writes (lets `sampleMask` stop early) */

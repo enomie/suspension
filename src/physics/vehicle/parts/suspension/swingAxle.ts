@@ -3,9 +3,9 @@ import { AX, add, armLimits, coilover, finishCorner, helper, leverRatio, lerp, l
 import { sidesOf, type AxleBuilder } from './types';
 
 /**
- * 6 · Pendelachse
- *   Chassis ─[Revolute Z, nahe Fahrzeugmitte]→ Halbachse (= Radträger); Feder Chassis ↔ Halbachse
- *   Starke Sturzänderung beim Einfedern (typisch: Aufstützeffekt).
+ * 6 · swing axle
+ *   Chassis ─[Revolute Z, near vehicle center]→ half-shaft (= carrier); spring chassis ↔ half-shaft
+ *   strong camber change on jounce (typical: jacking effect).
  */
 export const buildSwingAxle: AxleBuilder = (ctx, axle, i) =>
   sidesOf(axle).map((side) => {

@@ -13,15 +13,15 @@ const tireMat = new MeshStandardMaterial({ color: 0x202226, roughness: 0.9 });
 const rimMat = new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.4, metalness: 0.3 });
 
 const discMat = new MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.35, metalness: 0.7 });
-const DISC_RADIUS = 0.45; // × Reifenradius (Innenradius des Reifens = 0,6)
+const DISC_RADIUS = 0.45; // × tire radius (tire inner radius = 0.6)
 const DISC_THICKNESS = 0.025; // [m]
-const SPOKE_WIDTH = 0.03; // Felgen-Platzhalter: schmal, außen vor der Bremsscheibe
+const SPOKE_WIDTH = 0.03; // rim placeholder: narrow, outside brake disc
 const HUB_DIAMETER = 0.12;
 const HUB_LENGTH = 0.08;
 
 /**
- * Rad = hohler Reifen (Unit-Hohlzylinder um X) + Bremsscheibe (Unit-Zylinder) + Speiche (macht Drehung sichtbar).
- * Reifen ist ein eigenes Mesh `tire` → später abmontierbar, dann bleibt die Bremsscheibe sichtbar.
+ * wheel = hollow tire (unit hollow cylinder on X) + brake disc (unit cylinder) + spoke (shows spin).
+ * tire is its own `tire` mesh → detachable later, brake disc stays visible.
  */
 function createWheelMesh(spec: WheelSpec): Group {
   const g = new Group();
@@ -38,9 +38,9 @@ function createWheelMesh(spec: WheelSpec): Group {
   disc.castShadow = true;
   const spoke = new Mesh(UNIT_BOX_GEOMETRY, rimMat);
   spoke.name = 'spoke';
-  // Länge = Durchmesser des Reifenlochs (Innenradius = Verhältnis × Außenradius)
+  // length = tire hole diameter (inner radius = ratio × outer radius)
   spoke.scale.set(SPOKE_WIDTH, spec.radius * 2 * UNIT_HOLLOW_INNER_RATIO, spec.radius * 0.25);
-  // Nabe: von knapp außerhalb der Scheibe bis zum Achsschenkel; Seite wird in `placeHubs` gesetzt
+  // hub: just outside disc to knuckle; side set in `placeHubs`
   const hub = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
   hub.name = 'hub';
   hub.scale.set(HUB_DIAMETER, HUB_LENGTH, HUB_DIAMETER);
@@ -51,17 +51,17 @@ function createWheelMesh(spec: WheelSpec): Group {
 }
 
 /**
- * Sichtbares Fahrzeug (Haupt-Thread). Wird allein aus dem Layout des Physik-Workers gebaut –
- * kein Rapier im Haupt-Thread. `apply(snapshot)` setzt alle Meshes aus dem interpolierten Snapshot.
+ * visible vehicle (main thread). built only from physics worker layout —
+ * no Rapier on main thread. `apply(snapshot)` sets all meshes from interpolated snapshot.
  */
 export class VehicleVisual implements BodyPoses {
   readonly root = new Group();
-  /** Chassis-Gruppe; ihre Position = Kamera-Fokus */
+  /** chassis group; its position = camera focus */
   readonly chassis = new Group();
   readonly spec: VehicleSpec;
   readonly corners: { id: string; telemetry: CornerTelemetry }[];
   forwardSpeed = 0;
-  /** absolute Chassis-Position (HUD) */
+  /** absolute chassis position (HUD) */
   readonly absPos = new Vector3();
   private wheels: Group[];
   private frame: Mesh;
@@ -89,10 +89,10 @@ export class VehicleVisual implements BodyPoses {
     this.links = new LinkRenderer(layout);
     this.joints = new JointRenderer(layout);
     this.root.add(this.chassis, ...this.wheels, this.links.root, this.joints.root);
-    this.root.visible = false; // bis der erste Snapshot da ist
+    this.root.visible = false; // until first snapshot arrives
   }
 
-  /** Einmalig nach dem ersten Snapshot: Seite jedes Rads (zum Chassis hin = innen) → Nabe + Achsschenkel nach innen */
+  /** once after first snapshot: each wheel side (toward chassis = inboard) → hub + knuckle inboard */
   private placeInboard(): void {
     const L = this.layout;
     const q = this.rotation(L.chassis, new Quaternion()).invert();
@@ -107,7 +107,7 @@ export class VehicleVisual implements BodyPoses {
     this.inboardPlaced = true;
   }
 
-  /** Snapshot (absolut) übernehmen und alle Meshes setzen */
+  /** apply snapshot (absolute) and set all meshes */
   apply(s: Float64Array): void {
     this.state = s;
     this.forwardSpeed = s[2];
@@ -135,7 +135,7 @@ export class VehicleVisual implements BodyPoses {
     this.root.visible = true;
   }
 
-  /** lokal (Render) = absolut − ORIGIN des Haupt-Threads */
+  /** local (render) = absolute − main-thread ORIGIN */
   position(body: number, out: Vector3): Vector3 {
     const o = this.q0 + body * BODY_STRIDE;
     const s = this.state!;
@@ -148,7 +148,7 @@ export class VehicleVisual implements BodyPoses {
     return out.set(s[o + 3], s[o + 4], s[o + 5], s[o + 6]);
   }
 
-  /** Leiterrahmen ein-/ausblenden (Aufhängung und Räder bleiben sichtbar) */
+  /** show/hide ladder frame (suspension and wheels stay visible) */
   setFrameVisible(on: boolean): void {
     this.frame.visible = on;
   }

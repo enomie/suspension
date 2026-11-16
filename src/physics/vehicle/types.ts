@@ -3,13 +3,13 @@ import type { AxleSpec, CornerTelemetry, Side, Vec3 } from '../../shared/vehicle
 
 export * from '../../shared/vehicleSpec';
 
-/** Punkt fest an einem Körper (lokale Koordinaten) – für Visuals. */
+/** point fixed on a body (local coordinates) — for visuals. */
 export interface Attach {
   body: RAPIER.RigidBody;
   local: Vec3;
 }
 
-/** Darstellungs-Element zwischen zwei Körperpunkten (Lenker, Feder, Dämpfer …). */
+/** visual link between two body points (arm, spring, damper …). */
 export interface LinkVisual {
   kind: 'rod' | 'beam' | 'spring' | 'damper';
   a: Attach;
@@ -29,9 +29,9 @@ export interface Corner {
   axleIndex: number;
   side: Side;
   axle: AxleSpec;
-  /** Radmitte in Konstruktionslage (Chassis-lokal) */
+  /** wheel center at design ride (chassis-local) */
   anchor: Vec3;
-  /** Radträger: Körper, an dem Knuckle (Lenkung) bzw. Rad hängt */
+  /** carrier: body where knuckle (steer) or wheel attaches */
   carrier: RAPIER.RigidBody;
   knuckle?: RAPIER.RigidBody;
   wheel: RAPIER.RigidBody;
@@ -39,12 +39,12 @@ export interface Corner {
     steer?: RAPIER.RevoluteImpulseJoint;
     spin: RAPIER.RevoluteImpulseJoint;
   };
-  /** alle Körper dieses Corners (inkl. Lenker), für dispose */
+  /** all bodies for this corner (incl. arms), for dispose */
   bodies: RAPIER.RigidBody[];
   visuals: LinkVisual[];
-  /** Radfederrate [N/m] (auf Radmitte bezogen) */
+  /** wheel spring rate [N/m] (at wheel center) */
   stiffness: number;
-  /** statische Einfederung der Radfederrate [m] (Last / Rate) */
+  /** static compression of wheel spring [m] (load / rate) */
   preload: number;
   telemetry: CornerTelemetry;
 }

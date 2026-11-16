@@ -3,16 +3,16 @@ import type { Layer, SampleContext } from '../types';
 
 /**
  * Detail: ground bumps for the suspension (damped by the `road` / `spawn` masks).
- * Höhe = base + amplitude · (0,5 + 0,5 · fbm) → base … base + amplitude.
+ * height = base + amplitude · (0.5 + 0.5 · fbm) → base … base + amplitude.
  */
 export interface DetailLayerConfig {
   type: 'detail';
   name?: string;
-  /** Grundhöhe [m] */
+  /** base height [m] */
   base: number;
-  /** Spanne [m] */
+  /** span [m] */
   amplitude: number;
-  /** Wellenlänge der gröbsten Oktave [m] */
+  /** wavelength of coarsest octave [m] */
   wavelength: number;
   octaves: number;
   gain?: number;

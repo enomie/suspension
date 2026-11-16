@@ -2,7 +2,7 @@ import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import type { WheelSpec } from '../types';
 import { WHEEL_GROUPS } from '../groups';
 
-/** Rad = eigener Rigid Body mit Collider (Kugel oder Rund-Zylinder um X). */
+/** wheel = own rigid body with collider (sphere or round cylinder on X). */
 export function createWheel(
   R: typeof RAPIER,
   world: RAPIER.World,

@@ -14,8 +14,8 @@ import type { VehicleLayout } from '../shared/vehicleLayout';
 import { setTerrain, type TerrainConfig } from '../shared/terrain';
 
 /**
- * Komplette Physik (Rapier-Welt, Boden-Collider, Fahrzeug, eigener Floating Origin).
- * Läuft im Physik-Worker – oder als Fallback im Haupt-Thread. Kennt kein Rendering.
+ * Full physics (Rapier world, ground colliders, vehicle, own floating origin).
+ * Runs in the physics worker — or as fallback on the main thread. No rendering.
  */
 export class Simulation {
   readonly world: RAPIER.World;
@@ -39,7 +39,7 @@ export class Simulation {
     this.world.timestep = PHYSICS_DT;
     this.world.numSolverIterations = 8;
     this.tiles = new PhysicsTiles(R, this.world);
-    // Origin-Shift: alle Rapier-Körper mitverschieben (Joints sind relativ → bleiben gültig)
+    // origin shift: move all Rapier bodies together (joints are relative → stay valid)
     this.origin.on((dx, dz) =>
       this.world.forEachRigidBody((b) => {
         const p = b.translation();
@@ -57,7 +57,7 @@ export class Simulation {
     return { x: lx, y: sampleTerrainHeightWorld(lx + ORIGIN.x, lz + ORIGIN.z) + 1.2, z: lz };
   }
 
-  /** Neues Fahrzeug (Preset) an aktueller Position; neue Generation */
+  /** New vehicle (preset) at current position; new generation */
   spawn(preset = this.preset, custom?: VehicleSpec): void {
     if (!custom && (preset < 0 || preset >= PRESETS.length)) return;
     const t = this.vehicle.chassis.translation();
@@ -72,7 +72,7 @@ export class Simulation {
   step(): void {
     const v = this.vehicle;
     const t = v.chassis.translation();
-    this.tiles.update(t.x, t.z, 2500); // Nachbarkacheln stückweise: ~2500 Punkte (~2,5 ms) pro Schritt
+    this.tiles.update(t.x, t.z, 2500); // neighbour tiles incrementally: ~2500 samples (~2.5 ms) per step
     v.applyInput(this.input, PHYSICS_DT);
     this.world.step();
     v.updateTelemetry();
@@ -80,7 +80,7 @@ export class Simulation {
     this.origin.update(c.x, c.z);
   }
 
-  /** Zustand als Snapshot (Layout: shared/snapshot.ts) */
+  /** state as snapshot (layout: shared/snapshot.ts) */
   snapshot(stamp: number): Float64Array {
     return writeVehicleSnapshot(this.vehicle, this.bodies, { gen: this.gen, stamp, origin: ORIGIN });
   }

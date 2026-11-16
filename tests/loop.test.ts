@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe('StepClock', () => {
-  it('liefert fällige Schritte nach Wanduhr', () => {
+  it('returns due steps by wall clock', () => {
     const c = new StepClock(0, 1000 / 120);
     expect(c.due(5)).toBe(0);
     expect(c.due(17)).toBe(2);
@@ -20,11 +20,11 @@ describe('StepClock', () => {
     c.stampNext();
     expect(c.due(17)).toBe(0);
   });
-  it('zieht nach einem Hänger die Uhr nach statt aufzuholen', () => {
+  it('pulls the clock forward after a hitch instead of catching up', () => {
     const c = new StepClock(0, 1000 / 120, 6);
     expect(c.due(1000)).toBe(6);
   });
-  it('gleiche Schrittzahl unabhängig von der Abfragerate', () => {
+  it('same step count regardless of poll rate', () => {
     for (const fps of [30, 60, 144, 240]) {
       const c = new StepClock(0, 1000 / 120, 100);
       let n = 0;
@@ -48,7 +48,7 @@ describe('OriginShifter', () => {
     expect(got).toEqual([[1216, -64]]);
   });
 
-  it('Simulation: Shift verschiebt alle Rapier-Körper, absolute Positionen bleiben', () => {
+  it('Simulation: shift moves all Rapier bodies, absolute positions unchanged', () => {
     const sim = new Simulation(RAPIER, { preset: 0, x: 0, z: 0 });
     const before: number[][] = [];
     sim.world.forEachRigidBody((b) => before.push([b.translation().x + ORIGIN.x, b.translation().z + ORIGIN.z]));
