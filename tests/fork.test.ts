@@ -53,9 +53,9 @@ describe('telescopic fork', () => {
     run(1.5, { ...idle, steer: 1 });
     const front = v.corners[0];
     const steer = front.joints.steer!;
-    // steering axis = rotation axis of the knuckle relative to the stanchion
-    const c = front.carrier.rotation();
-    const k = front.knuckle!.rotation();
+    // steering axis = rotation axis of the yoke relative to the chassis
+    const c = v.chassis.rotation();
+    const k = front.bodies[0].rotation();
     const ci = { x: -c.x, y: -c.y, z: -c.z, w: c.w };
     const rel = {
       w: ci.w * k.w - ci.x * k.x - ci.y * k.y - ci.z * k.z,
@@ -66,7 +66,7 @@ describe('telescopic fork', () => {
     const n = Math.hypot(rel.x, rel.y, rel.z);
     const axis = rot(c, { x: rel.x / n, y: rel.y / n, z: rel.z / n });
     const anchor1 = steer.anchor1();
-    const origin = front.carrier.translation();
+    const origin = v.chassis.translation();
     const a = rot(c, anchor1);
     const point = { x: origin.x + a.x, y: origin.y + a.y, z: origin.z + a.z };
     // rake: angle of the axis from vertical (top leans back = +Z)
@@ -80,16 +80,25 @@ describe('telescopic fork', () => {
     expect(contactZ - axisGroundZ).toBeCloseTo(0.1, 1);
   });
 
-  it('steers about the raked axis', () => {
+  it('steers about the raked axis, the whole fork turns as one unit', () => {
     const { v, run } = setup();
     run(2);
     run(1.5, { ...idle, steer: 1 });
     const front = v.corners[0];
-    expect(front.telemetry.steerAngle).toBeGreaterThan(0.3);
-    // wheel yaws left: its spin axis (chassis −X) rotates toward the front
-    const q = front.wheel.rotation();
-    const spin = rot(q, { x: -1, y: 0, z: 0 });
-    expect(Math.abs(spin.z)).toBeGreaterThan(0.2);
+    const [yoke, slider] = front.bodies;
+    expect(front.telemetry.steerAngle).toBeGreaterThan(0.4);
+    // wheel heading (yaw about the vertical) follows the steering angle
+    const yaw = (b: { rotation(): { x: number; y: number; z: number; w: number } }) => {
+      const s = rot(b.rotation(), { x: -1, y: 0, z: 0 }); // wheel axle direction
+      return Math.atan2(-s.z, -s.x);
+    };
+    const wheelYaw = yaw(front.wheel);
+    expect(Math.abs(wheelYaw)).toBeGreaterThan(0.3);
+    // yoke, slider and wheel carry the same steering rotation (nothing turns on its own)
+    expect(yaw(yoke)).toBeCloseTo(wheelYaw, 1);
+    expect(yaw(slider)).toBeCloseTo(wheelYaw, 1);
+    // the rear wheel does not steer
+    expect(Math.abs(yaw(v.corners[1].wheel))).toBeLessThan(0.05);
   });
 
   it('compresses along the axis under load and respects the travel limits', () => {

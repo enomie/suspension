@@ -189,11 +189,6 @@ export function finishCorner(
   bodies: RAPIER.RigidBody[],
   visuals: LinkVisual[],
   idSuffix = '',
-  /**
-   * steering axis if it is not the vertical line through the wheel center (raked fork):
-   * `point` on the axis, `dir` pointing up (positive angle = left), `marks` = joint markers (drawn on the chassis).
-   */
-  steerAxis?: { point: P; dir: P; marks?: P[]; knuckleVisuals?: (knuckle: RAPIER.RigidBody) => LinkVisual[] },
 ): Corner {
   const { R, world } = ctx;
   const id = cornerId(ctx.name, axleIndex, side) + idSuffix;
@@ -203,14 +198,11 @@ export function finishCorner(
   let steer: RAPIER.RevoluteImpulseJoint | undefined;
   if (axle.steer) {
     knuckle = helper(ctx, axle, wc, partId(id, 'knuckle'));
-    steer = steerAxis
-      ? revolute(ctx, carrier, knuckle, steerAxis.point, steerAxis.dir, steerAxis.marks ?? [steerAxis.point], ctx.chassis)
-      : revolute(ctx, carrier, knuckle, wc, AX.Y);
+    steer = revolute(ctx, carrier, knuckle, wc, AX.Y);
     steer.setLimits(-axle.steer.maxAngle, axle.steer.maxAngle);
     steer.configureMotorModel(R.MotorModel.ForceBased);
     steer.configureMotorPosition(0, STEER_STIFFNESS, STEER_DAMPING);
     parent = knuckle;
-    if (steerAxis?.knuckleVisuals) visuals = [...visuals, ...steerAxis.knuckleVisuals(knuckle)];
   }
   const wheel = createWheel(R, world, axle.wheel, wc);
   ctx.names.set(wheel.handle, partId(id, 'wheel'));

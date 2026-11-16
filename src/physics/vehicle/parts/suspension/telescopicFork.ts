@@ -1,7 +1,5 @@
-import type RAPIER from '@dimforge/rapier3d-simd-compat';
-import type { LinkVisual } from '../../types';
 import { cornerId, partId } from '../../ids';
-import { add, finishCorner, helper, link, prismatic, prismaticSpring, springFor, v, W, wheelLocal, wheelRate, type P } from './common';
+import { STEER_DAMPING, STEER_STIFFNESS, add, finishCorner, helper, link, prismatic, prismaticSpring, revolute, springFor, v, W, wheelLocal, wheelRate, type P } from './common';
 import type { AxleBuilder } from './types';
 
 /** defaults: 26° steering-head angle, 100 mm trail */
@@ -18,12 +16,12 @@ const LEG_CLEARANCE = 0.1;
 
 /**
  * 11 · telescopic fork (motorcycle front, single centered wheel)
- *   Chassis ─[Prismatic along the rake axis, motor = spring+damper]→ stanchion (= carrier)
- *   stanchion ─[Revolute about the same axis, steering]→ knuckle (lower legs + axle) ─[Revolute X]→ wheel
+ *   Chassis ─[Revolute about the rake axis, steering]→ yoke (triple clamp + stanchions)
+ *   yoke ─[Prismatic along the same axis, motor = spring+damper]→ slider (lower legs + axle) ─[Revolute X]→ wheel
  *
- * Because slide and steer share one axis their order does not matter. The axis is tilted back by `fork.rake` and the
- * wheel center sits `offset` in front of it, so that the axis meets the ground `trail` ahead of the contact patch:
- *   trail = (R·sin ε − offset) / cos ε   →   offset = R·sin ε − trail·cos ε
+ * The yoke steers, so clamp, stanchions, sliders and wheel all turn as one unit. The axis is tilted back by
+ * `fork.rake` and the wheel center sits `offset` in front of it, so that the axis meets the ground `trail` ahead of
+ * the contact patch:  trail = (R·sin ε − offset) / cos ε   →   offset = R·sin ε − trail·cos ε
  */
 export const buildTelescopicFork: AxleBuilder = (ctx, axle, i) => {
   const side = 'C' as const;
@@ -44,47 +42,39 @@ export const buildTelescopicFork: AxleBuilder = (ctx, axle, i) => {
   // chassis-local point on the steering axis at wheel height (axle line)
   const axisL = v(wl.x - offset * fwd.x, wl.y - offset * fwd.y, wl.z - offset * fwd.z);
   const onAxis = (t: number): P => add(W(ctx, axisL), v(up.x * t, up.y * t, up.z * t));
-
-  const carrier = helper(ctx, axle, wc, partId(id, 'stanchion'));
-  const slide = prismatic(ctx, ctx.chassis, carrier, wc, down);
-  // wheel moves along the (tilted) axis: vertical rate k_w → k_w·cos²ε along it (motion ratio 1/cos ε)
-  const limits: [number, number] = [axle.spring.travel[0] / cos, axle.spring.travel[1] / cos];
-  prismaticSpring(ctx, slide, springFor(rate, 1 / cos), limits);
-
   const clamp = onAxis(CLAMP_HEIGHT);
   const bearing = onAxis(LOWER_BEARING);
-  // steering-head bolt points on the chassis
-  ctx.mounts.push(
-    [clamp.x - ctx.origin.x, clamp.y - ctx.origin.y, clamp.z - ctx.origin.z],
-    [bearing.x - ctx.origin.x, bearing.y - ctx.origin.y, bearing.z - ctx.origin.z],
-  );
 
+  // steering: chassis → yoke about the raked axis (markers and mounts sit on the chassis)
+  const yoke = helper(ctx, axle, wc, partId(id, 'yoke'));
+  const steer = revolute(ctx, ctx.chassis, yoke, clamp, up, [clamp, bearing], ctx.chassis);
+  steer.setLimits(-axle.steer!.maxAngle, axle.steer!.maxAngle);
+  steer.configureMotorModel(ctx.R.MotorModel.ForceBased);
+  steer.configureMotorPosition(0, STEER_STIFFNESS, STEER_DAMPING);
+
+  // suspension: yoke → slider along the same axis. Wheel moves along the (tilted) axis, so vertical rate k_w
+  // becomes k_w·cos²ε along it (motion ratio 1/cos ε)
+  const slider = helper(ctx, axle, wc, partId(id, 'slider'));
+  const slide = prismatic(ctx, yoke, slider, wc, down);
+  prismaticSpring(ctx, slide, springFor(rate, 1 / cos), [axle.spring.travel[0] / cos, axle.spring.travel[1] / cos]);
+
+  // everything below is attached to the yoke (stanchions, clamp) or the slider (lower legs, axle): all steer together
   const legX = axle.wheel.width / 2 + LEG_CLEARANCE;
   const withX = (p: P, x: number): P => v(p.x + x, p.y, p.z);
-  const visuals = [
-    // triple clamp
-    link('beam', ctx.chassis, withX(clamp, -legX), ctx.chassis, withX(clamp, legX)),
-  ];
-  const knuckleVisuals = (knuckle: RAPIER.RigidBody) => {
-    const out: LinkVisual[] = [];
-    const foot = W(ctx, wl);
-    const sliderTop = onAxis(SLIDER_LENGTH);
-    for (const x of [-legX, legX]) {
-      // lower leg (tube) with the stanchion (piston rod) sliding out of it up to the clamp; spring above the tube
-      out.push(link('damper', knuckle, withX(foot, x), ctx.chassis, withX(clamp, x)));
-      out.push(link('spring', ctx.chassis, withX(clamp, x), knuckle, withX(sliderTop, x)));
-    }
-    // axle between the legs
-    out.push(link('rod', knuckle, withX(foot, -legX), knuckle, withX(foot, legX)));
-    return out;
-  };
+  const foot = W(ctx, wl);
+  const sliderTop = onAxis(SLIDER_LENGTH);
+  const visuals = [link('beam', yoke, withX(clamp, -legX), yoke, withX(clamp, legX))];
+  for (const x of [-legX, legX]) {
+    // lower leg (tube) with the stanchion (piston rod) sliding out of it up to the clamp; spring above the tube
+    visuals.push(link('damper', slider, withX(foot, x), yoke, withX(clamp, x)));
+    visuals.push(link('spring', yoke, withX(clamp, x), slider, withX(sliderTop, x)));
+  }
+  // axle between the legs
+  visuals.push(link('rod', slider, withX(foot, -legX), slider, withX(foot, legX)));
 
-  return [
-    finishCorner(ctx, axle, i, side, carrier, wl, rate, [carrier], visuals, '', {
-      point: clamp,
-      dir: up,
-      marks: [clamp, bearing],
-      knuckleVisuals,
-    }),
-  ];
+  // the steering joint lives on the yoke, the wheel on the slider: finishCorner builds the spin joint on the slider
+  const corner = finishCorner(ctx, { ...axle, steer: undefined }, i, side, slider, wl, rate, [yoke, slider], visuals);
+  corner.axle = axle;
+  corner.joints.steer = steer;
+  return [corner];
 };
