@@ -12,7 +12,8 @@ export type SuspensionType =
   | 'twistBeam' //        8 twist beam
   | 'multiLink' //        9 multi-link (5 links)
   | 'bogie' //            0 tandem bogie (rocker with 2 wheels per side)
-  | 'fourLink'; //        4-link solid axle (2 lower trailing arms + 2 triangulated upper links)
+  | 'fourLink' //        4-link solid axle (2 lower trailing arms + 2 triangulated upper links)
+  | 'telescopicFork'; //  motorcycle front: raked telescopic fork (slides + steers about the rake axis)
 export type Vec3 = [number, number, number];
 
 export interface SpringDamperSpec {
@@ -50,6 +51,8 @@ export interface AxleSpec {
   wheel: WheelSpec;
   /** Steerable: maxAngle [rad]; `counter` = steers against the front axle (rear-wheel steering) */
   steer?: { maxAngle: number; counter?: boolean };
+  /** telescopicFork: steering-head rake from vertical [rad] and trail [m] (default 0.45 rad / 0.10 m) */
+  fork?: { rake: number; trail: number };
   /** Double wishbone: horizontal reach of the lower arm from the ball joint to the chassis pivot [m] (default 0.45) */
   armSpan?: number;
   /** tandem bogie: wheel spacing along axle [m] */

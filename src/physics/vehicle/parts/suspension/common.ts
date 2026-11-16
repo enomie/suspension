@@ -79,9 +79,18 @@ function create<T extends Joint>(ctx: BuildContext, data: RAPIER.JointData, b1: 
  * `marks`: where the joint markers are drawn (default: the anchor `w`). Pass several points along the axis for a
  * hinge that is built from multiple bearings, e.g. the two bushings of an A-arm.
  */
-export function revolute(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P, axis: P, marks: P[] = [w]) {
+export function revolute(
+  ctx: BuildContext,
+  b1: RAPIER.RigidBody,
+  b2: RAPIER.RigidBody,
+  w: P,
+  axis: P,
+  marks: P[] = [w],
+  /** body the markers are drawn on (default `b2`); use the chassis for a hinge that must not move with the wheel */
+  markBody: RAPIER.RigidBody = b2,
+) {
   if (b1.handle === ctx.chassis.handle) for (const m of marks) ctx.mounts.push(toVec3(localOn(b1, m)));
-  for (const m of marks) ctx.joints.push({ kind: 'revolute', body: b2, local: toVec3(localOn(b2, m)), axis: toVec3(axis) });
+  for (const m of marks) ctx.joints.push({ kind: 'revolute', body: markBody, local: toVec3(localOn(markBody, m)), axis: toVec3(axis) });
   return create<RAPIER.RevoluteImpulseJoint>(ctx, ctx.R.JointData.revolute(localOn(b1, w), localOn(b2, w), axis), b1, b2);
 }
 export function spherical(ctx: BuildContext, b1: RAPIER.RigidBody, b2: RAPIER.RigidBody, w: P) {
@@ -180,6 +189,11 @@ export function finishCorner(
   bodies: RAPIER.RigidBody[],
   visuals: LinkVisual[],
   idSuffix = '',
+  /**
+   * steering axis if it is not the vertical line through the wheel center (raked fork):
+   * `point` on the axis, `dir` pointing up (positive angle = left), `marks` = joint markers (drawn on the chassis).
+   */
+  steerAxis?: { point: P; dir: P; marks?: P[]; knuckleVisuals?: (knuckle: RAPIER.RigidBody) => LinkVisual[] },
 ): Corner {
   const { R, world } = ctx;
   const id = cornerId(ctx.name, axleIndex, side) + idSuffix;
@@ -189,11 +203,14 @@ export function finishCorner(
   let steer: RAPIER.RevoluteImpulseJoint | undefined;
   if (axle.steer) {
     knuckle = helper(ctx, axle, wc, partId(id, 'knuckle'));
-    steer = revolute(ctx, carrier, knuckle, wc, AX.Y);
+    steer = steerAxis
+      ? revolute(ctx, carrier, knuckle, steerAxis.point, steerAxis.dir, steerAxis.marks ?? [steerAxis.point], ctx.chassis)
+      : revolute(ctx, carrier, knuckle, wc, AX.Y);
     steer.setLimits(-axle.steer.maxAngle, axle.steer.maxAngle);
     steer.configureMotorModel(R.MotorModel.ForceBased);
     steer.configureMotorPosition(0, STEER_STIFFNESS, STEER_DAMPING);
     parent = knuckle;
+    if (steerAxis?.knuckleVisuals) visuals = [...visuals, ...steerAxis.knuckleVisuals(knuckle)];
   }
   const wheel = createWheel(R, world, axle.wheel, wc);
   ctx.names.set(wheel.handle, partId(id, 'wheel'));
