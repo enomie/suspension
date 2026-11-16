@@ -16,6 +16,8 @@ const LEAN_GAIN = 2.5;
 const RATE_GAIN = 0.35;
 /** below this speed the steering feedback is useless (steer authority ∝ v²) [m/s] */
 const MIN_FEEDBACK_SPEED = 2;
+/** share of the stand stiffness that stays active at speed (0…1) */
+const RIDER_SHARE = 0.3;
 
 const smooth = (x: number) => {
   const t = Math.min(1, Math.max(0, x));
@@ -64,13 +66,13 @@ export class Balance {
     // lean angle of that steady turn (left turn = leaning left = negative)
     const target = -Math.atan((v * v * Math.tan(feedForward)) / (G * this.wheelbase));
 
-    // virtual stand (fades out with speed)
+    // virtual stand at low speed; at speed a light "rider" share stays on so bumps do not throw the bike over.
+    // It pulls toward the lean of the commanded turn, so it never fights a normal corner.
     const stand = 1 - smooth((v - this.spec.standSpeed * 0.5) / (this.spec.standSpeed * 0.5));
+    const w = Math.max(stand, RIDER_SHARE);
     chassis.resetTorques(false);
-    if (stand > 0) {
-      const t = stand * (-this.spec.standStiffness * this.lean - this.spec.standDamping * this.rollRate);
-      chassis.addTorque({ x: _f.x * t, y: _f.y * t, z: _f.z * t }, true);
-    }
+    const t = w * (-this.spec.standStiffness * (this.lean - (1 - stand) * target) - this.spec.standDamping * this.rollRate);
+    chassis.addTorque({ x: _f.x * t, y: _f.y * t, z: _f.z * t }, true);
 
     // steering feedback: steer toward the side the bike is falling to (right lean → steer right = negative)
     const authority = smooth((v - MIN_FEEDBACK_SPEED) / MIN_FEEDBACK_SPEED);
