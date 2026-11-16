@@ -4,7 +4,7 @@ import type { CornerTelemetry, VehicleSpec, WheelSpec } from '../../shared/vehic
 import { ORIGIN } from '../../shared/origin';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/snapshot';
 import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO, UNIT_TORUS_GEOMETRY } from '../geometries/unitGeometries';
-import { UNIT_TORUS_OUTER_RADIUS_M, UNIT_TORUS_TUBE_RADIUS_M, torusWheelWidth } from '../../shared/unitTorus';
+import { UNIT_TORUS_OUTER_RADIUS_M, UNIT_TORUS_TUBE_RADIUS_M, torusAxialScale } from '../../shared/unitTorus';
 import { createTreadTireGeometry } from './treadTire';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
@@ -38,8 +38,8 @@ function createWheelMesh(spec: WheelSpec): Group {
       : new Mesh(torus ? UNIT_TORUS_GEOMETRY : UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
   tire.name = 'tire';
   if (torus) {
-    // torus axis is Z → turn onto the axle (X); uniform scale like apokalypto (tube width = 0.6·R)
-    tire.scale.setScalar(d);
+    // torus axis is Z → turn onto the axle (X); scale like apokalypto: Ø in the rolling plane, axial scale from the width (uniform → 0.6·R)
+    tire.scale.set(d, d, torusAxialScale(spec.width));
     tire.rotation.y = Math.PI / 2;
   } else if (spec.tire !== 'tread') {
     tire.scale.set(d, spec.width, d);
@@ -68,7 +68,7 @@ function createWheelMesh(spec: WheelSpec): Group {
   if (torus) {
     const rim = new Mesh(UNIT_HOLLOW_CYLINDER_GEOMETRY, rimMat);
     rim.name = 'rim';
-    rim.scale.set(holeD * 1.04, torusWheelWidth(spec.radius) * 0.75, holeD * 1.04);
+    rim.scale.set(holeD * 1.04, spec.width * 0.75, holeD * 1.04);
     rim.rotation.z = Math.PI / 2;
     rim.castShadow = true;
     g.add(rim);

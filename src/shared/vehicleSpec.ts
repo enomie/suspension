@@ -143,6 +143,8 @@ export interface VehicleSpec {
   axles: AxleSpec[];
   steering: SteeringSpec;
   drive: DriveSpec;
+  /** visual only: `slim` = thinner spring coils with tighter windings and smaller seats (bikes) */
+  springStyle?: 'default' | 'slim';
   /** single-track vehicles only (motorcycle, moped) */
   balance?: BalanceSpec;
   jointMode?: 'impulse' | 'multibody';

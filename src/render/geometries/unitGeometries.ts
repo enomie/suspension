@@ -52,8 +52,8 @@ const HELIX_WIRE_RADIUS = 0.007;
  * wire cross-section precomputed for nominal size so non-uniform scale
  * stays round (slightly oval at extreme lengths).
  */
-export const UNIT_HELIX_GEOMETRY = (() => {
-  const steps = HELIX_TURNS * 40;
+function createUnitHelix(turns: number): BufferGeometry {
+  const steps = turns * 40;
   const around = 8;
   const rx = HELIX_WIRE_RADIUS / HELIX_NOMINAL_DIAMETER; // wire radius in unit X/Z
   const ry = HELIX_WIRE_RADIUS / HELIX_NOMINAL_LENGTH; // … in unit Y
@@ -62,7 +62,7 @@ export const UNIT_HELIX_GEOMETRY = (() => {
   const index: number[] = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    const th = t * HELIX_TURNS * Math.PI * 2;
+    const th = t * turns * Math.PI * 2;
     const c = Math.cos(th);
     const sn = Math.sin(th);
     // wire centerline from y = −0.5 + ry to 0.5 − ry so ends stay inside spring seats
@@ -85,7 +85,12 @@ export const UNIT_HELIX_GEOMETRY = (() => {
   g.setIndex(index);
   g.computeVertexNormals();
   return g;
-})();
+}
+
+export const UNIT_HELIX_GEOMETRY = createUnitHelix(HELIX_TURNS);
+/** tighter windings for slim springs (bikes) */
+export const HELIX_TURNS_SLIM = 10;
+export const UNIT_HELIX_SLIM_GEOMETRY = createUnitHelix(HELIX_TURNS_SLIM);
 
 /** Unit sphere, same as apokalypto (`unit-sphere-geometry.ts`): diameter 1 */
 export const UNIT_SPHERE_GEOMETRY = new IcosahedronGeometry(0.5, 3);

@@ -24,7 +24,7 @@ interface BikeParams {
 function makeBike(p: BikeParams): VehicleSpec {
   const y = -0.3;
   const half = p.wheelbase / 2;
-  const wheel: WheelSpec = { ...p.wheel, width: torusWheelWidth(p.wheel.radius), shape: 'torus', tire: 'torus', hideKnuckle: true };
+  const wheel: WheelSpec = { ...p.wheel, shape: 'torus', tire: 'torus', hideKnuckle: true };
   const front: AxleSpec = {
     z: -half,
     track: 0,
@@ -61,6 +61,8 @@ function makeBike(p: BikeParams): VehicleSpec {
     axles: [front, rear],
     steering: { mode: 'ackermann', rate: 3, returnRate: 5, highSpeedFactor: 0.25 },
     drive: { maxTorque: p.maxTorque, maxSpeed: p.maxSpeed, reverseSpeed: 3, rollingResistance: 5 },
+    // slimmer springs and seats: the dampers on a bike are thin
+    springStyle: 'slim',
     balance: { standSpeed: 5, maxLean: 0.6, standStiffness: p.mass * 40, standDamping: p.mass * 4 },
   };
 }
@@ -68,7 +70,7 @@ function makeBike(p: BikeParams): VehicleSpec {
 export const motorcycle = makeBike({
   name: 'motorcycle',
   label: VEHICLE_PRESET_LABELS[11],
-  wheel: { radius: 0.31, width: 0.12, mass: 10, friction: 1.1, shape: 'ball' },
+  wheel: { radius: 0.31, width: torusWheelWidth(0.31), mass: 10, friction: 1.1, shape: 'ball' },
   mass: 180,
   wheelbase: 1.4,
   rake: 0.45,
@@ -86,7 +88,7 @@ export const motorcycle = makeBike({
 export const moped = makeBike({
   name: 'moped',
   label: VEHICLE_PRESET_LABELS[12],
-  wheel: { radius: 0.27, width: 0.08, mass: 5, friction: 1.1, shape: 'ball' },
+  wheel: { radius: 0.24, width: 0.19, mass: 5, friction: 1.1, shape: 'ball' },
   mass: 100,
   wheelbase: 1.15,
   rake: 0.5,
