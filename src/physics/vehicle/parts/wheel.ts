@@ -1,6 +1,7 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import type { WheelSpec } from '../types';
 import { WHEEL_GROUPS } from '../groups';
+import { torusHullBorder, torusHullPoints } from '../../../shared/unitTorus';
 
 /** wheel = own rigid body with collider (sphere or round cylinder on X). */
 export function createWheel(
@@ -21,6 +22,12 @@ export function createWheel(
     const s = Math.SQRT1_2;
     desc = R.ColliderDesc.roundCylinder(spec.width / 2 - border, spec.radius - border, border)
       .setRotation({ x: 0, y: 0, z: s, w: s });
+  } else if (spec.shape === 'torus') {
+    // exactly as apokalypto: round convex hull of the unit-torus mesh, scaled uniformly to the wheel diameter
+    const scale = spec.radius * 2;
+    const hull = R.ColliderDesc.roundConvexHull(torusHullPoints(scale), torusHullBorder(scale));
+    if (!hull) throw new Error('wheel: torus hull failed');
+    desc = hull;
   } else {
     desc = R.ColliderDesc.ball(spec.radius);
   }
