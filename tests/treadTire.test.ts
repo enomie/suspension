@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import type { WheelSpec } from '../src/shared/vehicleSpec';
 import { createTreadTireGeometry, treadFor } from '../src/render/vehicle/treadTire';
 import { moped, motorcycle } from '../src/physics/vehicle/presets/motorcycle';
 
 describe.each([
-  ['motorcycle', motorcycle.axles[0].wheel],
-  ['moped', moped.axles[0].wheel],
+  ['motorcycle', { ...motorcycle.axles[0].wheel, tire: 'tread' } as WheelSpec],
+  ['moped', { ...moped.axles[0].wheel, tire: 'tread' } as WheelSpec],
 ])('tread tire %s', (_n, wheel) => {
   const geo = createTreadTireGeometry(wheel);
   geo.computeBoundingBox();
@@ -28,4 +29,10 @@ describe.each([
   });
 
   it('is one cached buffer', () => expect(createTreadTireGeometry(wheel)).toBe(geo));
+});
+
+describe('bike tire is the apokalypto torus', () => {
+  it.each([motorcycle, moped])('$name uses tire: torus', (spec) => {
+    for (const a of spec.axles) expect(a.wheel.tire).toBe('torus');
+  });
 });

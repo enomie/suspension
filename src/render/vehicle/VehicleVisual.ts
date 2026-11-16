@@ -3,7 +3,7 @@ import type { VehicleLayout } from '../../shared/vehicleLayout';
 import type { CornerTelemetry, VehicleSpec, WheelSpec } from '../../shared/vehicleSpec';
 import { ORIGIN } from '../../shared/origin';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/snapshot';
-import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO } from '../geometries/unitGeometries';
+import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO, UNIT_TORUS_GEOMETRY, UNIT_TORUS_OUTER_RADIUS, UNIT_TORUS_TUBE_RADIUS } from '../geometries/unitGeometries';
 import { createTreadTireGeometry } from './treadTire';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
@@ -21,31 +21,42 @@ const HUB_DIAMETER = 0.12;
 const HUB_LENGTH = 0.08;
 
 /**
- * wheel = hollow tire (unit hollow cylinder on X) + brake disc (unit cylinder) + spoke (shows spin).
+ * wheel = tire + brake disc (unit cylinder) + spoke (shows spin); torus tires also get a rim ring.
  * tire is its own `tire` mesh → detachable later, brake disc stays visible.
+ *  - smooth (default): hollow cylinder
+ *  - tread: tread blocks (apokalypto tire profile generator)
+ *  - torus: the apokalypto bike tire (`wheel-bike`): a unit torus, rubber only
  */
 function createWheelMesh(spec: WheelSpec): Group {
   const g = new Group();
   const d = spec.radius * 2;
+  const torus = spec.tire === 'torus';
   const tire =
     spec.tire === 'tread'
       ? new Mesh(createTreadTireGeometry(spec), tireMat)
-      : new Mesh(UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
+      : new Mesh(torus ? UNIT_TORUS_GEOMETRY : UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
   tire.name = 'tire';
-  if (spec.tire !== 'tread') {
+  if (torus) {
+    // torus axis is Z → turn onto the axle (X); tube width = spec.width
+    tire.scale.set(d, d, spec.width / (UNIT_TORUS_TUBE_RADIUS * 2));
+    tire.rotation.y = Math.PI / 2;
+  } else if (spec.tire !== 'tread') {
     tire.scale.set(d, spec.width, d);
     tire.rotation.z = Math.PI / 2;
   }
   tire.castShadow = true;
+  // torus: the hole of the tire is filled by a rim ring (hole radius = (ring − tube radius) × Ø)
+  const holeD = (UNIT_TORUS_OUTER_RADIUS - UNIT_TORUS_TUBE_RADIUS * 2) * 2 * d;
   const disc = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
   disc.name = 'brakeDisc';
-  disc.scale.set(spec.radius * 2 * DISC_RADIUS, DISC_THICKNESS, spec.radius * 2 * DISC_RADIUS);
+  const discD = torus ? holeD * UNIT_HOLLOW_INNER_RATIO * 0.9 : d * DISC_RADIUS;
+  disc.scale.set(discD, DISC_THICKNESS, discD);
   disc.rotation.z = Math.PI / 2;
   disc.castShadow = true;
   const spoke = new Mesh(UNIT_BOX_GEOMETRY, rimMat);
   spoke.name = 'spoke';
   // length = tire hole diameter (inner radius = ratio × outer radius)
-  spoke.scale.set(SPOKE_WIDTH, spec.radius * 2 * UNIT_HOLLOW_INNER_RATIO, spec.radius * 0.25);
+  spoke.scale.set(SPOKE_WIDTH, torus ? holeD * UNIT_HOLLOW_INNER_RATIO : d * UNIT_HOLLOW_INNER_RATIO, spec.radius * 0.25);
   // hub: just outside disc to knuckle; side set in `placeHubs`
   const hub = new Mesh(UNIT_CYLINDER_GEOMETRY, discMat);
   hub.name = 'hub';
@@ -53,6 +64,14 @@ function createWheelMesh(spec: WheelSpec): Group {
   hub.rotation.z = Math.PI / 2;
   hub.castShadow = true;
   g.add(tire, disc, spoke, hub);
+  if (torus) {
+    const rim = new Mesh(UNIT_HOLLOW_CYLINDER_GEOMETRY, rimMat);
+    rim.name = 'rim';
+    rim.scale.set(holeD * 1.04, spec.width * 0.75, holeD * 1.04);
+    rim.rotation.z = Math.PI / 2;
+    rim.castShadow = true;
+    g.add(rim);
+  }
   return g;
 }
 

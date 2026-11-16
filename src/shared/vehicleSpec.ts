@@ -38,8 +38,8 @@ export interface WheelSpec {
   mass: number;
   friction: number;
   shape?: 'ball' | 'roundCylinder';
-  /** tire look: smooth hollow cylinder (default) or tread blocks (rubber from apokalypto) */
-  tire?: 'smooth' | 'tread';
+  /** tire look: smooth hollow cylinder (default), tread blocks, or the apokalypto bike torus */
+  tire?: 'smooth' | 'tread' | 'torus';
 }
 
 export interface AxleSpec {
