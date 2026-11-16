@@ -16,7 +16,7 @@ function setup() {
   world.numSolverIterations = 8;
   const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -0.5, 0));
   world.createCollider(RAPIER.ColliderDesc.cuboid(500, 0.5, 500).setFriction(0.95), ground);
-  const v = new Vehicle(RAPIER, world, motorcycle, { x: 0, y: 0.6, z: 0 });
+  const v = new Vehicle(RAPIER, world, { ...motorcycle, balance: undefined }, { x: 0, y: 0.6, z: 0 });
   v.chassis.setEnabledRotations(true, true, false, true);
   const run = (seconds: number, input: DriverInput = idle) => {
     for (let i = 0; i < seconds / DT; i++) {

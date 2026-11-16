@@ -13,6 +13,7 @@ export type SuspensionType =
   | 'multiLink' //        9 multi-link (5 links)
   | 'bogie' //            0 tandem bogie (rocker with 2 wheels per side)
   | 'fourLink' //        4-link solid axle (2 lower trailing arms + 2 triangulated upper links)
+  | 'swingArm' //         motorcycle rear: swingarm with mono-shock (single centered wheel)
   | 'telescopicFork'; //  motorcycle front: raked telescopic fork (slides + steers about the rake axis)
 export type Vec3 = [number, number, number];
 
@@ -92,6 +93,8 @@ export interface ChassisSpec {
   /** center of mass relative to box center */
   comOffset?: Vec3;
   color?: number;
+  /** false = no ladder frame is drawn (single-track vehicles: only suspension and points show) */
+  frame?: boolean;
 }
 
 export interface SteeringSpec {
@@ -103,6 +106,17 @@ export interface SteeringSpec {
   returnRate: number;
   /** steer angle at vMax relative to standstill (high-speed reduction), 0…1 */
   highSpeedFactor?: number;
+}
+
+/** Single-track balance assist: steering feedback while moving, a virtual stand while (nearly) stopped */
+export interface BalanceSpec {
+  /** speed above which steering alone balances [m/s]; below it the virtual stand fades in */
+  standSpeed: number;
+  /** max lean angle commanded by steering input [rad] */
+  maxLean: number;
+  /** stand stiffness [N·m/rad] and damping [N·m·s/rad] */
+  standStiffness: number;
+  standDamping: number;
 }
 
 export interface DriveSpec {
@@ -124,6 +138,8 @@ export interface VehicleSpec {
   axles: AxleSpec[];
   steering: SteeringSpec;
   drive: DriveSpec;
+  /** single-track vehicles only (motorcycle, moped) */
+  balance?: BalanceSpec;
   jointMode?: 'impulse' | 'multibody';
 }
 

@@ -48,7 +48,8 @@ describe.each(PRESETS.map((p, i) => [`${(i + 1) % 10} ${p.label}`, p] as const))
     run(3, { ...idle, throttle: 1 });
     expect(v.forwardSpeed).toBeGreaterThan(5);
     run(2, { ...idle, throttle: 0.4, steer: 1 });
-    expect(upright(v)).toBeLessThan(0.3);
+    // a single-track vehicle leans into the turn on purpose
+    expect(upright(v)).toBeLessThan(spec.balance ? 0.6 : 0.3);
     expect(v.chassis.translation().x).toBeLessThan(-0.5);
   });
 });
