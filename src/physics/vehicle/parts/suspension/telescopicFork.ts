@@ -11,8 +11,8 @@ const CLAMP_HEIGHT = 0.55;
 const SLIDER_LENGTH = 0.3;
 /** distance from the axle line to the lower steering bearing [m] */
 const LOWER_BEARING = 0.45;
-/** gap between tire side and fork leg axis [m] */
-const LEG_CLEARANCE = 0.1;
+/** gap between tire side and fork leg axis: grows with the wheel, but legs stay close to a small tire [m] */
+const legClearance = (radius: number) => Math.max(0.04, radius * 0.17);
 
 /**
  * 11 · telescopic fork (motorcycle front, single centered wheel)
@@ -59,7 +59,7 @@ export const buildTelescopicFork: AxleBuilder = (ctx, axle, i) => {
   prismaticSpring(ctx, slide, springFor(rate, 1 / cos), [axle.spring.travel[0] / cos, axle.spring.travel[1] / cos]);
 
   // everything below is attached to the yoke (stanchions, clamp) or the slider (lower legs, axle): all steer together
-  const legX = axle.wheel.width / 2 + LEG_CLEARANCE;
+  const legX = axle.wheel.width / 2 + legClearance(axle.wheel.radius);
   const withX = (p: P, x: number): P => v(p.x + x, p.y, p.z);
   const foot = W(ctx, wl);
   const sliderTop = onAxis(SLIDER_LENGTH);
