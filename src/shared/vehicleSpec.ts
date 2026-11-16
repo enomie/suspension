@@ -132,6 +132,8 @@ export interface DriveSpec {
   /** top speed with boost (Shift) [m/s]; default 2 × maxSpeed. Set it where the vehicle gets unstable that fast. */
   maxBoostSpeed?: number;
   reverseSpeed: number;
+  /** slip limit (ASR): wheel tangential speed may exceed vehicle speed by this much [m/s]; default 2.5. Higher = more wheelspin. */
+  maxSlipSpeed?: number;
   /** rolling/bearing resistance per wheel [N·m] */
   rollingResistance: number;
 }
