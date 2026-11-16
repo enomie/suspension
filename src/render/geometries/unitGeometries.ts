@@ -1,4 +1,5 @@
 import { BoxGeometry, BufferGeometry, CylinderGeometry, Float32BufferAttribute, IcosahedronGeometry, RingGeometry, TorusGeometry } from 'three';
+import { UNIT_TORUS_OUTER_RADIUS_M, UNIT_TORUS_RADIAL_SEGMENTS, UNIT_TORUS_TUBE_RADIUS_M, UNIT_TORUS_TUBULAR_SEGMENTS } from '../../shared/unitTorus';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
@@ -7,12 +8,15 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  */
 /**
  * unit torus, 1:1 as in apokalypto (`game-geometries/unit-torus-geometry.ts`) — the bike tire (`wheel-bike`, part
- * `wheel-rubber`). Lies in the XY plane (axis Z): outer radius 0.5, tube radius 0.15, so the tube is 0.3 wide.
- * Size via scale (outer Ø, outer Ø, width / TORUS_TUBE_WIDTH).
+ * `wheel-rubber`). Lies in the XY plane (axis Z). Constants shared with physics (`shared/unitTorus.ts`).
+ * Scale uniformly to the wheel diameter, like apokalypto.
  */
-export const UNIT_TORUS_OUTER_RADIUS = 0.5;
-export const UNIT_TORUS_TUBE_RADIUS = 0.15;
-export const UNIT_TORUS_GEOMETRY = new TorusGeometry(UNIT_TORUS_OUTER_RADIUS - UNIT_TORUS_TUBE_RADIUS, UNIT_TORUS_TUBE_RADIUS, 16, 32);
+export const UNIT_TORUS_GEOMETRY = new TorusGeometry(
+  UNIT_TORUS_OUTER_RADIUS_M - UNIT_TORUS_TUBE_RADIUS_M,
+  UNIT_TORUS_TUBE_RADIUS_M,
+  UNIT_TORUS_RADIAL_SEGMENTS,
+  UNIT_TORUS_TUBULAR_SEGMENTS,
+);
 
 export const UNIT_BOX_GEOMETRY = new BoxGeometry(1, 1, 1);
 export const UNIT_CYLINDER_GEOMETRY = new CylinderGeometry(0.5, 0.5, 1, 32);

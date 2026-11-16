@@ -37,7 +37,8 @@ export interface WheelSpec {
   width: number;
   mass: number;
   friction: number;
-  shape?: 'ball' | 'roundCylinder';
+  /** torus = apokalypto bike tire: round convex hull of the torus mesh (width is then 0.6·radius, see `torusWheelWidth`) */
+  shape?: 'ball' | 'roundCylinder' | 'torus';
   /** tire look: smooth hollow cylinder (default), tread blocks, or the apokalypto bike torus */
   tire?: 'smooth' | 'tread' | 'torus';
 }

@@ -1,4 +1,5 @@
 import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
+import { torusWheelWidth } from '../../../shared/unitTorus';
 import type { AxleSpec, VehicleSpec, WheelSpec } from '../types';
 
 interface BikeParams {
@@ -23,7 +24,7 @@ interface BikeParams {
 function makeBike(p: BikeParams): VehicleSpec {
   const y = -0.3;
   const half = p.wheelbase / 2;
-  const wheel: WheelSpec = { ...p.wheel, tire: 'torus' };
+  const wheel: WheelSpec = { ...p.wheel, width: torusWheelWidth(p.wheel.radius), shape: 'torus', tire: 'torus' };
   const front: AxleSpec = {
     z: -half,
     track: 0,
