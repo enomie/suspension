@@ -119,4 +119,39 @@ describe('telescopic fork', () => {
     run(1.5, { ...idle, throttle: 0.4, steer: 1 });
     expect(v.chassis.translation().x).toBeLessThan(-0.3);
   });
+
+  it('rear shock stays clear of the tire, front spring sits above the damper tube', () => {
+    const { v } = setup();
+    const world = (a: { body: { translation(): { x: number; y: number; z: number } }; local: number[] }) => {
+      const t = a.body.translation();
+      return { x: t.x + a.local[0], y: t.y + a.local[1], z: t.z + a.local[2] };
+    };
+    const rear = v.corners[1];
+    const wc = rear.wheel.translation();
+    const R = motorcycle.axles[1].wheel.radius;
+    for (const l of rear.visuals.filter((l) => l.kind === 'spring')) {
+      const a = world(l.a);
+      const b = world(l.b);
+      for (let t = 0; t <= 1; t += 0.1) {
+        const p = { y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
+        expect(Math.hypot(p.y - wc.y, p.z - wc.z)).toBeGreaterThan(R);
+      }
+    }
+    // front: spring and damper share the same two end points (damper tube inside the spring)
+    const front = v.corners[0].visuals;
+    const springs = front.filter((l) => l.kind === 'spring');
+    const dampers = front.filter((l) => l.kind === 'damper');
+    expect(springs.length).toBe(2);
+    expect(dampers.length).toBe(2);
+    for (const d of dampers) {
+      const dA = world(d.a);
+      const dB = world(d.b);
+      const hit = springs.some((sp) => {
+        const sA = world(sp.a);
+        const sB = world(sp.b);
+        return Math.hypot(sA.x - dA.x, sA.y - dA.y, sA.z - dA.z) < 1e-6 && Math.hypot(sB.x - dB.x, sB.y - dB.y, sB.z - dB.z) < 1e-6;
+      });
+      expect(hit).toBe(true);
+    }
+  });
 });
