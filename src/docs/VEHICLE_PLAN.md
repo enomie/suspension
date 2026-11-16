@@ -24,7 +24,7 @@ Concept, naming, parts: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code structure: [ARCHI
 | — infrastructure | physics worker, infinite LOD terrain (32 km), floating origin, frame collider | ✓ |
 | 2 polish | `antiRollBar`, test track (ramp, waves, step), Rapier `debugRender`, `roundCylinder` option | open |
 | 3 multi-axle | presets `truck6x4`, `truck6x6aws` (all-wheel / crab steering), `truck8x4` | open (solid axle + bogie pivot exist) |
-| 4 motorcycle + moped | telescopic fork with rake/trail, swingarm, `parts/balance.ts` (counter-steer feedback while moving, virtual stand when slow), presets `motorcycle` + `moped` (picker entries 12/13, no ladder frame drawn) | ✓ (`tests/fork.test.ts`, `tests/balance.test.ts`) |
+| 4 motorcycle + moped | telescopic fork with rake/trail, swingarm, `parts/balance.ts` (counter-steer feedback while moving, virtual stand when slow), presets `motorcycle` + `moped` (picker entries 12/13, no ladder frame drawn), tread tire from apokalypto (`WheelSpec.tire: 'tread'`, `render/vehicle/treadTire.ts`) | ✓ (`tests/fork.test.ts`, `tests/balance.test.ts`) |
 | 5 trailers | `coupling.ts` (hitch / fifthWheel / kingPin), drawbar trailer, semi-truck, key `T`; simple engine curve | open |
 | 6 optional | gearbox, differential (open / locked / limited slip) – today every wheel acts locked | open |
 | 7 tracks | road wheels on swingarms (torsion bar = position motor), left/right drive separate | open |
