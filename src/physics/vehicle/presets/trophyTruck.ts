@@ -1,7 +1,7 @@
 import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
 import type { AxleSpec, VehicleSpec, WheelSpec } from '../types';
 
-const wheel: WheelSpec = { radius: 0.45, width: 0.4, mass: 45, friction: 1.1, shape: 'ball' };
+const wheel: WheelSpec = { radius: 0.45, width: 0.4, mass: 45, friction: 1.1, shape: 'cylinder' };
 
 /** Long-travel spring/damper: 75 cm of wheel travel, tall coilovers */
 const spring: AxleSpec['spring'] = { frequencyHz: 1.3, dampingRatio: 0.5, travel: [-0.35, 0.4], length: 0.7 };

@@ -83,8 +83,8 @@ describe('buildCustomSpec', () => {
 describe('wheel shapes', () => {
   it('cylinder uses the width field; torus takes its width from the radius', () => {
     const [cyl, tor] = buildCustomSpec({ ...DEFAULT_CUSTOM, axles: [axle({ wheelWidth: 0.3 }), axle({ wheelShape: 'torus', wheelWidth: 0.3 })] }).axles;
-    expect(cyl.wheel).toMatchObject({ shape: 'roundCylinder', tire: 'tread', width: 0.3 });
-    expect(tor.wheel).toMatchObject({ shape: 'torus', tire: 'torus' });
+    expect(cyl.wheel).toMatchObject({ shape: 'cylinder', width: 0.3 });
+    expect(tor.wheel).toMatchObject({ shape: 'torus' });
     expect(tor.wheel.width).toBeCloseTo(torusWheelWidth(0.33));
   });
   it.each(['cylinder', 'torus'] as const)('%s wheels: aircraft setup settles and drives', (wheelShape) => {

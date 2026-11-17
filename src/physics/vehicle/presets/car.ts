@@ -1,7 +1,7 @@
 import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
 import type { AxleSpec, SuspensionType, VehicleSpec, WheelSpec } from '../types';
 
-const wheel: WheelSpec = { radius: 0.33, width: 0.22, mass: 20, friction: 1.1, shape: 'ball' };
+const wheel: WheelSpec = { radius: 0.33, width: 0.22, mass: 20, friction: 1.1, shape: 'cylinder' };
 
 /** layouts that cannot steer → front stays strut */
 const NON_STEERABLE: SuspensionType[] = ['trailingArm', 'semiTrailingArm', 'twistBeam', 'bogie'];

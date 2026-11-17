@@ -193,4 +193,4 @@ Generally: `joint.setContactsEnabled(false)` between connected bodies, plus coll
 
 ## Custom vehicle wheels
 
-Per axle the custom panel offers **Wheels**: `pair` (left/right, uses `track`), `center` (one wheel, `track` 0: strut, tandem bogie, telescopic fork, swingarm) or `centerDouble` (`twin: true`: two wheels side by side on one centered `strut`, e.g. a twin nose wheel). **Wheel shape** per axle: `cylinder` (round-cylinder collider, tread tire, width field) or `torus` (the motorcycle's torus tire and collider; width follows from the radius). Twin wheels are spaced by the chosen width.
+Per axle the custom panel offers **Wheels**: `pair` (left/right, uses `track`), `center` (one wheel, `track` 0: strut, tandem bogie, telescopic fork, swingarm) or `centerDouble` (`twin: true`: two wheels side by side on one centered `strut`, e.g. a twin nose wheel). **Wheel shape** per axle: `cylinder` (plain round cylinder, width field) or `torus` (the motorcycle's torus tire and collider; width follows from the radius). Twin wheels are spaced by the chosen width.
