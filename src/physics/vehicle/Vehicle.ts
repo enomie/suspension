@@ -3,9 +3,9 @@ import { Quaternion, Vector3 } from 'three';
 import type { Corner, DriverInput, VehicleSpec } from './types';
 import { buildVehicle, type BuiltVehicle } from './buildVehicle';
 import { Steering } from './parts/steering';
-import { applyDrive } from './parts/drive';
+import { applyAirDrag, applyDrive } from './parts/drive';
 import { Balance } from './parts/balance';
-import { dragCoeff, topSpeed } from '../../shared/performance';
+import { topSpeed } from '../../shared/performance';
 
 const _q = new Quaternion();
 const _qi = new Quaternion();
@@ -61,15 +61,8 @@ export class Vehicle {
       this.steering.balanceOffset = total - this.steering.angle;
     }
     this.steering.apply(this.corners);
-    applyDrive(this.corners, this.spec.drive, input, this.forwardSpeed);
-    this.applyAirDrag(dt, !!input.boost);
-  }
-
-  /** air drag on the chassis against its velocity: F = k·v², as impulse −v·k·|v|·dt */
-  private applyAirDrag(dt: number, boost: boolean): void {
-    const lv = this.chassis.linvel();
-    const j = dragCoeff(boost) * Math.hypot(lv.x, lv.y, lv.z) * dt;
-    this.chassis.applyImpulse({ x: -lv.x * j, y: -lv.y * j, z: -lv.z * j }, true);
+    applyDrive(this.corners, this.spec, input, this.forwardSpeed);
+    applyAirDrag(this.chassis, dt, !!input.boost);
   }
 
   /** after world.step(): refresh telemetry. */
