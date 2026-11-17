@@ -3,12 +3,14 @@ import {
   DEFAULT_CUSTOM,
   SUSPENSION_LABELS,
   WHEEL_LAYOUT_LABELS,
+  WHEEL_SHAPE_LABELS,
   buildCustomSpec,
   suspensionsFor,
   type CustomAxleConfig,
   type CustomVehicleConfig,
   type SteerMode,
   type WheelLayout,
+  type WheelShape,
 } from '../shared/customVehicle';
 import { topSpeed } from '../shared/performance';
 import type { VehicleSpec } from '../shared/vehicleSpec';
@@ -109,6 +111,16 @@ export class CustomPanel {
     for (const w of Object.keys(WHEEL_LAYOUT_LABELS) as WheelLayout[]) wheels.append(option(w, WHEEL_LAYOUT_LABELS[w]));
     wheels.value = c.wheels;
 
+    const shape = el('select');
+    for (const w of Object.keys(WHEEL_SHAPE_LABELS) as WheelShape[]) shape.append(option(w, WHEEL_SHAPE_LABELS[w]));
+    shape.value = c.wheelShape;
+    const widthInput = numberInput(c.wheelWidth, CUSTOM_LIMITS.wheelWidth, 0.01, (v) => (c.wheelWidth = v));
+    widthInput.disabled = c.wheelShape === 'torus';
+    shape.addEventListener('change', () => {
+      c.wheelShape = shape.value as WheelShape;
+      widthInput.disabled = c.wheelShape === 'torus';
+    });
+
     const steer = el('select');
     for (const m of Object.keys(STEER_LABELS) as SteerMode[]) steer.append(option(m, STEER_LABELS[m]));
     steer.value = c.steer;
@@ -147,6 +159,8 @@ export class CustomPanel {
       field('Suspension', susp),
       field('Track (m)', trackInput),
       field('Radius (m)', numberInput(c.wheelRadius, CUSTOM_LIMITS.wheelRadius, 0.01, (v) => ((c.wheelRadius = v), this.refreshTopSpeed()))),
+      field('Wheel shape', shape),
+      field('Width (m)', widthInput),
       field('Driven', drive),
     );
   }
