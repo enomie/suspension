@@ -10,6 +10,7 @@ const MOTOR_FACTOR = 1e4;
 const DEFAULT_MAX_SLIP_SPEED = 2.5;
 /** below this speed [m/s], S switches from brake to reverse */
 const REVERSE_THRESHOLD = 0.6;
+
 const drivenOnAxle: number[] = [];
 
 /**
@@ -21,7 +22,7 @@ const drivenOnAxle: number[] = [];
  */
 export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInput, forwardSpeed: number): void {
   const slip = spec.maxSlipSpeed ?? DEFAULT_MAX_SLIP_SPEED;
-  const limit = (input.boost ? spec.maxBoostSpeed : spec.maxSpeed) ?? Infinity;
+  const limit = (input.boost && spec.maxBoostSpeed) || Infinity;
   // driven wheels per axle (scratch array: no allocation per physics step)
   for (const c of corners) drivenOnAxle[c.axleIndex] = 0;
   for (const c of corners) if (c.axle.drive) drivenOnAxle[c.axleIndex]++;
