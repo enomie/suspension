@@ -10,10 +10,9 @@ import {
   type CustomVehicleConfig,
   type SteerMode,
   type WheelLayout,
-  type WheelShape,
 } from '../shared/customVehicle';
 import { topSpeed } from '../shared/performance';
-import type { VehicleSpec } from '../shared/vehicleSpec';
+import type { VehicleSpec, WheelShape } from '../shared/vehicleSpec';
 
 const STEER_LABELS: Record<SteerMode, string> = { none: 'No steering', steer: 'Steering', counter: 'Counter-steering' };
 

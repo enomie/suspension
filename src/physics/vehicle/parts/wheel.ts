@@ -3,7 +3,10 @@ import type { WheelSpec } from '../types';
 import { WHEEL_GROUPS } from '../groups';
 import { torusAxialScale, torusHullBorder, torusHullPoints } from '../../../shared/unitTorus';
 
-/** wheel = own rigid body with collider (sphere or round cylinder on X). */
+/** edge radius of a cylinder wheel [m] */
+const CYLINDER_EDGE_RADIUS = 0.05;
+
+/** wheel = own rigid body with collider (round cylinder on X or torus hull). */
 export function createWheel(
   R: typeof RAPIER,
   world: RAPIER.World,
@@ -17,12 +20,7 @@ export function createWheel(
       .setCcdEnabled(true),
   );
   let desc: RAPIER.ColliderDesc;
-  if (spec.shape === 'roundCylinder') {
-    const border = Math.min(spec.width * 0.3, spec.radius * 0.3);
-    const s = Math.SQRT1_2;
-    desc = R.ColliderDesc.roundCylinder(spec.width / 2 - border, spec.radius - border, border)
-      .setRotation({ x: 0, y: 0, z: s, w: s });
-  } else if (spec.shape === 'torus') {
+  if (spec.shape === 'torus') {
     // exactly as apokalypto: round convex hull of the unit-torus mesh, scaled to the wheel diameter (axial scale from the width)
     const d = spec.radius * 2;
     const axial = torusAxialScale(spec.width);
@@ -30,7 +28,10 @@ export function createWheel(
     if (!hull) throw new Error('wheel: torus hull failed');
     desc = hull;
   } else {
-    desc = R.ColliderDesc.ball(spec.radius);
+    // cylinder on X, edges rounded with a fixed radius
+    const border = Math.min(CYLINDER_EDGE_RADIUS, spec.width / 2, spec.radius);
+    const s = Math.SQRT1_2;
+    desc = R.ColliderDesc.roundCylinder(spec.width / 2 - border, spec.radius - border, border).setRotation({ x: 0, y: 0, z: s, w: s });
   }
   desc.setMass(spec.mass).setFriction(spec.friction).setCollisionGroups(WHEEL_GROUPS);
   world.createCollider(desc, body);

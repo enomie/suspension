@@ -5,7 +5,6 @@ import { ORIGIN } from '../../shared/origin';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, bodyOffset } from '../../shared/snapshot';
 import { UNIT_BOX_GEOMETRY, UNIT_CYLINDER_GEOMETRY, UNIT_HOLLOW_CYLINDER_GEOMETRY, UNIT_HOLLOW_INNER_RATIO, UNIT_TORUS_GEOMETRY } from '../geometries/unitGeometries';
 import { UNIT_TORUS_OUTER_RADIUS_M, UNIT_TORUS_TUBE_RADIUS_M, torusAxialScale } from '../../shared/unitTorus';
-import { createTreadTireGeometry } from './treadTire';
 import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
 import { createMountPlates } from './mountVisual';
@@ -24,24 +23,20 @@ const HUB_LENGTH = 0.08;
 /**
  * wheel = tire + brake disc (unit cylinder) + spoke (shows spin); torus tires also get a rim ring.
  * tire is its own `tire` mesh → detachable later, brake disc stays visible.
- *  - smooth (default): hollow cylinder
- *  - tread: tread blocks (apokalypto tire profile generator)
+ *  - cylinder: hollow cylinder
  *  - torus: the apokalypto bike tire (`wheel-bike`): a unit torus, rubber only
  */
 function createWheelMesh(spec: WheelSpec): Group {
   const g = new Group();
   const d = spec.radius * 2;
-  const torus = spec.tire === 'torus';
-  const tire =
-    spec.tire === 'tread'
-      ? new Mesh(createTreadTireGeometry(spec), tireMat)
-      : new Mesh(torus ? UNIT_TORUS_GEOMETRY : UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
+  const torus = spec.shape === 'torus';
+  const tire = new Mesh(torus ? UNIT_TORUS_GEOMETRY : UNIT_HOLLOW_CYLINDER_GEOMETRY, tireMat);
   tire.name = 'tire';
   if (torus) {
     // torus axis is Z → turn onto the axle (X); scale like apokalypto: Ø in the rolling plane, axial scale from the width (uniform → 0.6·R)
     tire.scale.set(d, d, torusAxialScale(spec.width));
     tire.rotation.y = Math.PI / 2;
-  } else if (spec.tire !== 'tread') {
+  } else {
     tire.scale.set(d, spec.width, d);
     tire.rotation.z = Math.PI / 2;
   }

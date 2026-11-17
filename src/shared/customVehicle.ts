@@ -1,5 +1,5 @@
 import { torusWheelWidth } from './unitTorus';
-import type { AxleSpec, SuspensionType, VehicleSpec, WheelSpec } from './vehicleSpec';
+import type { AxleSpec, SuspensionType, VehicleSpec, WheelShape, WheelSpec } from './vehicleSpec';
 
 /** What a custom axle does with the steering input */
 export type SteerMode = 'none' | 'steer' | 'counter';
@@ -7,8 +7,6 @@ export type SteerMode = 'none' | 'steer' | 'counter';
 /** Wheels of one axle: a left/right pair, one centered wheel, or two wheels side by side at the center */
 export type WheelLayout = 'pair' | 'center' | 'centerDouble';
 
-/** Wheel shape: round cylinder with tread, or the motorcycle's torus tire (width then follows from the radius) */
-export type WheelShape = 'cylinder' | 'torus';
 
 export interface CustomAxleConfig {
   wheels: WheelLayout;
@@ -129,12 +127,8 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   const axles: AxleSpec[] = Array.from({ length: n }, (_, i) => {
     const c = config.axles[i];
     const radius = clamp(c.wheelRadius, CUSTOM_LIMITS.wheelRadius);
-    const torus = c.wheelShape === 'torus';
-    const width = torus ? torusWheelWidth(radius) : clamp(c.wheelWidth, CUSTOM_LIMITS.wheelWidth);
-    const mass = 20 * (radius / 0.33) ** 2;
-    const wheel: WheelSpec = torus
-      ? { radius, width, mass, friction: 1.1, shape: 'torus', tire: 'torus' }
-      : { radius, width, mass, friction: 1.1, shape: 'roundCylinder', tire: 'tread' };
+    const width = c.wheelShape === 'torus' ? torusWheelWidth(radius) : clamp(c.wheelWidth, CUSTOM_LIMITS.wheelWidth);
+    const wheel: WheelSpec = { radius, width, mass: 20 * (radius / 0.33) ** 2, friction: 1.1, shape: c.wheelShape };
     // a steering axle needs a type that can carry a knuckle
     const allowed = suspensionsFor(c.steer, c.wheels);
     const suspension = allowed.includes(c.suspension) ? c.suspension : allowed[0];

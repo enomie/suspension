@@ -33,7 +33,6 @@ describe('torus wheel (apokalypto wheel-bike)', () => {
   it('motorcycle: torus wheels at the apokalypto default width 0.6·radius', () => {
     for (const a of motorcycle.axles) {
       expect(a.wheel.shape).toBe('torus');
-      expect(a.wheel.tire).toBe('torus');
       expect(a.wheel.width).toBeCloseTo(torusWheelWidth(a.wheel.radius), 6);
     }
   });
