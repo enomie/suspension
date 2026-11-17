@@ -11,6 +11,7 @@ import { buildMultiLink } from './multiLink';
 import { buildBogie } from './bogie';
 import { buildFourLink } from './fourLink';
 import { buildSwingArm } from './swingArm';
+import { buildSpringLeg } from './springLeg';
 import { buildTelescopicFork } from './telescopicFork';
 
 /** SuspensionType → Achs-Builder */
@@ -28,4 +29,5 @@ export const SUSPENSIONS: Record<SuspensionType, AxleBuilder> = {
   fourLink: buildFourLink,
   telescopicFork: buildTelescopicFork,
   swingArm: buildSwingArm,
+  springLeg: buildSpringLeg,
 };

@@ -58,7 +58,8 @@ export class Steering {
     } else {
       const radius = this.refL / Math.tan(delta); // + = centre on the left
       const L = Math.abs(this.refZ - c.axle.z);
-      const sx = c.anchor[0];
+      // centered wheels (also both wheels of a twin pair) turn about the axle centre line
+      const sx = c.side === 'C' ? 0 : c.anchor[0];
       a = sign * Math.atan(L / (radius + sx));
     }
     return Math.max(-max, Math.min(max, a));

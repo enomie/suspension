@@ -20,7 +20,7 @@ export function axleForce(spec: VehicleSpec, axle: AxleSpec, v: number): number 
 
 /** top speed [m/s]: where thrust = rolling + air drag, by bisection (thrust falls, resistance rises with v); capped by the boost limiter */
 export function topSpeed(spec: VehicleSpec, boost = false): number {
-  const wheels = spec.axles.reduce((n, a) => n + (a.track === 0 ? 1 : 2), 0);
+  const wheels = spec.axles.reduce((n, a) => n + (a.track === 0 ? (a.twin ? 2 : 1) : 2), 0);
   const roll = ROLLING_FORCE_PER_WHEEL * wheels;
   const k = dragCoeff(boost);
   let lo = 0;
