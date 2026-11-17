@@ -103,7 +103,7 @@ Note single-track (motorcycle): builds correctly but falls without balance contr
 | suspension type per axle | `axles[i].suspension` | one of 10, see 4.2 |
 | springs | `axles[i].spring`: `frequencyHz`, `dampingRatio`, `travel: [bump, rebound]` | frequency instead of spring rate. Rate from axle load → correct ride height per weight. Or `stiffness`/`damping` directly. |
 | steering | `axles[i].steer.maxAngle`, global `steering` | Ackermann per axle automatic; rear axles steer opposite, `crab` = same direction |
-| drive | `axles[i].drive.share`, global `drive` (`maxTorque`, `maxPower`, `reverseSpeed`; optional limiters `maxSpeed`, `maxBoostSpeed`) | torque/power split via `share`. **Top speed is not an input:** it is where thrust (`min(torque/r, P/v)`) = rolling (40 N per wheel, identical everywhere) + air drag (`½·1.2·0.8·v²`, identical everywhere); `topSpeed(spec)` in `shared/performance.ts` computes it. Boost cuts the drag area to ¼. |
+| drive | `axles[i].drive.share`, global `drive` (`maxTorque`, `maxPower`, `reverseSpeed`; optional boost limiter `maxBoostSpeed`) | torque/power split via `share`. **Top speed is not an input:** it is where thrust (per driven axle `min(torque/r, P/v)`) = rolling (40 N per wheel, identical everywhere) + air drag (`½·1.2·0.8·v²`, identical everywhere); `topSpeed(spec)` in `shared/performance.ts` computes it. Boost cuts the drag area to ¼. |
 | brakes | `axles[i].brake.torque`, `handbrake.torque` | handbrake only on axles with `handbrake` |
 | tandem | `bogieSpacing` | `bogie` only |
 | visible meshes | **not** in spec | hang editor meshes on bodies, see 4.3 |

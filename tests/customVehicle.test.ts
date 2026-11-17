@@ -21,10 +21,10 @@ const axle = (o: Partial<CustomAxleConfig>): CustomAxleConfig => ({
 
 const CASES: [string, CustomVehicleConfig][] = [
   ['default (steer double wishbone + driven solid axle)', DEFAULT_CUSTOM],
-  ['steering McPherson + non-steering tandem bogie', { wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ suspension: 'bogie', drive: true })] }],
-  ['4-wheel steering: McPherson front, counter-steering McPherson rear', { wheelbase: 2.8, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ steer: 'counter', suspension: 'macPherson', drive: true })] }],
-  ['3 axles, 5 m', { wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'doubleWishbone' }), axle({ drive: true }), axle({ drive: true })] }],
-  ['different wheel sizes per axle', { wheelbase: 3, axles: [axle({ steer: 'steer', suspension: 'strut', wheelRadius: 0.3, wheelWidth: 0.2 }), axle({ drive: true, wheelRadius: 0.45, wheelWidth: 0.4 })] }],
+  ['steering McPherson + non-steering tandem bogie', { ...DEFAULT_CUSTOM, wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ suspension: 'bogie', drive: true })] }],
+  ['4-wheel steering: McPherson front, counter-steering McPherson rear', { ...DEFAULT_CUSTOM, wheelbase: 2.8, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ steer: 'counter', suspension: 'macPherson', drive: true })] }],
+  ['3 axles, 5 m', { ...DEFAULT_CUSTOM, wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'doubleWishbone' }), axle({ drive: true }), axle({ drive: true })] }],
+  ['different wheel sizes per axle', { ...DEFAULT_CUSTOM, wheelbase: 3, axles: [axle({ steer: 'steer', suspension: 'strut', wheelRadius: 0.3, wheelWidth: 0.2 }), axle({ drive: true, wheelRadius: 0.45, wheelWidth: 0.4 })] }],
 ];
 
 describe.each(CASES)('custom: %s', (_name, config) => {
@@ -66,7 +66,7 @@ describe.each(CASES)('custom: %s', (_name, config) => {
 
 describe('buildCustomSpec', () => {
   it('spaces axles evenly along the wheelbase and corrects invalid steering suspensions', () => {
-    const spec = buildCustomSpec({ wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'bogie' }), axle({}), axle({})] });
+    const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'bogie' }), axle({}), axle({})] });
     expect(spec.axles.map((a) => a.z)).toEqual([-1.8, 0, 1.8]);
     expect(spec.axles[0].suspension).not.toBe('bogie');
     expect(spec.axles[0].track).toBe(1.6);
@@ -75,7 +75,7 @@ describe('buildCustomSpec', () => {
 
 describe('steering modes', () => {
   const steerAngles = (rear: CustomAxleConfig['steer']) => {
-    const spec = buildCustomSpec({ wheelbase: 2.8, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ steer: rear, suspension: 'macPherson', drive: true })] });
+    const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, wheelbase: 2.8, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ steer: rear, suspension: 'macPherson', drive: true })] });
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     world.timestep = DT;
     const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -0.5, 0));

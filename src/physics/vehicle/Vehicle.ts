@@ -5,7 +5,7 @@ import { buildVehicle, type BuiltVehicle } from './buildVehicle';
 import { Steering } from './parts/steering';
 import { applyDrive } from './parts/drive';
 import { Balance } from './parts/balance';
-import { dragForce, topSpeed } from '../../shared/performance';
+import { dragCoeff, topSpeed } from '../../shared/performance';
 
 const _q = new Quaternion();
 const _qi = new Quaternion();
@@ -65,12 +65,10 @@ export class Vehicle {
     this.applyAirDrag(dt, !!input.boost);
   }
 
-  /** air drag on the chassis against its velocity: F = ½·ρ·CdA·v² as impulse F·dt (never reverses the velocity) */
+  /** air drag on the chassis against its velocity: F = k·v², as impulse −v·k·|v|·dt */
   private applyAirDrag(dt: number, boost: boolean): void {
     const lv = this.chassis.linvel();
-    const speed = Math.hypot(lv.x, lv.y, lv.z);
-    if (speed < 0.01) return;
-    const j = Math.min(dragForce(speed, boost) * dt, speed * this.chassis.mass()) / speed;
+    const j = dragCoeff(boost) * Math.hypot(lv.x, lv.y, lv.z) * dt;
     this.chassis.applyImpulse({ x: -lv.x * j, y: -lv.y * j, z: -lv.z * j }, true);
   }
 

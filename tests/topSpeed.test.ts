@@ -13,14 +13,14 @@ await RAPIER.init();
 const SUB_DT = PHYSICS_DT / PHYSICS_SUBSTEPS;
 
 /** full throttle on a long flat plane (like Simulation: 4 solver steps per tick); returns the peak forward speed [m/s] */
-function drive(spec: VehicleSpec, seconds: number, boost = false): number {
+function drive(spec: VehicleSpec, seconds: number): number {
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = SUB_DT;
   world.numSolverIterations = 8;
   const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -0.5, 0));
   world.createCollider(RAPIER.ColliderDesc.cuboid(5000, 0.5, 5000).setFriction(0.95), ground);
   const v = new Vehicle(RAPIER, world, spec, { x: 0, y: 0.6, z: 0 });
-  const input: DriverInput = { throttle: 0, brake: 0, steer: 0, handbrake: false, boost };
+  const input: DriverInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
   let peak = 0;
   for (let i = 0; i < (seconds / PHYSICS_DT) * PHYSICS_SUBSTEPS; i++) {
     input.throttle = i > 2 * PHYSICS_SUBSTEPS * 120 ? 1 : 0;

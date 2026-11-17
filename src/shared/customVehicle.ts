@@ -19,12 +19,12 @@ export interface CustomVehicleConfig {
   wheelbase: number;
   /** index 0 = front axle */
   axles: CustomAxleConfig[];
-  /** total drive torque [N·m]: acceleration and wheelspin (default `2 × mass`) */
-  torque?: number;
-  /** engine power [kW]: top speed together with rolling and air drag (default `0.3 × mass`) */
-  power?: number;
-  /** wheelspin: how much faster than the ground a wheel may spin [m/s] (slip limit; default 2.5 = hardly any) */
-  wheelspin?: number;
+  /** total drive torque [N·m]: acceleration and wheelspin */
+  torque: number;
+  /** engine power [kW]: top speed together with rolling and air drag */
+  power: number;
+  /** wheelspin: how much faster than the ground a wheel may spin [m/s] (slip limit; 2.5 = hardly any) */
+  wheelspin: number;
 }
 
 export const CUSTOM_LIMITS = {
@@ -125,10 +125,10 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
     axles,
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
     drive: {
-      maxTorque: clamp(config.torque ?? mass * 2, CUSTOM_LIMITS.torque),
-      maxPower: 1000 * clamp(config.power ?? mass * 0.3, CUSTOM_LIMITS.power),
+      maxTorque: clamp(config.torque, CUSTOM_LIMITS.torque),
+      maxPower: 1000 * clamp(config.power, CUSTOM_LIMITS.power),
       reverseSpeed: 8,
-      maxSlipSpeed: clamp(config.wheelspin ?? CUSTOM_LIMITS.wheelspin[0], CUSTOM_LIMITS.wheelspin),
+      maxSlipSpeed: clamp(config.wheelspin, CUSTOM_LIMITS.wheelspin),
     },
   };
 }
