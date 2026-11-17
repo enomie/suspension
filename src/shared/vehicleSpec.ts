@@ -13,6 +13,7 @@ export type SuspensionType =
   | 'multiLink' //        9 multi-link (5 links)
   | 'bogie' //            0 tandem bogie (rocker with 2 wheels per side)
   | 'fourLink' //        4-link solid axle (2 lower trailing arms + 2 triangulated upper links)
+  | 'springLeg' //        cantilever spring-steel leg angled outward (light-aircraft main gear), non-steering
   | 'swingArm' //         motorcycle rear: swingarm with mono-shock (single centered wheel)
   | 'telescopicFork'; //  motorcycle front: raked telescopic fork (slides + steers about the rake axis)
 export type Vec3 = [number, number, number];
@@ -63,6 +64,8 @@ export interface AxleSpec {
   armSpan?: number;
   /** tandem bogie: wheel spacing along axle [m] */
   bogieSpacing?: number;
+  /** `track` 0 only, `strut` only: two wheels side by side on the centered strut (twin nose wheel) */
+  twin?: boolean;
   /** driven: share of total torque */
   drive?: { share: number };
   brake: { torque: number };

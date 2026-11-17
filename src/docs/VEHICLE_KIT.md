@@ -81,6 +81,7 @@ Spring rates are converted to the wheel center via leverage (`leverRatio`, MR) �
 | 8 | `twistBeam` | 2 trailing arms + revolute X between arms with position motor (torsion) | spring joints |
 | 9 | `multiLink` | 5 links: Chassis ─Spherical→ link ─Spherical→ carrier | spring joint + 2 ropes (bump/rebound stops) |
 | 0 | `bogie` | Chassis ─Prismatic −Y→ carrier ─Rev X→ rocker → 2 wheels | prismatic motor |
+| – | `springLeg` | Chassis ─Prismatic along the outward-angled leg (~35° from vertical)→ leg (= carrier); non-steering, no coil drawn (light-aircraft main gear) | prismatic motor (k·cos²θ) |
 | – | `swingArm` | Chassis ─Rev X (ahead of wheel)→ arm with two legs; one mono-shock on the center plane | spring joint |
 | – | `telescopicFork` | Chassis ─Prismatic along rake axis→ stanchion ─Rev about the same axis (steering)→ knuckle → wheel; `fork: {rake, trail}` | prismatic motor (k·cos²ε) |
 
@@ -189,3 +190,7 @@ Generally: `joint.setContactsEnabled(false)` between connected bodies, plus coll
   `roundCylinder` instead of `cylinder` for soft edges; `ball` as simplest start.
 - Steer and spring motors always `MotorModel.ForceBased` so k/c have physical units.
 - Limit drive torque via `setMotorMaxForce` – without a limit the velocity motor is “infinitely strong”.
+
+## Custom vehicle wheels
+
+Per axle the custom panel offers **Wheels**: `pair` (left/right, uses `track`), `center` (one wheel, `track` 0: strut, tandem bogie, telescopic fork, swingarm) or `centerDouble` (`twin: true`: two wheels side by side on one centered `strut`, e.g. a twin nose wheel). All custom wheels are the motorcycle's torus tire and collider; the width follows from the radius.

@@ -1,17 +1,22 @@
+import { torusWheelWidth } from './unitTorus';
 import type { AxleSpec, SuspensionType, VehicleSpec, WheelSpec } from './vehicleSpec';
 
 /** What a custom axle does with the steering input */
 export type SteerMode = 'none' | 'steer' | 'counter';
 
+/** Wheels of one axle: a left/right pair, one centered wheel, or two wheels side by side at the center */
+export type WheelLayout = 'pair' | 'center' | 'centerDouble';
+
 export interface CustomAxleConfig {
-  /** distance between the two wheel centres of this axle [m] */
+  wheels: WheelLayout;
+  /** distance between the two wheel centres of a `pair` axle [m] (ignored for centered wheels) */
   track: number;
   steer: SteerMode;
   suspension: SuspensionType;
   /** driven axle (torque is shared equally between driven axles) */
   drive: boolean;
+  /** wheel radius [m]; the tire is the same torus as the motorcycle's, its width follows from the radius */
   wheelRadius: number;
-  wheelWidth: number;
 }
 
 export interface CustomVehicleConfig {
@@ -32,7 +37,6 @@ export const CUSTOM_LIMITS = {
   wheelbase: [1, 10],
   track: [1, 3.2],
   wheelRadius: [0.25, 0.6],
-  wheelWidth: [0.15, 0.5],
   torque: [200, 30000],
   power: [5, 1000],
   wheelspin: [2.5, 15],
@@ -47,8 +51,25 @@ export const ALL_SUSPENSIONS: SuspensionType[] = [
   'semiTrailingArm',
   'swingAxle',
   'twistBeam',
+  'springLeg',
   'bogie',
 ];
+
+/**
+ * Suspension types per wheel layout: `fixed` = usable without steering, `steered` = usable with steering.
+ * Centered axles can only use builders that handle a single centered wheel (`track` 0).
+ */
+const SUSPENSIONS_BY_LAYOUT: Record<WheelLayout, { fixed: SuspensionType[]; steered: SuspensionType[] }> = {
+  pair: { fixed: ALL_SUSPENSIONS, steered: STEERABLE_SUSPENSIONS },
+  center: { fixed: ['strut', 'bogie', 'swingArm'], steered: ['strut', 'telescopicFork'] },
+  centerDouble: { fixed: ['strut'], steered: ['strut'] },
+};
+
+export const WHEEL_LAYOUT_LABELS: Record<WheelLayout, string> = {
+  pair: 'Wheel pair',
+  center: 'Center wheel',
+  centerDouble: 'Center double wheel',
+};
 
 export const SUSPENSION_LABELS: Record<SuspensionType, string> = {
   strut: 'Sliding strut',
@@ -60,21 +81,23 @@ export const SUSPENSION_LABELS: Record<SuspensionType, string> = {
   solidAxle: 'Solid axle',
   twistBeam: 'Twist beam',
   multiLink: 'Multi-link',
+  springLeg: 'Spring leg',
   bogie: 'Tandem bogie',
   fourLink: '4-link solid axle',
   telescopicFork: 'Telescopic fork',
   swingArm: 'Swingarm',
 };
 
-export function suspensionsFor(steer: SteerMode): SuspensionType[] {
-  return steer === 'none' ? ALL_SUSPENSIONS : STEERABLE_SUSPENSIONS;
+export function suspensionsFor(steer: SteerMode, wheels: WheelLayout = 'pair'): SuspensionType[] {
+  const list = SUSPENSIONS_BY_LAYOUT[wheels];
+  return steer === 'none' ? list.fixed : list.steered;
 }
 
 export const DEFAULT_CUSTOM: CustomVehicleConfig = {
   wheelbase: 3.2,
   axles: [
-    { track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, wheelRadius: 0.33, wheelWidth: 0.22 },
-    { track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, wheelRadius: 0.33, wheelWidth: 0.22 },
+    { wheels: 'pair', track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, wheelRadius: 0.33 },
+    { wheels: 'pair', track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, wheelRadius: 0.33 },
   ],
   torque: 2400,
   power: 360,
@@ -98,14 +121,14 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   const axles: AxleSpec[] = Array.from({ length: n }, (_, i) => {
     const c = config.axles[i];
     const radius = clamp(c.wheelRadius, CUSTOM_LIMITS.wheelRadius);
-    const width = clamp(c.wheelWidth, CUSTOM_LIMITS.wheelWidth);
-    const wheel: WheelSpec = { radius, width, mass: 20 * (radius / 0.33) ** 2, friction: 1.1, shape: 'ball' };
+    const wheel: WheelSpec = { radius, width: torusWheelWidth(radius), mass: 20 * (radius / 0.33) ** 2, friction: 1.1, shape: 'torus', tire: 'torus' };
     // a steering axle needs a type that can carry a knuckle
-    const suspension = suspensionsFor(c.steer).includes(c.suspension) ? c.suspension : suspensionsFor(c.steer)[0];
+    const allowed = suspensionsFor(c.steer, c.wheels);
+    const suspension = allowed.includes(c.suspension) ? c.suspension : allowed[0];
     const brake = (mass * 12 * radius) / (2 * n);
     return {
       z: n === 1 ? 0 : -half + (2 * half * i) / (n - 1),
-      track: clamp(c.track, CUSTOM_LIMITS.track),
+      track: c.wheels === 'pair' ? clamp(c.track, CUSTOM_LIMITS.track) : 0,
       y: radius - RIDE_HEIGHT,
       suspension,
       spring: { frequencyHz: i === 0 ? 1.6 : 1.8, dampingRatio: 0.4, travel: [-0.1, 0.12] },
@@ -115,6 +138,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
       brake: { torque: brake },
       handbrake: i === n - 1 ? { torque: brake * 3 } : undefined,
       bogieSpacing: suspension === 'bogie' ? radius * 2 + 0.4 : undefined,
+      twin: c.wheels === 'centerDouble' || undefined,
     };
   });
 

@@ -2,11 +2,13 @@ import {
   CUSTOM_LIMITS,
   DEFAULT_CUSTOM,
   SUSPENSION_LABELS,
+  WHEEL_LAYOUT_LABELS,
   buildCustomSpec,
   suspensionsFor,
   type CustomAxleConfig,
   type CustomVehicleConfig,
   type SteerMode,
+  type WheelLayout,
 } from '../shared/customVehicle';
 import { topSpeed } from '../shared/performance';
 import type { VehicleSpec } from '../shared/vehicleSpec';
@@ -39,7 +41,7 @@ function numberInput(value: number, [min, max]: readonly [number, number], step:
 
 /**
  * Collapsible panel to assemble any vehicle: wheelbase (front to rear axle), number of axles (1–5), and per axle
- * steering mode, suspension type (the list depends on the steering mode), drive, track width and wheel size.
+ * wheels (pair, center, center double), steering mode, suspension type (the list depends on wheels and steering), drive, track width and wheel size.
  * "Apply" builds a `VehicleSpec` and hands it to `onApply`.
  */
 export class CustomPanel {
@@ -103,13 +105,17 @@ export class CustomPanel {
     const last = this.config.axles.length - 1;
     const tag = i === 0 ? ' (front)' : i === last ? ' (rear)' : '';
 
+    const wheels = el('select');
+    for (const w of Object.keys(WHEEL_LAYOUT_LABELS) as WheelLayout[]) wheels.append(option(w, WHEEL_LAYOUT_LABELS[w]));
+    wheels.value = c.wheels;
+
     const steer = el('select');
     for (const m of Object.keys(STEER_LABELS) as SteerMode[]) steer.append(option(m, STEER_LABELS[m]));
     steer.value = c.steer;
 
     const susp = el('select');
     const fillSuspension = () => {
-      const allowed = suspensionsFor(c.steer);
+      const allowed = suspensionsFor(c.steer, c.wheels);
       if (!allowed.includes(c.suspension)) c.suspension = allowed[0];
       susp.replaceChildren(...allowed.map((t) => option(t, SUSPENSION_LABELS[t])));
       susp.value = c.suspension;
@@ -118,6 +124,14 @@ export class CustomPanel {
     steer.addEventListener('change', () => {
       c.steer = steer.value as SteerMode;
       fillSuspension();
+    });
+    const trackInput = numberInput(c.track, CUSTOM_LIMITS.track, 0.05, (v) => (c.track = v));
+    trackInput.disabled = c.wheels !== 'pair';
+    wheels.addEventListener('change', () => {
+      c.wheels = wheels.value as WheelLayout;
+      trackInput.disabled = c.wheels !== 'pair';
+      fillSuspension();
+      this.refreshTopSpeed();
     });
     susp.addEventListener('change', () => (c.suspension = susp.value as CustomAxleConfig['suspension']));
 
@@ -128,11 +142,11 @@ export class CustomPanel {
       'fieldset',
       {},
       el('legend', { textContent: `Axle ${i + 1}${tag}` }),
+      field('Wheels', wheels),
       field('Steering', steer),
       field('Suspension', susp),
-      field('Track (m)', numberInput(c.track, CUSTOM_LIMITS.track, 0.05, (v) => (c.track = v))),
+      field('Track (m)', trackInput),
       field('Radius (m)', numberInput(c.wheelRadius, CUSTOM_LIMITS.wheelRadius, 0.01, (v) => ((c.wheelRadius = v), this.refreshTopSpeed()))),
-      field('Width (m)', numberInput(c.wheelWidth, CUSTOM_LIMITS.wheelWidth, 0.01, (v) => (c.wheelWidth = v))),
       field('Driven', drive),
     );
   }

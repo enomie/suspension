@@ -10,12 +10,12 @@ await RAPIER.init();
 const DT = 1 / 120;
 const idle: DriverInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
 const axle = (o: Partial<CustomAxleConfig>): CustomAxleConfig => ({
+  wheels: 'pair',
   track: 1.6,
   steer: 'none',
   suspension: 'solidAxle',
   drive: false,
   wheelRadius: 0.33,
-  wheelWidth: 0.22,
   ...o,
 });
 
@@ -24,7 +24,11 @@ const CASES: [string, CustomVehicleConfig][] = [
   ['steering McPherson + non-steering tandem bogie', { ...DEFAULT_CUSTOM, wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ suspension: 'bogie', drive: true })] }],
   ['4-wheel steering: McPherson front, counter-steering McPherson rear', { ...DEFAULT_CUSTOM, wheelbase: 2.8, axles: [axle({ steer: 'steer', suspension: 'macPherson' }), axle({ steer: 'counter', suspension: 'macPherson', drive: true })] }],
   ['3 axles, 5 m', { ...DEFAULT_CUSTOM, wheelbase: 3.6, axles: [axle({ steer: 'steer', suspension: 'doubleWishbone' }), axle({ drive: true }), axle({ drive: true })] }],
-  ['different wheel sizes per axle', { ...DEFAULT_CUSTOM, wheelbase: 3, axles: [axle({ steer: 'steer', suspension: 'strut', wheelRadius: 0.3, wheelWidth: 0.2 }), axle({ drive: true, wheelRadius: 0.45, wheelWidth: 0.4 })] }],
+  ['Cessna: steering center strut nose + driven spring-leg mains', { ...DEFAULT_CUSTOM, wheelbase: 2.2, axles: [axle({ wheels: 'center', steer: 'steer', suspension: 'strut' }), axle({ suspension: 'springLeg', drive: true })] }],
+  ['trike: steering center fork + driven pair', { ...DEFAULT_CUSTOM, wheelbase: 2.4, axles: [axle({ wheels: 'center', steer: 'steer', suspension: 'telescopicFork' }), axle({ drive: true })] }],
+  ['jumbo: steering center double wheel + tandem bogie mains', { ...DEFAULT_CUSTOM, wheelbase: 6, axles: [axle({ wheels: 'centerDouble', steer: 'steer', suspension: 'strut' }), axle({ suspension: 'bogie', drive: true })] }],
+  ['center swingarm rear (bike-like)', { ...DEFAULT_CUSTOM, wheelbase: 2, axles: [axle({ suspension: 'strut' }), axle({ wheels: 'center', suspension: 'swingArm', drive: true })] }],
+  ['different wheel sizes per axle', { ...DEFAULT_CUSTOM, wheelbase: 3, axles: [axle({ steer: 'steer', suspension: 'strut', wheelRadius: 0.3 }), axle({ drive: true, wheelRadius: 0.45 })] }],
 ];
 
 describe.each(CASES)('custom: %s', (_name, config) => {
@@ -70,6 +74,25 @@ describe('buildCustomSpec', () => {
     expect(spec.axles.map((a) => a.z)).toEqual([-1.8, 0, 1.8]);
     expect(spec.axles[0].suspension).not.toBe('bogie');
     expect(spec.axles[0].track).toBe(1.6);
+  });
+});
+
+describe('wheel layouts', () => {
+  it('centered layouts build track 0 axles; centerDouble is a twin; the track field is ignored', () => {
+    const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, axles: [axle({ wheels: 'centerDouble', steer: 'steer', suspension: 'strut', track: 2 }), axle({ wheels: 'center', suspension: 'swingArm' }), axle({})] });
+    expect(spec.axles.map((a) => a.track)).toEqual([0, 0, 1.6]);
+    expect(spec.axles.map((a) => !!a.twin)).toEqual([true, false, false]);
+  });
+  it('corrects suspensions a layout cannot carry (fork needs steering, pair types need a pair)', () => {
+    const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, axles: [axle({ wheels: 'center', suspension: 'telescopicFork' }), axle({ wheels: 'center', steer: 'steer', suspension: 'doubleWishbone' })] });
+    expect(spec.axles.map((a) => a.suspension)).toEqual(['strut', 'strut']);
+  });
+  it('twin strut builds two wheels that steer together', () => {
+    const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, wheelbase: 5, axles: [axle({ wheels: 'centerDouble', steer: 'steer', suspension: 'strut' }), axle({ drive: true })] });
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const v = new Vehicle(RAPIER, world, spec, { x: 0, y: 0.6, z: 0 });
+    expect(v.corners.filter((c) => c.axleIndex === 0)).toHaveLength(2);
+    expect(spec.axles[0].twin).toBe(true);
   });
 });
 
