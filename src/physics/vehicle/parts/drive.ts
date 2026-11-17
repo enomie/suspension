@@ -1,5 +1,6 @@
-import type { Corner, DriveSpec, DriverInput } from '../types';
-import { ROLLING_FORCE_PER_WHEEL } from '../../../shared/performance';
+import type RAPIER from '@dimforge/rapier3d-simd-compat';
+import type { Corner, DriverInput, VehicleSpec } from '../types';
+import { axleForce, dragCoeff, ROLLING_FORCE_PER_WHEEL } from '../../../shared/performance';
 
 /** velocity motor damping factor [N·m·s/rad] — high = stiff, torque capped via MaxForce. */
 const MOTOR_FACTOR = 1e4;
@@ -16,13 +17,13 @@ const drivenOnAxle: number[] = [];
 /**
  * drive + service brake + handbrake per wheel via spin joint velocity motor.
  * No gearbox: throttle = motor target above the vehicle speed, thrust capped by torque (low speed) and power (P / v).
- * Top speed results from rolling + air drag (see performance.ts; the drag itself is applied to the chassis in Vehicle).
+ * Top speed results from rolling + air drag (model: shared/performance.ts; rolling here, air drag in `applyAirDrag`).
  * Rolling resistance: the same force at every wheel (ROLLING_FORCE_PER_WHEEL), as torque while coasting, subtracted from the thrust while driving.
  * priority: handbrake (axles with `handbrake` only) > brake > drive > rolling resistance.
  */
-export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInput, forwardSpeed: number): void {
-  const slip = spec.maxSlipSpeed ?? DEFAULT_MAX_SLIP_SPEED;
-  const limit = (input.boost && spec.maxBoostSpeed) || Infinity;
+export function applyDrive(corners: Corner[], spec: VehicleSpec, input: DriverInput, forwardSpeed: number): void {
+  const slip = spec.drive.maxSlipSpeed ?? DEFAULT_MAX_SLIP_SPEED;
+  const limit = (input.boost && spec.drive.maxBoostSpeed) || Infinity;
   // driven wheels per axle (scratch array: no allocation per physics step)
   for (const c of corners) drivenOnAxle[c.axleIndex] = 0;
   for (const c of corners) if (c.axle.drive) drivenOnAxle[c.axleIndex]++;
@@ -45,13 +46,10 @@ export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInpu
     } else if (braking) {
       torque = c.axle.brake.torque * brakeAmount;
     } else if (c.axle.drive && (input.throttle > 0 || wantsReverse)) {
-      const wheels = drivenOnAxle[c.axleIndex] || 1;
-      const perWheel = (spec.maxTorque * c.axle.drive.share) / wheels;
-      // power limit: torque ≤ P / ω with ω from the vehicle speed (a spinning wheel keeps its torque)
-      const omega = Math.max(Math.abs(forwardSpeed), 0.5) / r;
-      const cap = Math.min(perWheel, (spec.maxPower * c.axle.drive.share) / wheels / omega);
+      // thrust cap of the axle (torque / power limit, from the vehicle speed: a spinning wheel keeps its torque), per wheel as torque
+      const cap = (axleForce(spec, c.axle, Math.max(Math.abs(forwardSpeed), 0.5)) * r) / (drivenOnAxle[c.axleIndex] || 1);
       if (wantsReverse) {
-        target = -Math.min(spec.reverseSpeed, Math.max(0, -forwardSpeed) + slip) / r;
+        target = -Math.min(spec.drive.reverseSpeed, Math.max(0, -forwardSpeed) + slip) / r;
         torque = Math.max(0, cap * input.brake - rollTorque);
       } else {
         target = Math.min(limit, Math.max(0, forwardSpeed) + slip) / r;
@@ -61,4 +59,11 @@ export function applyDrive(corners: Corner[], spec: DriveSpec, input: DriverInpu
     j.configureMotorVelocity(target, MOTOR_FACTOR);
     j.setMotorMaxForce(torque);
   }
+}
+
+/** air drag on the chassis against its velocity: F = k·v², as impulse −v·k·|v|·dt */
+export function applyAirDrag(chassis: RAPIER.RigidBody, dt: number, boost: boolean): void {
+  const lv = chassis.linvel();
+  const j = dragCoeff(boost) * Math.hypot(lv.x, lv.y, lv.z) * dt;
+  chassis.applyImpulse({ x: -lv.x * j, y: -lv.y * j, z: -lv.z * j }, true);
 }

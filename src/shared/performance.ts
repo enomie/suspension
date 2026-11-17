@@ -1,4 +1,4 @@
-import type { VehicleSpec } from './vehicleSpec';
+import type { AxleSpec, VehicleSpec } from './vehicleSpec';
 
 /** rolling resistance force [N]: the SAME at every wheel, always (independent of load and vehicle) */
 export const ROLLING_FORCE_PER_WHEEL = 40;
@@ -12,13 +12,10 @@ export function dragCoeff(boost: boolean): number {
   return boost ? DRAG_COEFF * BOOST_DRAG_FACTOR : DRAG_COEFF;
 }
 
-/** drive force at the ground [N] at speed v: per driven axle torque-limited at low, power-limited at high speed */
-function thrust(spec: VehicleSpec, v: number): number {
-  let f = 0;
-  for (const a of spec.axles) {
-    if (a.drive) f += Math.min((spec.drive.maxTorque * a.drive.share) / a.wheel.radius, (spec.drive.maxPower * a.drive.share) / v);
-  }
-  return f;
+/** drive force of one driven axle at the ground [N] at speed v: torque-limited at low, power-limited at high speed */
+export function axleForce(spec: VehicleSpec, axle: AxleSpec, v: number): number {
+  const share = axle.drive?.share ?? 0;
+  return Math.min((spec.drive.maxTorque * share) / axle.wheel.radius, (spec.drive.maxPower * share) / v);
 }
 
 /** top speed [m/s]: where thrust = rolling + air drag, by bisection (thrust falls, resistance rises with v); capped by the boost limiter */
@@ -30,7 +27,7 @@ export function topSpeed(spec: VehicleSpec, boost = false): number {
   let hi = 1000;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    if (thrust(spec, mid) > roll + k * mid * mid) lo = mid;
+    if (spec.axles.reduce((f, a) => f + axleForce(spec, a, mid), 0) > roll + k * mid * mid) lo = mid;
     else hi = mid;
   }
   return Math.min(lo, (boost && spec.drive.maxBoostSpeed) || Infinity);
