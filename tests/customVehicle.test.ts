@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
 import { topSpeed } from '../src/shared/performance';
+import { torusWheelWidth } from '../src/shared/unitTorus';
 import { buildCustomSpec, CUSTOM_LIMITS, DEFAULT_CUSTOM, type CustomAxleConfig, type CustomVehicleConfig } from '../src/shared/customVehicle';
 import type { DriverInput } from '../src/physics/vehicle/types';
 
@@ -11,6 +12,8 @@ const DT = 1 / 120;
 const idle: DriverInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
 const axle = (o: Partial<CustomAxleConfig>): CustomAxleConfig => ({
   wheels: 'pair',
+  wheelShape: 'cylinder',
+  wheelWidth: 0.22,
   track: 1.6,
   steer: 'none',
   suspension: 'solidAxle',
@@ -74,6 +77,31 @@ describe('buildCustomSpec', () => {
     expect(spec.axles.map((a) => a.z)).toEqual([-1.8, 0, 1.8]);
     expect(spec.axles[0].suspension).not.toBe('bogie');
     expect(spec.axles[0].track).toBe(1.6);
+  });
+});
+
+describe('wheel shapes', () => {
+  it('cylinder uses the width field; torus takes its width from the radius', () => {
+    const [cyl, tor] = buildCustomSpec({ ...DEFAULT_CUSTOM, axles: [axle({ wheelWidth: 0.3 }), axle({ wheelShape: 'torus', wheelWidth: 0.3 })] }).axles;
+    expect(cyl.wheel).toMatchObject({ shape: 'roundCylinder', tire: 'tread', width: 0.3 });
+    expect(tor.wheel).toMatchObject({ shape: 'torus', tire: 'torus' });
+    expect(tor.wheel.width).toBeCloseTo(torusWheelWidth(0.33));
+  });
+  it.each(['cylinder', 'torus'] as const)('%s wheels: aircraft setup settles and drives', (wheelShape) => {
+    const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, wheelbase: 5, axles: [axle({ wheels: 'centerDouble', steer: 'steer', suspension: 'strut', wheelShape }), axle({ suspension: 'springLeg', drive: true, wheelShape })] });
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    world.timestep = DT;
+    world.numSolverIterations = 8;
+    const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -0.5, 0));
+    world.createCollider(RAPIER.ColliderDesc.cuboid(500, 0.5, 500).setFriction(0.95), ground);
+    const v = new Vehicle(RAPIER, world, spec, { x: 0, y: 0.6, z: 0 });
+    for (let i = 0; i < 5 * 120; i++) {
+      v.applyInput({ ...idle, throttle: i > 120 ? 1 : 0 }, DT);
+      world.step();
+    }
+    expect(v.forwardSpeed).toBeGreaterThan(4);
+    const r = v.chassis.rotation();
+    expect(Math.abs(r.x) + Math.abs(r.z)).toBeLessThan(0.1);
   });
 });
 
