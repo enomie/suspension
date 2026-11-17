@@ -3,7 +3,8 @@ import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
 import { topSpeed } from '../src/shared/performance';
 import { torusWheelWidth } from '../src/shared/unitTorus';
-import { buildCustomSpec, CUSTOM_LIMITS, DEFAULT_CUSTOM, type CustomAxleConfig, type CustomVehicleConfig } from '../src/shared/customVehicle';
+import { PRESETS } from '../src/physics/vehicle/presets';
+import { customFromSpec, buildCustomSpec, CUSTOM_LIMITS, DEFAULT_CUSTOM, type CustomAxleConfig, type CustomVehicleConfig } from '../src/shared/customVehicle';
 import type { DriverInput } from '../src/physics/vehicle/types';
 
 await RAPIER.init();
@@ -77,6 +78,14 @@ describe('buildCustomSpec', () => {
     expect(spec.axles.map((a) => a.z)).toEqual([-1.8, 0, 1.8]);
     expect(spec.axles[0].suspension).not.toBe('bogie');
     expect(spec.axles[0].track).toBe(1.6);
+  });
+});
+
+describe('customFromSpec (preset → panel)', () => {
+  it.each(PRESETS.map((p) => [p.label ?? p.name, p] as const))('%s: rebuilding from the panel config keeps the axle setup', (_n, preset) => {
+    const back = buildCustomSpec(customFromSpec(preset));
+    const key = (s: typeof preset) => s.axles.map((a) => [a.suspension, a.track, !!a.steer, !!a.steer?.counter, !!a.drive, a.wheel.shape, a.wheel.radius]);
+    expect(key(back)).toEqual(key(preset));
   });
 });
 

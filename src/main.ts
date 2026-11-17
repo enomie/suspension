@@ -12,6 +12,7 @@ import { TelemetryHud } from './app/hud';
 import { DebugToggles } from './app/debug';
 import { VehiclePicker } from './app/vehiclePicker';
 import { CustomPanel } from './app/customPanel';
+import { customFromSpec } from './shared/customVehicle';
 
 /*
  * Main thread. Physics runs in the physics worker (src/physics/worker.ts), terrain tiles in tile workers.
@@ -62,7 +63,7 @@ const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.s
   jointsVisible = on;
   vehicle?.setJointsVisible(on);
 });
-new CustomPanel(document.querySelector<HTMLDivElement>('#custom-panel-host')!, (spec) => physics.spawn(-1, spec));
+const customPanel = new CustomPanel(document.querySelector<HTMLDivElement>('#custom-panel-host')!, (spec) => physics.spawn(-1, spec));
 const showVehicle = () => {
   vehicle?.dispose();
   vehicle = new VehicleVisual(physics.layout);
@@ -70,6 +71,8 @@ const showVehicle = () => {
   vehicle.setJointsVisible(jointsVisible);
   scene.add(vehicle.root);
   vehiclePicker.setPreset(physics.preset);
+  // a preset fills the custom panel (same concept); a custom vehicle came from the panel, which already shows it
+  if (physics.preset >= 0) customPanel.load(customFromSpec(physics.layout.spec));
 };
 physics.onVehicle = showVehicle;
 showVehicle();

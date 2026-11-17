@@ -49,6 +49,8 @@ export class CustomPanel {
   private config: CustomVehicleConfig = structuredClone(DEFAULT_CUSTOM);
   private axleHost = el('div', { className: 'custom-axles' });
   private topSpeedOut = el('output');
+  /** writes the current config into the top-level inputs (set in the constructor) */
+  private syncInputs: () => void = () => {};
 
   constructor(parent: HTMLElement, onApply: (spec: VehicleSpec) => void) {
     const details = el('details', { id: 'custom-panel' }, el('summary', { textContent: 'Custom vehicle' }));
@@ -67,6 +69,14 @@ export class CustomPanel {
     const power = numberInput(this.config.power, CUSTOM_LIMITS.power, 5, (v) => ((this.config.power = v), this.refreshTopSpeed()));
     const wheelspin = numberInput(this.config.wheelspin, CUSTOM_LIMITS.wheelspin, 0.5, (v) => (this.config.wheelspin = v));
 
+    this.syncInputs = () => {
+      wheelbase.value = String(this.config.wheelbase);
+      count.value = String(this.config.axles.length);
+      torque.value = String(this.config.torque);
+      power.value = String(this.config.power);
+      wheelspin.value = String(this.config.wheelspin);
+    };
+
     const apply = el('button', { type: 'button', textContent: 'Apply' });
     apply.addEventListener('click', () => onApply(buildCustomSpec(this.config)));
 
@@ -81,6 +91,14 @@ export class CustomPanel {
       apply,
     );
     parent.append(details);
+    this.renderAxles();
+    this.refreshTopSpeed();
+  }
+
+  /** Replace the whole panel with this config (e.g. when a preset is picked in the vehicle dropdown) */
+  load(config: CustomVehicleConfig): void {
+    this.config = structuredClone(config);
+    this.syncInputs();
     this.renderAxles();
     this.refreshTopSpeed();
   }

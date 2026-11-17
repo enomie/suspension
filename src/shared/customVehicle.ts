@@ -112,6 +112,27 @@ export const DEFAULT_CUSTOM: CustomVehicleConfig = {
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, x));
 
+/** VehicleSpec → config: the panel shows what a preset is made of (only what the panel can express; values are clamped to its limits) */
+export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
+  const axles = spec.axles.slice(0, CUSTOM_LIMITS.axles[1]);
+  return {
+    wheelbase: axles.length > 1 ? clamp(axles[axles.length - 1].z - axles[0].z, CUSTOM_LIMITS.wheelbase) : DEFAULT_CUSTOM.wheelbase,
+    axles: axles.map((a) => ({
+      wheels: a.track > 0 ? 'pair' : a.twin ? 'centerDouble' : 'center',
+      track: a.track > 0 ? clamp(a.track, CUSTOM_LIMITS.track) : DEFAULT_CUSTOM.axles[0].track,
+      steer: !a.steer ? 'none' : a.steer.counter ? 'counter' : 'steer',
+      suspension: a.suspension,
+      drive: !!a.drive,
+      wheelShape: a.wheel.shape,
+      wheelRadius: clamp(a.wheel.radius, CUSTOM_LIMITS.wheelRadius),
+      wheelWidth: clamp(a.wheel.width, CUSTOM_LIMITS.wheelWidth),
+    })),
+    torque: clamp(spec.drive.maxTorque, CUSTOM_LIMITS.torque),
+    power: clamp(spec.drive.maxPower / 1000, CUSTOM_LIMITS.power),
+    wheelspin: clamp(spec.drive.maxSlipSpeed ?? DEFAULT_CUSTOM.wheelspin, CUSTOM_LIMITS.wheelspin),
+  };
+}
+
 /** Chassis centre height above the ground at design ride height (same as the presets) */
 const RIDE_HEIGHT = 0.6;
 /** The chassis box (mass, inertia) extends this far beyond the outer axles [m]; the visible frame does not */
