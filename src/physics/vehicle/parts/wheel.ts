@@ -3,6 +3,9 @@ import type { WheelSpec } from '../types';
 import { WHEEL_GROUPS } from '../groups';
 import { torusAxialScale, torusHullBorder, torusHullPoints } from '../../../shared/unitTorus';
 
+/** edge radius of a cylinder wheel [m] */
+const CYLINDER_EDGE_RADIUS = 0.05;
+
 /** wheel = own rigid body with collider (round cylinder on X or torus hull). */
 export function createWheel(
   R: typeof RAPIER,
@@ -25,8 +28,8 @@ export function createWheel(
     if (!hull) throw new Error('wheel: torus hull failed');
     desc = hull;
   } else {
-    // cylinder on X with rounded edges
-    const border = Math.min(spec.width * 0.3, spec.radius * 0.3);
+    // cylinder on X, edges rounded with a fixed radius
+    const border = Math.min(CYLINDER_EDGE_RADIUS, spec.width / 2, spec.radius);
     const s = Math.SQRT1_2;
     desc = R.ColliderDesc.roundCylinder(spec.width / 2 - border, spec.radius - border, border).setRotation({ x: 0, y: 0, z: s, w: s });
   }
