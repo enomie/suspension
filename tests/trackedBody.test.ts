@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
-import { buildTrackedVehicle, END_COLLIDER_RADIUS_SHARE } from '../src/physics/vehicle/tracked/buildTracked';
+import { buildTrackedVehicle } from '../src/physics/vehicle/tracked/buildTracked';
 import type { TrackedVehicleSpec } from '../src/shared/trackedSpec';
 import type { AxleSpec } from '../src/shared/vehicleSpec';
 
@@ -55,11 +55,10 @@ function setup(s: TrackedVehicleSpec, y: number) {
 }
 
 describe('tracked body', () => {
-  it('builds a strut corner per side and road axle, plus an idler and sprocket collider per side', () => {
+  it('builds a strut corner per side and road axle', () => {
     const { built } = setup(spec(), 0.9);
     expect(built.corners).toHaveLength(6);
     expect(built.corners.map((c) => c.axleIndex)).toEqual([0, 0, 1, 1, 2, 2]);
-    expect(built.endColliders).toHaveLength(4);
   });
 
   it('road wheel collider is as wide as the belt, radius includes the chain thickness', () => {
@@ -69,19 +68,9 @@ describe('tracked body', () => {
     expect(2 * (shape.halfHeight + shape.borderRadius)).toBeCloseTo(0.4, 6);
   });
 
-  it('idler and sprocket colliders are small, fixed to the chassis and mirror left and right', () => {
-    const s = spec();
-    const { built } = setup(s, 0.9);
-    const [idlerL, idlerR, sprocketL, sprocketR] = built.endColliders;
-    for (const c of built.endColliders) expect(c.parent()!.handle).toBe(built.chassis.handle);
-    const l = idlerL.translationWrtParent()!;
-    const r = idlerR.translationWrtParent()!;
-    expect([l.x, l.y, l.z]).toEqual([-1, expect.closeTo(-0.4, 6), expect.closeTo(-2.2, 6)]);
-    expect([r.x, r.y, r.z]).toEqual([1, expect.closeTo(-0.4, 6), expect.closeTo(-2.2, 6)]);
-    expect(sprocketL.translationWrtParent()!.z).toBeCloseTo(2.2, 5);
-    expect(sprocketR.translationWrtParent()!.y).toBeCloseTo(0, 5);
-    const shape = idlerL.shape as RAPIER.RoundCylinder;
-    expect(shape.radius + shape.borderRadius).toBeCloseTo(0.3 * END_COLLIDER_RADIUS_SHARE, 6);
+  it('idler and sprocket have no collider: the chain contact carries the track around them', () => {
+    const { built } = setup(spec(), 0.9);
+    expect('endColliders' in built).toBe(false);
   });
 
   it('settles level on the ground at a stable ride height', () => {

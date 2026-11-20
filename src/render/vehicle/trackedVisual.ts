@@ -28,6 +28,8 @@ export class TrackedVisual {
   private readonly sprocket: ChainCircle;
   /** per side, road wheel corners (index into the layout) front to back, with their contact radius */
   private readonly sides: { corner: number; radius: number }[][];
+  /** idler and sprocket pivots per side (spin about X with the chain) and their chain radius */
+  private readonly spinners: { pivot: Group; side: number; radius: number }[] = [];
   private distance: [number, number] = [0, 0];
   private lastStamp = NaN;
   private readonly left: ChainCircle[];
@@ -38,15 +40,18 @@ export class TrackedVisual {
     this.idler = { z: t.idler.z, y: t.idler.y, radius: t.idler.radius };
     this.sprocket = { z: t.sprocket.z, y: t.sprocket.y, radius: t.sprocket.radius };
     for (const [w, name] of [[t.idler, 'idler'], [t.sprocket, 'sprocket']] as const) {
-      for (const x of [-t.track / 2, t.track / 2]) {
+      [-t.track / 2, t.track / 2].forEach((x, side) => {
         const m = new Mesh(UNIT_HOLLOW_CYLINDER_GEOMETRY, MAT.knuckle);
         m.name = name;
         m.scale.set(w.radius * 2, w.width, w.radius * 2);
         m.rotation.z = Math.PI / 2;
-        m.position.set(x, w.y, w.z);
         m.castShadow = true;
-        this.group.add(m);
-      }
+        const pivot = new Group();
+        pivot.position.set(x, w.y, w.z);
+        pivot.add(m);
+        this.group.add(pivot);
+        this.spinners.push({ pivot, side, radius: w.radius + t.chainThickness });
+      });
     }
     this.sides = [0, 1].map((s) =>
       layout.corners
@@ -85,6 +90,8 @@ export class TrackedVisual {
       });
       this.distance[s] += (speed / Math.max(1, side.length)) * step;
     });
+    // idler and sprocket turn with the chain: forward driving rolls the top toward −Z (negative about +X)
+    for (const sp of this.spinners) sp.pivot.rotation.x = -this.distance[sp.side] / sp.radius;
     this.chain.update(this.left, this.right, this.distance[0], this.distance[1]);
   }
 }

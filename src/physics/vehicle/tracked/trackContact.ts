@@ -33,6 +33,9 @@ const SUPPORT_DAMPING_TIME = 0.02;
 /** slip speed [m/s] at which the friction force reaches its limit */
 const SLIP_FULL_SPEED = 0.4;
 
+/** points on the idler and sprocket arc [rad below horizontal, nose → bottom]: the chain wraps the ends like a ramp */
+const END_ARC_ANGLES = [0, Math.PI / 4, Math.PI / 2];
+
 /** one contact of the last step, for debugging and tests */
 export interface TrackContactPoint {
   side: 'L' | 'R';
@@ -50,6 +53,8 @@ interface Anchor {
   /** body the force goes to */
   body: RAPIER.RigidBody;
   v: Vector3;
+  /** a road wheel collider touches the ground at this end: no contact points right next to it */
+  wheel: boolean;
 }
 
 const _q = new Quaternion();
@@ -104,20 +109,23 @@ export class TrackContact {
     const lv = this.chassis.linvel();
     const av = this.chassis.angvel();
     const list: Anchor[] = [];
-    const endAnchor = (z: number, y: number, r: number): Anchor => {
-      // bottom of an idler / sprocket: chassis-local → world
-      const local = new Vector3(x, y - r - spec.chainThickness, z).applyQuaternion(_q);
+    // point on the chain around an idler / sprocket (chassis-local → world); `a` = angle below the horizontal on the
+    // outer side: 0 = at axle height facing away from the vehicle, 90° = bottom
+    const endAnchor = (w: { z: number; y: number; radius: number }, outward: number, a: number): Anchor => {
+      const r = w.radius + spec.chainThickness;
+      const local = new Vector3(x, w.y - r * Math.sin(a), w.z + outward * r * Math.cos(a)).applyQuaternion(_q);
       const v = new Vector3(lv.x + av.y * local.z - av.z * local.y, lv.y + av.z * local.x - av.x * local.z, lv.z + av.x * local.y - av.y * local.x);
-      return { p: new Vector3(ct.x + local.x, ct.y + local.y, ct.z + local.z), body: this.chassis, v };
+      return { p: new Vector3(ct.x + local.x, ct.y + local.y, ct.z + local.z), body: this.chassis, v, wheel: false };
     };
-    list.push(endAnchor(spec.idler.z, spec.idler.y, spec.idler.radius));
+    // the chain wraps the front of the idler: contact ramp from its nose down to its bottom (idler is at −Z, outward = −1)
+    for (const a of END_ARC_ANGLES) list.push(endAnchor(spec.idler, -1, a));
     const wheels = this.corners.filter((c) => c.side === side).sort((a, b) => a.anchor[2] - b.anchor[2]);
     for (const c of wheels) {
       const t = c.wheel.translation();
       const v = c.wheel.linvel();
-      list.push({ p: new Vector3(t.x, t.y, t.z).addScaledVector(_up, -c.axle.wheel.radius), body: c.wheel, v: new Vector3(v.x, v.y, v.z) });
+      list.push({ p: new Vector3(t.x, t.y, t.z).addScaledVector(_up, -c.axle.wheel.radius), body: c.wheel, v: new Vector3(v.x, v.y, v.z), wheel: true });
     }
-    list.push(endAnchor(spec.sprocket.z, spec.sprocket.y, spec.sprocket.radius));
+    for (const a of [...END_ARC_ANGLES].reverse()) list.push(endAnchor(spec.sprocket, 1, a));
     return list;
   }
 
@@ -135,7 +143,7 @@ export class TrackContact {
       const n = Math.max(1, Math.round(len / SAMPLE_SPACING));
       for (let j = 0; j < n; j++) {
         const s = (j + 0.5) / n;
-        if (s * len < WHEEL_CLEARANCE || (1 - s) * len < WHEEL_CLEARANCE) continue;
+        if ((a.wheel && s * len < WHEEL_CLEARANCE) || (b.wheel && (1 - s) * len < WHEEL_CLEARANCE)) continue;
         _pa.copy(a.p).lerp(b.p, s); // point on the chain line
         ray.origin.x = _pa.x + _up.x * PROBE_LIFT;
         ray.origin.y = _pa.y + _up.y * PROBE_LIFT;

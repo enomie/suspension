@@ -46,6 +46,11 @@ describe('tracked vehicle over logs (flat ground, logs 20 m ahead, 10 %…90 % b
     expect(r.y).toBeGreaterThan(0); // never fell through
     expect(r.maxContacts).toBeGreaterThan(0);
   });
+  it('the chain wraps idler and sprocket: nose and tail contacts exist on a single log', () => {
+    const r = drive(true, [logs(0.1, 0.1)[0]], 10);
+    expect(r.z).toBeLessThan(-30); // crosses the single log and keeps going
+    expect(r.maxContacts).toBeGreaterThan(0);
+  });
   it('without it the wheel colliders alone get stuck at the first log (the problem this fixes)', () => {
     const r = drive(false, logs(0.1, 0.9), 40);
     expect(r.z).toBeGreaterThan(-40);
