@@ -10,14 +10,15 @@ Status: collecting. Nothing here is implemented yet. Open questions are marked *
 - Each axle has a checkbox: "handbrake acts on this axle".
 - The handbrake is independent of the normal brake, which brakes all wheels.
 - Braking torque is adjustable (not necessarily a full lock).
-- **Q:** Per axle, or one value for the whole vehicle?
+- Decided: one braking-torque value for the whole vehicle. Per axle, only the checkbox.
 
 ## 2. Differential per driven axle
 - Each driven axle has a setting: differential yes/no.
 - If yes, it is shown as a sphere in the preview, like the instanced base geometries.
 - Now: yes/no only.
 - Later: a differential lock, toggled by a key press.
-- **Q:** Is the key a toggle (press on/off) or hold-to-lock? Fully locked, or a lock ratio?
+- Decided: the key toggles the lock on/off.
+- **Q:** Fully locked, or an adjustable lock ratio? (Later; not needed now.)
 
 ## 3. Vehicle weight
 - The custom vehicle has an adjustable total weight.
@@ -38,4 +39,4 @@ Status: collecting. Nothing here is implemented yet. Open questions are marked *
 - Purpose: see how handling changes and get more realistic collisions.
 - Decided: fixed default size and position, not adjustable.
 - Its weight is not separate: only the vehicle weight from section 3 counts.
-- **Q:** Should the box be removable (toggle on/off) in the preview?
+- Decided: the box can be shown/hidden in the preview.
