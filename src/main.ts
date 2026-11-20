@@ -124,7 +124,7 @@ renderer.setAnimationLoop((now: number) => {
   sun.follow(v.chassis.position);
   terrain.update(camera.position.x, camera.position.y, camera.position.z);
 
-  hud.update(v, dt, fps, terrain.stats, ORIGIN, physics, debug.summary);
+  hud.update(v, dt, fps, terrain.stats, ORIGIN, physics, debug.summary, keyboard.diffLockOn);
   terrain.beforeRender(renderer, camera);
   renderer.render(scene, camera);
 });

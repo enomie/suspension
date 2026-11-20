@@ -21,6 +21,11 @@ export class Keyboard {
     target.addEventListener('blur', () => this.down.clear());
   }
 
+  /** differential lock engaged (toggled by L) */
+  get diffLockOn(): boolean {
+    return this.diffLock;
+  }
+
   isDown(code: string): boolean {
     return this.down.has(code);
   }
