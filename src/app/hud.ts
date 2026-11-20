@@ -27,7 +27,7 @@ export class TelemetryHud {
     origin?: { x: number; z: number },
     physics?: { mode: string; stepMs: number; delayMs: number },
     debugLine?: string,
-    diffLock = false,
+    diffLock = 0,
   ): void {
     this.acc += dt;
     if (this.acc < 0.1) return;
@@ -59,7 +59,7 @@ export class TelemetryHud {
       );
     if (debugLine) lines.push(debugLine);
     const open = v.spec.axles.filter((a) => a.drive && a.differential !== false).length;
-    if (open > 0) lines.push(`diff lock  ${diffLock ? 'ON' : 'off'}  (L)`);
+    if (open > 0) lines.push(`diff lock  ${diffLock === 0 ? 'open' : `${Math.round(diffLock * 100)}%`}  (L)`);
     lines.push('', 'Vehicle top-right · W/S throttle/brake · A/D steer · Space handbrake · L diff lock · R reset');
     this.el.textContent = lines.join('\n');
   }

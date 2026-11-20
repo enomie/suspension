@@ -33,7 +33,7 @@ export class Vehicle {
     pos: { x: number; y: number; z: number },
   ) {
     this.built = buildVehicle(R, world, spec, pos);
-    this.differentials = new Differentials(R, world, this.built.corners);
+    this.differentials = new Differentials(R, world, this.built.corners, spec.drive.maxTorque);
     this.refSpeed = topSpeed(spec);
     this.steering = new Steering(spec.steering, spec);
     if (spec.balance) {
@@ -65,7 +65,7 @@ export class Vehicle {
       this.steering.balanceOffset = total - this.steering.angle;
     }
     this.steering.apply(this.corners);
-    this.differentials.update(!!input.diffLock);
+    this.differentials.update(input.diffLock ?? 0);
     applyDrive(this.corners, this.spec, input, this.forwardSpeed);
     applyAirDrag(this.chassis, dt, !!input.boost);
   }

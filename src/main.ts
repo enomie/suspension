@@ -64,6 +64,7 @@ const showVehicle = () => {
   vehicle?.dispose();
   vehicle = new VehicleVisual(physics.layout);
   vehicle.setToggles(toggles);
+  keyboard.resetDiffLock();
   scene.add(vehicle.root);
   vehiclePicker.setPreset(physics.preset);
   // a preset fills the custom panel (same concept); a custom vehicle came from the panel, which already shows it
@@ -114,7 +115,7 @@ renderer.setAnimationLoop((now: number) => {
   sun.follow(v.chassis.position);
   terrain.update(camera.position.x, camera.position.y, camera.position.z);
 
-  hud.update(v, dt, fps, terrain.stats, ORIGIN, physics, debug.summary, keyboard.diffLockOn);
+  hud.update(v, dt, fps, terrain.stats, ORIGIN, physics, debug.summary, keyboard.diffLock);
   terrain.beforeRender(renderer, camera);
   renderer.render(scene, camera);
 });

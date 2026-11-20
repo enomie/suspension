@@ -1,54 +1,94 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import type { Corner } from '../types';
 
-/** A left/right wheel pair of one driven axle and the shaft joint that couples them while it exists */
+/** Clutch capacity at lock level 1 as a share of the drive torque of one driven wheel: the clutch scales with the vehicle's power */
+const CLUTCH_TORQUE_SHARE = 0.15;
+/** clutch motor strength [N·m·s/rad]: stiff, so the torque cap is what limits it (as for the wheel motors) */
+const CLUTCH_FACTOR = 1e4;
+
+/** A left/right wheel pair of one driven axle */
 interface Pair {
   a: Corner;
   b: Corner;
   /** no differential: the shaft is always there */
   spooled: boolean;
+  /** rigid shaft joint while it exists */
   joint: RAPIER.ImpulseJoint | null;
+  /** clutch joint while it exists: no locked axis, a motor on the spin axis holds the relative speed at zero */
+  clutch: RAPIER.ImpulseJoint | null;
 }
 
 /**
  * Differentials. A driven axle with an open differential lets its two wheels turn independently (each wheel has its own motor).
- * An axle without one (`differential === false`), or any differential while the driver's lock is engaged, couples the wheels
- * like one shaft: a joint that locks their relative rotation about the spin axis, solved together with the contacts.
+ * The driver's lock level (0…1) couples them:
+ *  - 0: open;
+ *  - between: a clutch pushes the two wheels toward the same speed with a torque of `level × clutchTorque`, so the
+ *    differential limits slip but still lets the wheels part under load (limited slip);
+ *  - 1, or an axle without differential (`differential === false`): a rigid shaft, a joint that locks the relative rotation
+ *    about the spin axis and is solved together with the contacts.
  * Only left/right pairs are coupled (center and double-center wheels have no partner).
  */
 export class Differentials {
   private pairs: Pair[] = [];
+  /** clutch torque at lock level 1 [N·m] */
+  private readonly clutchTorque: number;
 
   constructor(
     private R: typeof RAPIER,
     private world: RAPIER.World,
     corners: Corner[],
+    /** total drive torque of the vehicle [N·m] (`DriveSpec.maxTorque`) */
+    driveTorque: number,
   ) {
+    this.clutchTorque = (CLUTCH_TORQUE_SHARE * driveTorque) / Math.max(1, corners.filter((c) => c.axle.drive).length);
     const axles = new Set(corners.filter((c) => c.axle.drive).map((c) => c.axleIndex));
     for (const axleIndex of axles) {
       const of = (side: Corner['side']) => corners.filter((c) => c.axleIndex === axleIndex && c.side === side);
       const left = of('L');
       const right = of('R');
       for (let i = 0; i < Math.min(left.length, right.length); i++) {
-        this.pairs.push({ a: left[i], b: right[i], spooled: left[i].axle.differential === false, joint: null });
+        this.pairs.push({ a: left[i], b: right[i], spooled: left[i].axle.differential === false, joint: null, clutch: null });
       }
     }
-    this.update(false);
+    this.update(0);
   }
 
-  /** engage or release the shafts for the current lock state (call before every step; does nothing when unchanged) */
-  update(locked: boolean): void {
+  /** apply the lock level 0…1 for the next step (joints are only created or removed when the step changes) */
+  update(level: number): void {
     for (const p of this.pairs) {
-      const want = p.spooled || locked;
-      if (want && !p.joint) p.joint = this.couple(p.a, p.b);
-      else if (!want && p.joint) {
-        this.world.removeImpulseJoint(p.joint, true);
-        p.joint = null;
-      }
+      const rigid = p.spooled || level >= 1;
+      const partial = !rigid && level > 0;
+      if (rigid && !p.joint) p.joint = this.couple(p.a, p.b);
+      else if (!rigid && p.joint) p.joint = this.release(p.joint);
+      if (partial && !p.clutch) p.clutch = this.createClutch(p.a, p.b);
+      else if (!partial && p.clutch) p.clutch = this.release(p.clutch);
+      if (p.clutch) this.setClutchTorque(p.clutch, level * this.clutchTorque);
     }
   }
 
-  /** number of wheel pairs currently coupled */
+  private release(joint: RAPIER.ImpulseJoint): null {
+    this.world.removeImpulseJoint(joint, true);
+    return null;
+  }
+
+  /**
+   * Slipping clutch between the two wheels: a joint that locks nothing, with a velocity motor on the spin axis that holds the
+   * relative speed at zero, up to a torque cap. Below the cap the wheels turn together, above it the clutch slips.
+   */
+  private createClutch(a: Corner, b: Corner): RAPIER.ImpulseJoint {
+    const R = this.R;
+    const zero = { x: 0, y: 0, z: 0 };
+    const joint = this.world.createImpulseJoint(R.JointData.generic(zero, zero, { x: 1, y: 0, z: 0 }, 0 as RAPIER.JointAxesMask), a.wheel, b.wheel, true);
+    motor(this.R).configureMotorModel.call(joint, R.JointAxis.AngX, R.MotorModel.ForceBased);
+    motor(this.R).configureMotorVelocity.call(joint, R.JointAxis.AngX, 0, CLUTCH_FACTOR);
+    return joint;
+  }
+
+  private setClutchTorque(joint: RAPIER.ImpulseJoint, torque: number): void {
+    motor(this.R).setMotorMaxForce.call(joint, this.R.JointAxis.AngX, torque);
+  }
+
+  /** number of wheel pairs currently coupled by a rigid shaft */
   get coupled(): number {
     return this.pairs.filter((p) => p.joint).length;
   }
@@ -72,4 +112,12 @@ export class Differentials {
     };
     return this.world.createImpulseJoint(data, a.wheel, b.wheel, true);
   }
+}
+
+/**
+ * The axis motor methods of Rapier's JS wrapper exist only on `SphericalImpulseJoint`, but the underlying calls take the axis and
+ * work for any joint; a generic joint object has no such methods. So we borrow them from the spherical wrapper's prototype.
+ */
+function motor(R: typeof RAPIER): Pick<RAPIER.SphericalImpulseJoint, 'configureMotorModel' | 'configureMotorVelocity' | 'setMotorMaxForce'> {
+  return R.SphericalImpulseJoint.prototype;
 }

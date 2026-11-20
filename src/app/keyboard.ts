@@ -1,12 +1,12 @@
-import type { DriverInput } from '../shared/vehicleSpec';
+import { DIFF_LOCK_LEVELS, type DriverInput } from '../shared/vehicleSpec';
 
-/** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake, L differential lock (toggle), Shift boost (a quarter of the air drag). */
+/** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake, L differential lock (cycles 0–100 %), Shift boost (a quarter of the air drag). */
 export class Keyboard {
   private down = new Set<string>();
   /** one-shot key presses (e.g. reset) */
   private pressed = new Set<string>();
-  /** differential lock, toggled by L */
-  private diffLock = false;
+  /** differential lock step (index into `DIFF_LOCK_LEVELS`), cycled by L */
+  private diffLockStep = 0;
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
@@ -21,9 +21,15 @@ export class Keyboard {
     target.addEventListener('blur', () => this.down.clear());
   }
 
-  /** differential lock engaged (toggled by L) */
-  get diffLockOn(): boolean {
-    return this.diffLock;
+  /** differential lock level 0…1 (cycled by L) */
+  get diffLock(): number {
+    return DIFF_LOCK_LEVELS[this.diffLockStep];
+  }
+
+  /** back to an open differential (new vehicle) */
+  resetDiffLock(): void {
+    this.diffLockStep = 0;
+    this.pressed.delete('KeyL');
   }
 
   isDown(code: string): boolean {
@@ -38,7 +44,7 @@ export class Keyboard {
   }
 
   read(): DriverInput {
-    if (this.consume('KeyL')) this.diffLock = !this.diffLock;
+    if (this.consume('KeyL')) this.diffLockStep = (this.diffLockStep + 1) % DIFF_LOCK_LEVELS.length;
     const k = (c: string) => (this.down.has(c) ? 1 : 0);
     return {
       throttle: Math.max(k('KeyW'), k('ArrowUp')),

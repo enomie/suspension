@@ -18,9 +18,12 @@ How to use the profile in another project: [INTEGRATION_VEHICLE.md](INTEGRATION_
   - Yes: open differential, the two wheels turn independently.
   - No: spooled axle, both wheels are forced to the same speed (a joint couples them).
 - A differential is shown as a sphere at the axle centre in the preview (instanced, like the other base geometries).
-- Differential lock: key `L` toggles it. A locked differential behaves like a spooled axle. The HUD shows `diff lock ON/off`.
+- Differential lock: key `L` cycles through open, 25, 50, 75 and 100 %, then back to open; a new vehicle starts open. One global level for every differential.
+  - 100 %: rigid, like a spooled axle.
+  - 25 to 75 %: a slipping clutch between the two wheels, with a torque cap of `level × 15 %` of the drive torque of one driven wheel.
+  - The HUD shows `diff lock open` or the percentage.
 - Only left/right wheel pairs are coupled; centred and double-centred wheels have no partner.
-- **Q:** Fully locked only, or an adjustable lock ratio? Not needed now.
+- Decided: no lock level per axle for now. Real vehicles with several driven axles often have separate lockers; the input could become a list per axle later.
 
 ## 3. Vehicle weight
 - `weight` is the total mass in kg, including the wheels. The chassis gets what remains (at least 100 kg).

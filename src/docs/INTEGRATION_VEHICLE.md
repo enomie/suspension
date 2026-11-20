@@ -47,7 +47,7 @@ generations against “stale frames”, and layout via message are already solve
 | Tick | fixed 120 Hz, 8 solver iterations (McPherson sets +16 only for its bodies). At 60 Hz soften springs and test. |
 | Collision groups | bits `0x1` terrain, `0x2` chassis, `0x4` wheel (`physics/vehicle/groups.ts`). Adjust when colliding with own groups. |
 | Ground | friction ~0.95; wheels 1.1 |
-| Input | `throttle` 0…1, `brake` 0…1 (at rest = reverse), `steer` −1 (right) … +1 (left), `handbrake` bool, `diffLock` bool (optional), `boost` bool (optional) |
+| Input | `throttle` 0…1, `brake` 0…1 (at rest = reverse), `steer` −1 (right) … +1 (left), `handbrake` bool, `diffLock` 0…1 (optional), `boost` bool (optional) |
 | IDs | `<vehicle>.a<axle><side>.<part>`, e.g. `car.a0L.wheel` (`ids.ts`) |
 
 ## 4. Hooking up the asset editor
@@ -106,7 +106,7 @@ Note single-track (motorcycle): builds correctly but falls without balance contr
 | steering | `axles[i].steer.maxAngle`, global `steering` | Ackermann per axle automatic; rear axles steer opposite, `crab` = same direction |
 | drive | `axles[i].drive.share`, global `drive` (`maxTorque`, `maxPower`, `reverseSpeed`; optional boost limiter `maxBoostSpeed`) | torque/power split via `share`. **Top speed is not an input:** it is where thrust (per driven axle `min(torque/r, P/v)`) = rolling (40 N per wheel, identical everywhere) + air drag (`½·1.2·0.8·v²`, identical everywhere); `topSpeed(spec)` in `shared/performance.ts` computes it. Boost cuts the drag area to ¼. |
 | brakes | `axles[i].brake.torque`, `handbrake.torque` | handbrake only on axles with `handbrake` (any axle, independent of the service brake) |
-| differential | `axles[i].differential` | driven axles only; `false` = spooled axle (wheels coupled), otherwise open. `DriverInput.diffLock` locks every differential |
+| differential | `axles[i].differential` | driven axles only; `false` = spooled axle (wheels coupled), otherwise open. `DriverInput.diffLock` (0 open … 1 rigid, steps in `DIFF_LOCK_LEVELS`) locks every differential; in between a clutch with a torque cap slips |
 | tandem | `bogieSpacing` | `bogie` only |
 | visible meshes | **not** in spec | hang editor meshes on bodies, see 4.3 |
 
@@ -170,9 +170,9 @@ limits in `CUSTOM_LIMITS`), `customFromSpec(spec)` goes back. Use `DEFAULT_CUSTO
 ```ts
 const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, weight: 1800, comOffset: [0, -0.3, 0] });
 const vehicle = new Vehicle(R, world, spec, pos);
-vehicle.applyInput({ throttle, brake, steer, handbrake, diffLock }, 1 / 120);   // diffLock: your toggle key
+vehicle.applyInput({ throttle, brake, steer, handbrake, diffLock }, 1 / 120);   // diffLock: your lock level, e.g. cycled by a key
 ```
-The game holds the diff-lock state itself (the demo toggles it with `L`). Rendering: `VehicleVisual` shows the differential spheres
+The game holds the diff-lock level itself (the demo cycles `DIFF_LOCK_LEVELS` with `L`: open, 25, 50, 75, 100 %, back to open; a new vehicle starts open). Rendering: `VehicleVisual` shows the differential spheres
 and the preview box; a game with its own meshes uses `spec.chassis.lowerCollider` and the axles' `differential` flags directly.
 Tests: `tests/customVehicle.test.ts`, `tests/differential.test.ts`, `tests/lowerCollider.test.ts`.
 

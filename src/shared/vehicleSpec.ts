@@ -71,7 +71,7 @@ export interface AxleSpec {
   drive?: { share: number };
   /**
    * driven axles only. Open differential unless `false`: the wheels of the axle turn independently. `false` = no differential
-   * (spooled axle): the wheels are forced to the same speed. The driver can also lock a differential (`DriverInput.diffLock`).
+   * (spooled axle): the wheels are forced to the same speed. The driver can also lock differentials (`DriverInput.diffLock`).
    * Shown as a sphere in the preview.
    */
   differential?: boolean;
@@ -182,13 +182,16 @@ export interface VehicleSpec {
   jointMode?: 'impulse' | 'multibody';
 }
 
+/** Steps the driver cycles through with the lock key: open, 25, 50, 75 %, fully locked */
+export const DIFF_LOCK_LEVELS = [0, 0.25, 0.5, 0.75, 1] as const;
+
 export interface DriverInput {
   throttle: number; // 0…1
   brake: number; // 0…1
   steer: number; // −1 (rechts) … +1 (links)
   handbrake: boolean;
-  /** Differential lock engaged (toggled by a key): every differential behaves like a spooled axle */
-  diffLock?: boolean;
+  /** Differential lock level 0…1 (see `DIFF_LOCK_LEVELS`): 0 = open, 1 = rigid like a spooled axle, between = clutch. Applies to every differential. */
+  diffLock?: number;
   /** Boost (Shift): doubles drive torque and top speed */
   boost?: boolean;
 }

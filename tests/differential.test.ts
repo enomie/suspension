@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
 import { buildCustomSpec, DEFAULT_CUSTOM } from '../src/shared/customVehicle';
+import { DIFF_LOCK_LEVELS } from '../src/shared/vehicleSpec';
 import type { DriverInput } from '../src/physics/vehicle/types';
 
 await RAPIER.init();
@@ -9,7 +10,7 @@ await RAPIER.init();
 const DT = 1 / 120;
 
 /** Mean |ω_left − ω_right| of the driven rear axle while cornering under throttle */
-function wheelSpeedSpread(differential: boolean, diffLock = false): number {
+function wheelSpeedSpread(differential: boolean, diffLock = 0): number {
   const config = { ...DEFAULT_CUSTOM, axles: DEFAULT_CUSTOM.axles.map((a, i) => (i === 1 ? { ...a, differential } : a)) };
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = DT;
@@ -42,11 +43,19 @@ describe('differential', () => {
     expect(wheelSpeedSpread(false)).toBeLessThan(open * 0.5);
   });
   it('the lock turns an open differential into a spooled axle', () => {
-    expect(wheelSpeedSpread(true, true)).toBeLessThan(open * 0.5);
+    expect(wheelSpeedSpread(true, 1)).toBeLessThan(open * 0.5);
   });
 });
 
-describe('differential lock toggled while driving', () => {
+describe('lock levels', () => {
+  it('each step of the L cycle reduces the wheel speed difference further', () => {
+    const spreads = DIFF_LOCK_LEVELS.map((level) => wheelSpeedSpread(true, level));
+    for (let i = 1; i < spreads.length; i++) expect(spreads[i]).toBeLessThan(spreads[i - 1]);
+    expect(spreads[4]).toBeLessThan(spreads[0] * 0.5);
+  });
+});
+
+describe('differential lock changed while driving', () => {
   it('engages and releases without disturbing the vehicle', () => {
     const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     world.timestep = DT;
@@ -55,18 +64,18 @@ describe('differential lock toggled while driving', () => {
     world.createCollider(RAPIER.ColliderDesc.cuboid(500, 0.5, 500).setFriction(0.95), ground);
     const v = new Vehicle(RAPIER, world, buildCustomSpec(DEFAULT_CUSTOM), { x: 0, y: 0.6, z: 0 });
     expect(v.differentials.coupled).toBe(0);
-    const run = (s: number, diffLock: boolean) => {
+    const run = (s: number, diffLock: number) => {
       for (let i = 0; i < s / DT; i++) {
         v.applyInput({ throttle: 1, brake: 0, steer: 0.4, handbrake: false, diffLock }, DT);
         world.step();
       }
     };
-    run(4, false);
-    run(2, true);
+    run(4, 0);
+    run(2, 1);
     expect(v.differentials.coupled).toBe(1);
     const speed = v.forwardSpeed;
     expect(speed).toBeGreaterThan(3);
-    run(2, false);
+    run(2, 0);
     expect(v.differentials.coupled).toBe(0);
     expect(v.forwardSpeed).toBeGreaterThan(speed * 0.8);
     const r = v.chassis.rotation();
