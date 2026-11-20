@@ -140,6 +140,9 @@ function wheelCount(a: Pick<AxleSpec, 'track' | 'twin' | 'suspension'>): number 
   return (a.track > 0 || a.twin ? 2 : 1) * (a.suspension === 'bogie' ? 2 : 1);
 }
 
+/** Total mass of all wheels [kg] */
+const wheelsMass = (axles: AxleSpec[]) => axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0);
+
 const clampCom = ([x, y, z]: Vec3): Vec3 => [
   clamp(x, CUSTOM_LIMITS.comOffset.x),
   clamp(y, CUSTOM_LIMITS.comOffset.y),
@@ -164,7 +167,7 @@ export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
       wheelWidth: clamp(a.wheel.width, CUSTOM_LIMITS.wheelWidth),
     })),
     colliderBox: !!spec.chassis.lowerCollider,
-    weight: clamp(spec.chassis.mass + axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0), CUSTOM_LIMITS.weight),
+    weight: clamp(spec.chassis.mass + wheelsMass(axles), CUSTOM_LIMITS.weight),
     handbrakeTorque: clamp(axles.find((a) => a.handbrake)?.handbrake?.torque ?? DEFAULT_CUSTOM.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque),
     comOffset: clampCom(spec.chassis.comOffset ?? [0, 0, 0]),
     torque: clamp(spec.drive.maxTorque, CUSTOM_LIMITS.torque),
@@ -215,8 +218,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
 
   // inertia box: as wide as the widest axle track (the frame itself has a fixed width)
   const width = Math.max(FRAME_OUTER_WIDTH, ...axles.map((a) => a.track));
-  const wheelsMass = axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0);
-  const mass = Math.max(MIN_CHASSIS_MASS, weight - wheelsMass);
+  const mass = Math.max(MIN_CHASSIS_MASS, weight - wheelsMass(axles));
 
   const spec: VehicleSpec = {
     name: 'custom',
