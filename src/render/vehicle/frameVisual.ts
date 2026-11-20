@@ -1,6 +1,6 @@
 import { BoxGeometry, BufferGeometry, Mesh } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FRAME_RAIL, FRAME_RAIL_X, frameHalfLength, type VehicleSpec } from '../../shared/vehicleSpec';
+import { FRAME_RAIL, FRAME_RAIL_X, frameHalfLength, frameRailY, type VehicleSpec } from '../../shared/vehicleSpec';
 import { MAT } from './materials';
 
 const RAIL = FRAME_RAIL;
@@ -18,7 +18,7 @@ export function createFrameVisual(spec: VehicleSpec): Mesh {
   const h = spec.chassis.size[1];
   const l = frameHalfLength(spec) * 2; // rails end at the outer axles
   const railX = FRAME_RAIL_X;
-  const y = -h / 2 + RAIL / 2 + 0.1;
+  const y = frameRailY(h);
   const parts = [box(RAIL, RAIL, l, -railX, y, 0), box(RAIL, RAIL, l, railX, y, 0)];
   for (const z of spec.axles.map((a) => a.z)) {
     parts.push(box(railX * 2 - RAIL * 0.1, RAIL * 0.82, RAIL * 0.78, 0, y, z));

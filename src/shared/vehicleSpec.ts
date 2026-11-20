@@ -211,9 +211,17 @@ export const FRAME_OUTER_WIDTH = 0.5;
 /** Distance of each side rail from the centre line [m] */
 export const FRAME_RAIL_X = (FRAME_OUTER_WIDTH - FRAME_RAIL) / 2;
 
+/** The side rails run this far above the bottom of the chassis box [m] */
+const FRAME_BOTTOM_OFFSET = 0.1;
+
+/** Height of the centre line of the side rails in chassis space [m] (`chassisHeight` = `chassis.size[1]`) */
+export function frameRailY(chassisHeight: number): number {
+  return -chassisHeight / 2 + FRAME_BOTTOM_OFFSET + FRAME_RAIL / 2;
+}
+
 /** Height of the top of the side rails in chassis space [m] */
 export function frameTopY(spec: VehicleSpec): number {
-  return -spec.chassis.size[1] / 2 + FRAME_RAIL + 0.1;
+  return frameRailY(spec.chassis.size[1]) + FRAME_RAIL / 2;
 }
 
 const LOWER_COLLIDER_HEIGHT = 0.35;

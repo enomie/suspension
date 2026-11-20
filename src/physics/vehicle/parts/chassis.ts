@@ -2,7 +2,7 @@ import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import type { ChassisSpec, ColliderPrimitive } from '../types';
 import { CHASSIS_GROUPS } from '../groups';
 import { IDENTITY_ROT } from './context';
-import { FRAME_RAIL, FRAME_RAIL_X } from '../../../shared/vehicleSpec';
+import { FRAME_RAIL, FRAME_RAIL_X, frameRailY } from '../../../shared/vehicleSpec';
 
 /**
  * collision shape = visible ladder frame (rounded flat box around side rails).
@@ -11,7 +11,7 @@ import { FRAME_RAIL, FRAME_RAIL_X } from '../../../shared/vehicleSpec';
  */
 export function frameColliderBox(spec: ChassisSpec, halfLength = spec.size[2] / 2): { half: [number, number, number]; y: number } {
   const h = spec.size[1];
-  const y = -h / 2 + FRAME_RAIL / 2 + 0.1;
+  const y = frameRailY(h);
   return { half: [FRAME_RAIL_X + FRAME_RAIL / 2, FRAME_RAIL / 2 + 0.01, halfLength], y };
 }
 
