@@ -3,7 +3,7 @@ import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
 import { buildCustomSpec, DEFAULT_CUSTOM } from '../src/shared/customVehicle';
 import { DIFF_LOCK_LEVELS } from '../src/shared/vehicleSpec';
-import type { DriverInput } from '../src/physics/vehicle/types';
+import type { DriverInput } from '../src/shared/driverInput';
 
 await RAPIER.init();
 

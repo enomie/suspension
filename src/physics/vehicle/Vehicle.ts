@@ -1,6 +1,7 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Quaternion, Vector3 } from 'three';
-import type { Corner, DriverInput, VehicleSpec } from './types';
+import type { Corner, VehicleSpec } from './types';
+import type { DriverInput } from '../../shared/driverInput';
 import { buildVehicle, type BuiltVehicle } from './buildVehicle';
 import { Steering } from './parts/steering';
 import { applyAirDrag, applyDrive } from './parts/drive';

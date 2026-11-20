@@ -1,4 +1,5 @@
-import type { DriverInput, VehicleSpec } from './vehicleSpec';
+import type { DriverInput } from './driverInput';
+import type { VehicleSpec } from './vehicleSpec';
 import type { VehicleLayout } from './vehicleLayout';
 import type { TerrainConfig } from './terrain/types';
 

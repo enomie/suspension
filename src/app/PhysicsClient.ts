@@ -1,4 +1,5 @@
-import type { DriverInput, VehicleSpec } from '../shared/vehicleSpec';
+import type { DriverInput } from '../shared/driverInput';
+import type { VehicleSpec } from '../shared/vehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import type { FromWorker, ToWorker } from '../shared/protocol';
 import { blendSnapshots, wallClock } from '../shared/snapshot';

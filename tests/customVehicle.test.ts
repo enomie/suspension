@@ -5,7 +5,7 @@ import { topSpeed } from '../src/shared/performance';
 import { torusWheelWidth } from '../src/shared/unitTorus';
 import { PRESETS } from '../src/physics/vehicle/presets';
 import { customFromSpec, buildCustomSpec, CUSTOM_LIMITS, DEFAULT_CUSTOM, type CustomAxleConfig, type CustomVehicleConfig } from '../src/shared/customVehicle';
-import type { DriverInput } from '../src/physics/vehicle/types';
+import type { DriverInput } from '../src/shared/driverInput';
 
 await RAPIER.init();
 

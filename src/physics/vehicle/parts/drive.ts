@@ -1,5 +1,6 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
-import type { Corner, DriverInput, VehicleSpec } from '../types';
+import type { Corner, VehicleSpec } from '../types';
+import type { DriverInput } from '../../../shared/driverInput';
 import { axleForce, dragCoeff, ROLLING_FORCE_PER_WHEEL } from '../../../shared/performance';
 
 /** velocity motor damping factor [N·m·s/rad] — high = stiff, torque capped via MaxForce. */

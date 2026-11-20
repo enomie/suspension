@@ -1,4 +1,5 @@
-import { DIFF_LOCK_LEVELS, type DriverInput } from '../shared/vehicleSpec';
+import type { DriverInput } from '../shared/driverInput';
+import { DIFF_LOCK_LEVELS } from '../shared/vehicleSpec';
 
 /** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake, L differential lock (cycles 0–100 %), Shift boost (a quarter of the air drag). */
 export class Keyboard {
