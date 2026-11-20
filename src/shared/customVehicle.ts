@@ -115,8 +115,8 @@ export function suspensionsFor(steer: SteerMode, wheels: WheelLayout = 'pair'): 
 export const DEFAULT_CUSTOM: CustomVehicleConfig = {
   wheelbase: 3.2,
   axles: [
-    { wheels: 'pair', track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, differential: false, handbrake: false, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
-    { wheels: 'pair', track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, differential: false, handbrake: true, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
+    { wheels: 'pair', track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, differential: true, handbrake: false, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
+    { wheels: 'pair', track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, differential: true, handbrake: true, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
   ],
   torque: 2400,
   power: 360,
@@ -155,7 +155,7 @@ export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
       steer: !a.steer ? 'none' : a.steer.counter ? 'counter' : 'steer',
       suspension: a.suspension,
       drive: !!a.drive,
-      differential: !!a.differential,
+      differential: a.differential !== false,
       handbrake: !!a.handbrake,
       wheelShape: a.wheel.shape,
       wheelRadius: clamp(a.wheel.radius, CUSTOM_LIMITS.wheelRadius),
@@ -200,7 +200,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
       wheel,
       steer: c.steer === 'none' ? undefined : { maxAngle: 0.55, counter: c.steer === 'counter' || undefined },
       drive: c.drive ? { share: 1 } : undefined,
-      differential: c.drive && c.differential ? true : undefined,
+      differential: c.drive ? c.differential : undefined,
       brake: { torque: brake },
       handbrake: c.handbrake ? { torque: clamp(config.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque) } : undefined,
       bogieSpacing: suspension === 'bogie' ? radius * 2 + 0.4 : undefined,

@@ -4,6 +4,7 @@ import type { Corner, DriverInput, VehicleSpec } from './types';
 import { buildVehicle, type BuiltVehicle } from './buildVehicle';
 import { Steering } from './parts/steering';
 import { applyAirDrag, applyDrive } from './parts/drive';
+import { Differentials } from './parts/differential';
 import { Balance } from './parts/balance';
 import { topSpeed } from '../../shared/performance';
 
@@ -16,6 +17,8 @@ const _w = new Vector3();
 export class Vehicle {
   readonly built: BuiltVehicle;
   readonly steering: Steering;
+  /** shafts between the wheels of driven axles without a differential, or while the lock is on */
+  readonly differentials: Differentials;
   /** single-track balance assist (motorcycle, moped) */
   readonly balance?: Balance;
   /** forward speed [m/s] (+ = chassis −Z) */
@@ -30,6 +33,7 @@ export class Vehicle {
     pos: { x: number; y: number; z: number },
   ) {
     this.built = buildVehicle(R, world, spec, pos);
+    this.differentials = new Differentials(R, world, this.built.corners);
     this.refSpeed = topSpeed(spec);
     this.steering = new Steering(spec.steering, spec);
     if (spec.balance) {
@@ -61,6 +65,7 @@ export class Vehicle {
       this.steering.balanceOffset = total - this.steering.angle;
     }
     this.steering.apply(this.corners);
+    this.differentials.update(!!input.diffLock);
     applyDrive(this.corners, this.spec, input, this.forwardSpeed);
     applyAirDrag(this.chassis, dt, !!input.boost);
   }

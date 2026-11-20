@@ -6,12 +6,12 @@ import { MAT } from './materials';
 const DIFFERENTIAL_DIAMETER = 0.22; // [m]
 
 /**
- * Differential markers: one sphere at the centre of every driven axle that has a differential.
+ * Differential markers: one sphere at the centre of every driven axle that has a differential (`differential !== false`).
  * Static in chassis space (the axle centre is fixed relative to the chassis), so add `mesh` to the chassis group.
  * One draw call.
  */
 export function createDifferentialMarkers(spec: VehicleSpec): InstancedMesh {
-  const axles = spec.axles.filter((a) => a.drive && a.differential);
+  const axles = spec.axles.filter((a) => a.drive && a.differential !== false);
   const mesh = new InstancedMesh(UNIT_SPHERE_GEOMETRY, MAT.differential, Math.max(axles.length, 1));
   mesh.name = 'differential';
   mesh.count = axles.length;

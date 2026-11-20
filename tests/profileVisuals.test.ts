@@ -25,7 +25,7 @@ describe('differential markers', () => {
     expect(p[14]).toBeCloseTo(spec.axles[1].z, 5);
   });
   it('none when no axle has a differential', () => {
-    expect(createDifferentialMarkers(buildCustomSpec(DEFAULT_CUSTOM)).count).toBe(0);
+    expect(createDifferentialMarkers(withDiff(false, false)).count).toBe(0);
     expect(createDifferentialMarkers(withDiff(true, true)).count).toBe(2);
   });
 });

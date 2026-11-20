@@ -57,7 +57,7 @@ export class TelemetryHud {
         `physics  ${physics.mode === 'worker' ? 'worker' : 'main thread'} · ${physics.stepMs.toFixed(2)} ms/step · interp. delay ${physics.delayMs.toFixed(1)} ms`,
       );
     if (debugLine) lines.push(debugLine);
-    lines.push('', 'Vehicle top-right · W/S throttle/brake · A/D steer · Space handbrake · R reset');
+    lines.push('', 'Vehicle top-right · W/S throttle/brake · A/D steer · Space handbrake · L diff lock · R reset');
     this.el.textContent = lines.join('\n');
   }
 }

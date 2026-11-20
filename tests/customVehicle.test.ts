@@ -19,7 +19,7 @@ const axle = (o: Partial<CustomAxleConfig>): CustomAxleConfig => ({
   steer: 'none',
   suspension: 'solidAxle',
   drive: false,
-  differential: false,
+  differential: true,
   handbrake: false,
   wheelRadius: 0.33,
   ...o,
@@ -201,7 +201,8 @@ describe('profile: handbrake, differential, weight, centre of mass', () => {
   it('keeps the differential only on driven axles', () => {
     const s = two({ differential: true }, { drive: true, differential: true });
     expect(s.axles.map((a) => a.differential)).toEqual([undefined, true]);
-    expect(two({}, { drive: true }).axles[1].differential).toBeUndefined();
+    expect(two({}, { drive: true, differential: false }).axles[1].differential).toBe(false);
+    expect(two({}, { differential: false }).axles[1].differential).toBeUndefined();
   });
 
   it('weight is the total mass: chassis plus wheels', () => {

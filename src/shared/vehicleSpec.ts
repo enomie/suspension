@@ -69,7 +69,11 @@ export interface AxleSpec {
   twin?: boolean;
   /** driven: share of total torque */
   drive?: { share: number };
-  /** driven axles only: the axle has a differential (shown as a sphere in the preview) */
+  /**
+   * driven axles only. Open differential unless `false`: the wheels of the axle turn independently. `false` = no differential
+   * (spooled axle): the wheels are forced to the same speed. The driver can also lock a differential (`DriverInput.diffLock`).
+   * Shown as a sphere in the preview.
+   */
   differential?: boolean;
   brake: { torque: number };
   /** handbrake: acts on this axle regardless of the service brake */
@@ -167,6 +171,8 @@ export interface DriverInput {
   brake: number; // 0…1
   steer: number; // −1 (rechts) … +1 (links)
   handbrake: boolean;
+  /** Differential lock engaged (toggled by a key): every differential behaves like a spooled axle */
+  diffLock?: boolean;
   /** Boost (Shift): doubles drive torque and top speed */
   boost?: boolean;
 }

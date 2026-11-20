@@ -1,10 +1,12 @@
 import type { DriverInput } from '../shared/vehicleSpec';
 
-/** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake (rear), Shift boost (a quarter of the air drag). */
+/** key state → DriverInput. W/S throttle/brake, A/D steer, Space handbrake, L differential lock (toggle), Shift boost (a quarter of the air drag). */
 export class Keyboard {
   private down = new Set<string>();
   /** one-shot key presses (e.g. reset) */
   private pressed = new Set<string>();
+  /** differential lock, toggled by L */
+  private diffLock = false;
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
@@ -31,12 +33,14 @@ export class Keyboard {
   }
 
   read(): DriverInput {
+    if (this.consume('KeyL')) this.diffLock = !this.diffLock;
     const k = (c: string) => (this.down.has(c) ? 1 : 0);
     return {
       throttle: Math.max(k('KeyW'), k('ArrowUp')),
       brake: Math.max(k('KeyS'), k('ArrowDown')),
       steer: Math.max(k('KeyA'), k('ArrowLeft')) - Math.max(k('KeyD'), k('ArrowRight')),
       handbrake: this.down.has('Space'),
+      diffLock: this.diffLock,
       boost: this.down.has('ShiftLeft') || this.down.has('ShiftRight'),
     };
   }
