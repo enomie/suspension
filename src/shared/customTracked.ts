@@ -58,7 +58,7 @@ export const CUSTOM_TRACKED_LIMITS = {
   endWidth: TRACKED_LIMITS.endWheelWidth,
   weight: [2000, 60000],
   torque: [2000, 100000],
-  power: [50, 2000],
+  power: [50, 20000],
   turnSpeed: TRACKED_LIMITS.turnSpeed,
 } as const;
 

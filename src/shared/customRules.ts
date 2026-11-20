@@ -18,7 +18,7 @@ export const CUSTOM_LIMITS = {
   wheelRadius: [0.2, 0.6],
   wheelWidth: [0.15, 0.5],
   torque: [200, 30000],
-  power: [5, 1000],
+  power: [5, 20000],
   wheelspin: [2.5, 15],
   weight: [300, 30000],
   handbrakeTorque: [0, 20000],

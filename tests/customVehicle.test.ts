@@ -172,6 +172,11 @@ describe('custom drive fields', () => {
     expect(s.drive.maxPower).toBe(CUSTOM_LIMITS.power[0] * 1000);
     expect(buildCustomSpec(DEFAULT_CUSTOM).drive).toMatchObject({ maxTorque: 2400, maxPower: 360_000 });
   });
+  it('allows extreme engine power (15 000 kW and more)', () => {
+    expect(CUSTOM_LIMITS.power[1]).toBeGreaterThanOrEqual(15000);
+    expect(buildCustomSpec({ ...DEFAULT_CUSTOM, power: 15000 }).drive.maxPower).toBe(15_000_000);
+  });
+
   it('more power → higher top speed, more torque alone does not', () => {
     const base = topSpeed(buildCustomSpec(DEFAULT_CUSTOM));
     expect(topSpeed(buildCustomSpec({ ...DEFAULT_CUSTOM, power: 600 }))).toBeGreaterThan(base * 1.1);

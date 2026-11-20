@@ -59,6 +59,13 @@ describe('buildTrackedSpec', () => {
     for (const c of corners) expect(validateTrackedSpec(buildTrackedSpec(config(c)))).toEqual([]);
   });
 
+  it('allows extreme engine power (15 000 kW and more)', () => {
+    expect(L.power[1]).toBeGreaterThanOrEqual(15000);
+    const spec = buildTrackedSpec(config({ power: 15000 }));
+    expect(validateTrackedSpec(spec)).toEqual([]);
+    expect(spec.drive.maxPower).toBe(15_000_000);
+  });
+
   it('corrects values outside the limits instead of rejecting them', () => {
     const spec = buildTrackedSpec(config({ roadAxles: 99, wheelRadius: 5, track: 0, beltWidth: 50, weight: 1, torque: 0, power: 0 }));
     expect(validateTrackedSpec(spec)).toEqual([]);
