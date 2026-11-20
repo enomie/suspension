@@ -7,7 +7,7 @@ suspensions are real joint chains, springs and dampers run in the Rapier solver.
 ## 1. Raycast vehicle vs. this kit
 | | Raycast vehicle | This kit |
 |---|---|---|
-| Wheel | ray + imagined cylinder | rigid body with collider (sphere or round cylinder), real friction |
+| Wheel | ray + imagined cylinder | rigid body with collider (rounded cylinder or torus hull), real friction |
 | Spring/damper | custom force math per frame | joint motor (`ForceBased`) or spring joint, implicit in solver → stable with stiff springs |
 | Suspension | only “vertical spring” | 10 types with real kinematics (camber, track, articulation, rocker) |
 | Edges/steps | ray “hops” | wheel rolls over edge |
@@ -100,7 +100,7 @@ Note single-track (motorcycle): builds correctly but falls without balance contr
 | dimensions (inertia) | `chassis.size` | box approximation for inertia; also the frame height. The ladder frame itself has a fixed width (`FRAME_OUTER_WIDTH`, 0.5 m) |
 | body block (low friction) | `chassis.lowerCollider` | optional `collider-lower` box: `size`, `position`, `friction`; no mass. Preview mesh comes from the same data |
 | wheel position (center) | axle: `z` (longitudinal), `y` (height), `track` | wheels per axle **symmetric** left/right; `track: 0` = single centered wheel (motorcycle) |
-| wheel dimensions | `axles[i].wheel`: `radius`, `width`, `mass`, `friction`, `shape` | `ball` = robust on terrain, `roundCylinder` = more realistic |
+| wheel dimensions | `axles[i].wheel`: `radius`, `width`, `mass`, `friction`, `shape` | `shape`: `cylinder` (rounded, 5 cm edge radius) or `torus` |
 | suspension type per axle | `axles[i].suspension` | one of 10, see 4.2 |
 | springs | `axles[i].spring`: `frequencyHz`, `dampingRatio`, `travel: [bump, rebound]` | frequency instead of spring rate. Rate from axle load → correct ride height per weight. Or `stiffness`/`damping` directly. |
 | steering | `axles[i].steer.maxAngle`, global `steering` | Ackermann per axle automatic; rear axles steer opposite, `crab` = same direction |

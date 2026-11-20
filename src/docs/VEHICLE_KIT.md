@@ -128,7 +128,7 @@ Coordinates: **forward = −Z**, up = +Y, right = +X (as in Ocean project). Unit
 | Part | File (under `physics/vehicle/`; *italic* = not yet implemented) | Rapier objects | Parameters |
 |---|---|---|---|
 | `Chassis` | `parts/chassis.ts` | dynamic rigid body, rounded frame collider (= visible ladder frame) | dimensions, mass, CoM offset, collision group |
-| `Wheel` | `parts/wheel.ts` | dynamic rigid body, `cylinder`/`roundCylinder` (rotated around Z) or `ball` | radius, width, mass, friction, CCD on |
+| `Wheel` | `parts/wheel.ts` | dynamic rigid body, rounded cylinder (`cylinder`, rotated around Z, fixed 5 cm edge radius) or round convex hull (`torus`) | radius, width, mass, friction, CCD on |
 | `Knuckle` | `parts/knuckle.ts` | small dynamic body (no collider, mass manual) | mass, inertia |
 | `Strut` | `parts/strut.ts` | small dynamic body | mass |
 | `Spring`/`Damper` | *`parts/springDamper.ts`* | motor config or `JointData.spring` | k [N/m], c [N·s/m], restLength, preload |
@@ -186,8 +186,8 @@ Generally: `joint.setContactsEnabled(false)` between connected bodies, plus coll
 - **CCD** on wheels (`setCcdEnabled(true)`) for high speed.
 - **Spring sizing**: natural frequency f ≈ 1–2 Hz (car) ⇒ `k = m_corner·(2πf)²`; damping `c = 2·ζ·√(k·m_corner)`, ζ ≈ 0.3–0.5.
   Preload so static compression ≈ 30–40% of travel.
-- **Tire friction**: Rapier contact friction (Coulomb) – no Pacejka. Wheel friction ~1.0–1.2, heightfield 0.95. Wheel collider
-  `roundCylinder` instead of `cylinder` for soft edges; `ball` as simplest start.
+- **Tire friction**: Rapier contact friction (Coulomb) – no Pacejka. Wheel friction ~1.0–1.2, heightfield 0.95. Wheel collider:
+  rounded cylinder (soft edges) or torus hull; never a ball.
 - Steer and spring motors always `MotorModel.ForceBased` so k/c have physical units.
 - Limit drive torque via `setMotorMaxForce` – without a limit the velocity motor is “infinitely strong”.
 
