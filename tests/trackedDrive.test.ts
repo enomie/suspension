@@ -127,6 +127,15 @@ describe('tracked drive', () => {
     expect(v.forwardSpeed).toBeLessThan(10); // and slows down, it does not accelerate
   });
 
+  it('coasts after letting go of the throttle instead of braking, and parks once it is nearly stopped', () => {
+    const { v, run } = setup();
+    run(1);
+    run(5, input({ throttle: 1 }));
+    const s0 = v.forwardSpeed;
+    run(2);
+    expect(v.forwardSpeed).toBeGreaterThan(s0 * 0.6); // rolls on: 2 s of braking at full torque would nearly stop it
+  });
+
   it('brakes to a stop (holding the brake on would then reverse)', () => {
     const { v, run } = setup();
     run(1);

@@ -120,3 +120,13 @@ describe('steering while rolling without throttle', () => {
     expect(trackCommand('L', steerLeft, 0, p).mode).toBe('drive');
   });
 });
+
+describe('no input', () => {
+  it('rolling: coasts free, no brake', () => {
+    expect(trackCommand('L', neutralInput(), 10, P)).toEqual({ mode: 'brake', speed: 10, amount: 0 });
+    expect(trackCommand('R', neutralInput(), -10, P)).toEqual({ mode: 'brake', speed: -10, amount: 0 });
+  });
+  it('at standstill: holds (parked)', () => {
+    expect(trackCommand('L', neutralInput(), 0.2, P)).toEqual({ mode: 'hold', speed: 0, amount: IDLE_HOLD_SHARE });
+  });
+});

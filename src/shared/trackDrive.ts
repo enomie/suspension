@@ -13,7 +13,7 @@ export const DEFAULT_TURN_SPEED = 3;
 export const REVERSE_THRESHOLD = 0.6;
 /** a track counts as slowing down when its target is this much below the vehicle speed [m/s] */
 const SLOW_MARGIN = 0.1;
-/** share of the brake torque that holds an idle vehicle (no input): a tracked vehicle stops and stays parked, also on a slope */
+/** share of the brake torque that holds a vehicle at standstill without input (below `REVERSE_THRESHOLD`): it stays parked, also on a slope; while rolling it coasts */
 export const IDLE_HOLD_SHARE = 1;
 /** handbrake: brake torque is multiplied by this, so it holds the vehicle on a slope */
 export const HANDBRAKE_FACTOR = 10;
@@ -62,7 +62,11 @@ export function trackCommand(side: TrackSide, input: DriverInput, forwardSpeed: 
   const right = t + steer;
   const scale = Math.max(1, Math.abs(left), Math.abs(right));
   const amount = Math.abs(side === 'L' ? left : right) / scale;
-  if (t === 0 && steer === 0) return { mode: 'hold', speed: 0, amount: IDLE_HOLD_SHARE };
+  if (t === 0 && steer === 0) {
+    // no input: rolling coasts free (like the wheeled vehicles); only at (almost) standstill the tracks hold, so a parked vehicle stays on a slope
+    if (Math.abs(forwardSpeed) > REVERSE_THRESHOLD) return { mode: 'brake', speed: forwardSpeed, amount: 0 };
+    return { mode: 'hold', speed: 0, amount: IDLE_HOLD_SHARE };
+  }
 
   // rolling without throttle, steering: skid steering needs a speed difference between the tracks. Targets of 0 would make
   // both tracks brake at their torque limit (no difference, no turn), so the tracks are held at the vehicle speed ± turn:
