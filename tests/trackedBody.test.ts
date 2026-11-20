@@ -102,3 +102,14 @@ describe('tracked body', () => {
     expect(() => setup(s, 0.9)).toThrow(/tracked vehicle 'tank'/);
   });
 });
+
+describe('tracked collider box', () => {
+  it('a tracked vehicle with the low friction block builds and settles', () => {
+    const s = spec();
+    s.chassis.lowerCollider = { size: [1.6, 0.35, 3], position: [0, 0.5, 0], friction: 0.15 };
+    const { built, run } = setup(s, 0.9);
+    run(2);
+    expect(built.chassis.numColliders()).toBeGreaterThan(1);
+    expect(built.chassis.translation().y).toBeGreaterThan(0.5);
+  });
+});

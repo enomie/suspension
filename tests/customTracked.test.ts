@@ -21,10 +21,23 @@ describe('buildTrackedSpec', () => {
   });
 
   it('spaces the road axles evenly around the chassis origin, idler in front and sprocket behind', () => {
-    const spec = buildTrackedSpec(config({ roadAxles: 3, axleSpacing: 1.2 }));
+    const spec = buildTrackedSpec(config({ roadAxles: 3, wheelbase: 2.4 }));
     expect(spec.axles.map((a) => a.z)).toEqual([-1.2, 0, 1.2]);
     expect(spec.idler.z).toBeCloseTo(-1.2 - 0.9, 9);
     expect(spec.sprocket.z).toBeCloseTo(1.2 + 0.9, 9);
+  });
+
+  it('the wheelbase is the distance from the first to the last road axle', () => {
+    const spec = buildTrackedSpec(config({ roadAxles: 4, wheelbase: 4.5 }));
+    expect(spec.axles[3].z - spec.axles[0].z).toBeCloseTo(4.5, 9);
+  });
+
+  it('the collider box adds the low friction block, like a wheeled vehicle, and round-trips', () => {
+    const on = buildTrackedSpec(config({ colliderBox: true }));
+    expect(on.chassis.lowerCollider?.friction).toBeLessThan(0.3);
+    expect(buildTrackedSpec(config({ colliderBox: false })).chassis.lowerCollider).toBeUndefined();
+    expect(trackedConfigFromSpec(on).colliderBox).toBe(true);
+    expect(trackedConfigFromSpec(buildTrackedSpec(config({ colliderBox: false }))).colliderBox).toBe(false);
   });
 
   it('raises the idler and sprocket above the road wheel centres', () => {
@@ -34,8 +47,8 @@ describe('buildTrackedSpec', () => {
 
   it('every limit corner is a valid spec', () => {
     const corners: Partial<CustomTrackedConfig>[] = [
-      { roadAxles: L.roadAxles[0], axleSpacing: L.axleSpacing[0], wheelRadius: L.wheelRadius[1] },
-      { roadAxles: L.roadAxles[1], axleSpacing: L.axleSpacing[1], wheelRadius: L.wheelRadius[0] },
+      { roadAxles: L.roadAxles[0], wheelbase: L.wheelbase[0], wheelRadius: L.wheelRadius[1] },
+      { roadAxles: L.roadAxles[1], wheelbase: L.wheelbase[1], wheelRadius: L.wheelRadius[0] },
       { track: L.track[0], beltWidth: L.beltWidth[1] },
       { track: L.track[1], beltWidth: L.beltWidth[0] },
       { idler: { distance: L.endDistance[0], raise: L.endRaise[0], radius: L.endRadius[1], width: L.endWidth[1] } },
@@ -54,7 +67,7 @@ describe('buildTrackedSpec', () => {
   });
 
   it('keeps neighbouring wheels apart: spacing grows with a big wheel', () => {
-    const spec = buildTrackedSpec(config({ axleSpacing: 0.6, wheelRadius: 0.6 }));
+    const spec = buildTrackedSpec(config({ wheelbase: 0.6, wheelRadius: 0.6 }));
     expect(spec.axles[1].z - spec.axles[0].z).toBeGreaterThanOrEqual(1.2);
   });
 

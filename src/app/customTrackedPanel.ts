@@ -10,7 +10,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
 const field = (label: string, input: HTMLElement) => el('label', {}, label, input);
 
 /**
- * Fields of a custom tracked vehicle: road axles (count, spacing, wheel radius), track and chain, idler and sprocket
+ * Fields of a custom tracked vehicle: road axles (count, wheelbase, wheel radius), track and chain, idler and sprocket
  * (distance from the outer road axle, height, size), weight, drive and turning. Edits `config` in place.
  */
 export class CustomTrackedSection {
@@ -32,11 +32,15 @@ export class CustomTrackedSection {
     count.addEventListener('change', () => (this.config.roadAxles = Number(count.value)));
     this.inputs.push({ set: () => (count.value = String(this.config.roadAxles)) });
 
+    const box = el('input', { type: 'checkbox', checked: this.config.colliderBox });
+    box.addEventListener('change', () => (this.config.colliderBox = box.checked));
+    this.inputs.push({ set: () => (box.checked = this.config.colliderBox) });
+
     const c = () => this.config;
     this.element.append(
       el('fieldset', {}, el('legend', { textContent: 'Road wheels' }),
         field('Road axles', count),
-        field('Axle spacing (m)', num(() => c().axleSpacing, (v) => (c().axleSpacing = v), L.axleSpacing, 0.05)),
+        field('Wheelbase (m)', num(() => c().wheelbase, (v) => (c().wheelbase = v), L.wheelbase, 0.1)),
         field('Wheel radius (m)', num(() => c().wheelRadius, (v) => (c().wheelRadius = v), L.wheelRadius, 0.01)),
       ),
       el('fieldset', {}, el('legend', { textContent: 'Track' }),
@@ -46,6 +50,7 @@ export class CustomTrackedSection {
       ),
       this.endFieldset('Idler (front)', () => c().idler),
       this.endFieldset('Sprocket (rear)', () => c().sprocket),
+      field('Collider box (low friction)', box),
       field('Weight (kg)', num(() => c().weight, (v) => (c().weight = v), L.weight, 100)),
       field('Torque (N·m)', num(() => c().torque, (v) => (c().torque = v), L.torque, 500)),
       field('Power (kW)', num(() => c().power, (v) => (c().power = v), L.power, 10)),

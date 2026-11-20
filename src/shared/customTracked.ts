@@ -1,7 +1,7 @@
 import { PLACEHOLDER_CHAIN_LINK } from './chainLink';
 import { DEFAULT_TURN_SPEED } from './trackDrive';
-import { TRACKED_LIMITS, type TrackedVehicleSpec } from './trackedSpec';
-import type { AxleSpec } from './vehicleSpec';
+import { TRACKED_LIMITS, trackedRenderSpec, type TrackedVehicleSpec } from './trackedSpec';
+import { defaultLowerCollider, type AxleSpec } from './vehicleSpec';
 
 /**
  * Custom tracked vehicle profile: the few numbers the panel edits, and the rules that turn them into a complete,
@@ -21,8 +21,8 @@ export interface CustomTrackEndConfig {
 export interface CustomTrackedConfig {
   /** number of road axles, 2…5 */
   roadAxles: number;
-  /** distance between neighbouring road axles [m] */
-  axleSpacing: number;
+  /** front to rear road axle [m], the axles are spaced evenly (like `wheelbase` of a wheeled vehicle) */
+  wheelbase: number;
   /** road wheel radius [m] (without the chain) */
   wheelRadius: number;
   /** distance between the centres of the left and right track [m] */
@@ -33,6 +33,8 @@ export interface CustomTrackedConfig {
   chainThickness: number;
   idler: CustomTrackEndConfig;
   sprocket: CustomTrackEndConfig;
+  /** add the `collider-lower` block (low friction collider and preview box) on top of the frame, like a wheeled vehicle */
+  colliderBox: boolean;
   /** total vehicle mass including wheels [kg] */
   weight: number;
   /** total drive torque [N·m] */
@@ -45,7 +47,7 @@ export interface CustomTrackedConfig {
 
 export const CUSTOM_TRACKED_LIMITS = {
   roadAxles: TRACKED_LIMITS.axles,
-  axleSpacing: [0.6, 2],
+  wheelbase: [0.6, 8],
   wheelRadius: TRACKED_LIMITS.wheelRadius,
   track: [1, 3.2],
   beltWidth: TRACKED_LIMITS.beltWidth,
@@ -62,13 +64,14 @@ export const CUSTOM_TRACKED_LIMITS = {
 
 export const DEFAULT_CUSTOM_TRACKED: CustomTrackedConfig = {
   roadAxles: 4,
-  axleSpacing: 1,
+  wheelbase: 3,
   wheelRadius: 0.3,
   track: 2,
   beltWidth: 0.55,
   chainThickness: 0.05,
   idler: { distance: 0.9, raise: 0.25, radius: 0.2, width: 0.45 },
   sprocket: { distance: 0.9, raise: 0.3, radius: 0.25, width: 0.45 },
+  colliderBox: false, // like the tank preset, which has none
   weight: 12800,
   torque: 44000,
   power: 400,
@@ -99,7 +102,8 @@ export function buildTrackedSpec(config: CustomTrackedConfig): TrackedVehicleSpe
   const L = CUSTOM_TRACKED_LIMITS;
   const n = Math.round(clamp(config.roadAxles, L.roadAxles));
   const radius = clamp(config.wheelRadius, L.wheelRadius);
-  const spacing = Math.max(clamp(config.axleSpacing, L.axleSpacing), 2 * radius + WHEEL_GAP);
+  // evenly spaced axles; a big wheel pushes them apart so neighbours never touch
+  const spacing = Math.max(clamp(config.wheelbase, L.wheelbase) / (n - 1), 2 * radius + WHEEL_GAP);
   const track = clamp(config.track, L.track);
   const beltWidth = Math.min(clamp(config.beltWidth, L.beltWidth), track);
   const weight = clamp(config.weight, L.weight);
@@ -128,7 +132,7 @@ export function buildTrackedSpec(config: CustomTrackedConfig): TrackedVehicleSpe
     };
   };
 
-  return {
+  const spec: TrackedVehicleSpec = {
     type: 'tracked',
     name: 'custom',
     label: 'Custom',
@@ -146,6 +150,8 @@ export function buildTrackedSpec(config: CustomTrackedConfig): TrackedVehicleSpe
     drive: { maxTorque: clamp(config.torque, L.torque), maxPower: 1000 * clamp(config.power, L.power), reverseSpeed: 5 },
     turnSpeed: clamp(config.turnSpeed, L.turnSpeed),
   };
+  if (config.colliderBox) spec.chassis.lowerCollider = defaultLowerCollider(trackedRenderSpec(spec));
+  return spec;
 }
 
 /** numbers rounded to micrometres, so the panel shows 0.9 and not 0.8999999999999999 */
@@ -175,13 +181,14 @@ function configFromSpec(spec: TrackedVehicleSpec): CustomTrackedConfig {
   });
   return {
     roadAxles: clamp(n, L.roadAxles),
-    axleSpacing: n > 1 ? clamp((last.z - first.z) / (n - 1), L.axleSpacing) : DEFAULT_CUSTOM_TRACKED.axleSpacing,
+    wheelbase: n > 1 ? clamp(last.z - first.z, L.wheelbase) : DEFAULT_CUSTOM_TRACKED.wheelbase,
     wheelRadius: clamp(radius, L.wheelRadius),
     track: clamp(spec.track, L.track),
     beltWidth: clamp(spec.beltWidth, L.beltWidth),
     chainThickness: clamp(spec.chainThickness, L.chainThickness),
     idler: end(spec.idler, first.z - spec.idler.z),
     sprocket: end(spec.sprocket, spec.sprocket.z - last.z),
+    colliderBox: !!spec.chassis.lowerCollider,
     weight: clamp(spec.chassis.mass + spec.axles.reduce((m, a) => m + 2 * a.wheel.mass, 0), L.weight),
     torque: clamp(spec.drive.maxTorque, L.torque),
     power: clamp(spec.drive.maxPower / 1000, L.power),
