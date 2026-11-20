@@ -116,6 +116,17 @@ describe('tracked drive', () => {
     expect(Math.hypot(t1.x - t0.x, t1.z - t0.z)).toBeLessThan(1.5);
   });
 
+  it('steers after letting go of the throttle while rolling fast', () => {
+    const { v, run, yaw } = setup();
+    run(1);
+    run(5, input({ throttle: 1 }));
+    expect(v.forwardSpeed).toBeGreaterThan(5);
+    const y0 = yaw();
+    run(2, input({ steer: 1 }));
+    expect(yaw() - y0).toBeGreaterThan(0.3); // turns left (before the fix: barely moved)
+    expect(v.forwardSpeed).toBeLessThan(10); // and slows down, it does not accelerate
+  });
+
   it('brakes to a stop (holding the brake on would then reverse)', () => {
     const { v, run } = setup();
     run(1);

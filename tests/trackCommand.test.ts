@@ -100,3 +100,23 @@ describe('trackCommand', () => {
     expect(trackCommand('R', input({ steer: 5 }), 0, P).speed).toBe(2);
   });
 });
+
+describe('steering while rolling without throttle', () => {
+  const p = P;
+  const steerLeft: DriverInput = { ...neutralInput(), steer: 1 };
+  it('the inner track brakes, the outer track coasts free', () => {
+    const l = trackCommand('L', steerLeft, 10, p);
+    const r = trackCommand('R', steerLeft, 10, p);
+    expect(l).toEqual({ mode: 'brake', speed: 8, amount: 1 });
+    expect(r).toEqual({ mode: 'brake', speed: 12, amount: 0 });
+  });
+  it('rolling backward: the slower track (smaller magnitude) is the inner one', () => {
+    const l = trackCommand('L', steerLeft, -10, p);
+    const r = trackCommand('R', steerLeft, -10, p);
+    expect(l.amount).toBe(0);
+    expect(r.amount).toBeGreaterThan(0);
+  });
+  it('standing still it still turns on the spot', () => {
+    expect(trackCommand('L', steerLeft, 0, p).mode).toBe('drive');
+  });
+});

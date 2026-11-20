@@ -64,6 +64,15 @@ export function trackCommand(side: TrackSide, input: DriverInput, forwardSpeed: 
   const amount = Math.abs(side === 'L' ? left : right) / scale;
   if (t === 0 && steer === 0) return { mode: 'hold', speed: 0, amount: IDLE_HOLD_SHARE };
 
+  // rolling without throttle, steering: skid steering needs a speed difference between the tracks. Targets of 0 would make
+  // both tracks brake at their torque limit (no difference, no turn), so the tracks are held at the vehicle speed ± turn:
+  // the inner track brakes down to its slower speed, the outer one coasts free (no drive: the vehicle only slows down)
+  if (t === 0 && Math.abs(forwardSpeed) > REVERSE_THRESHOLD) {
+    const target = forwardSpeed + (side === 'L' ? -steer : steer) * p.turnSpeed;
+    const inner = Math.abs(target) < Math.abs(forwardSpeed) - SLOW_MARGIN;
+    return { mode: 'brake', speed: target, amount: inner ? Math.abs(steer) : 0 };
+  }
+
   // the slip allowance fades with steering: at full steer the tracks differ by ±turnSpeed around the vehicle speed
   // (otherwise the inner track would hold the vehicle speed and fight the turn)
   const slip = p.slipSpeed * (1 - Math.abs(steer));
