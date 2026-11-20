@@ -56,6 +56,7 @@ export class TrackedVehicle {
   /** after world.step(): refresh telemetry. */
   updateTelemetry(): void {
     updateCornerTelemetry(this.chassis, this.corners);
+    this.contact.updateProfile();
   }
 
   dispose(): void {

@@ -190,11 +190,13 @@ export function linkLayout(loopLength: number, nominalPitch: number): LinkLayout
 const DEFORM_STEP = 0.05;
 
 /**
- * The same loop with its lower side pushed up by `lift(z)` [m] (ground or an obstacle under the chain between the wheels).
+ * The same loop with its lower side bent over the ground: y = max(loop, `floor(z)`) + `lift(z)` [m].
+ * `floor` is the taut line through the wheel bottoms, the line the ground profile was measured from: the convex loop can
+ * run below it where a wheel hangs high, and the lift is only valid relative to the line itself.
  * Only points on the lower side (travelling toward +z, or turning at the ends) move; the loop is sampled every 5 cm
  * and its length grows with the bend, the links spread over the new length.
  */
-export function deformChainLoop(loop: ChainLoop, lift: (z: number) => number): ChainLoop {
+export function deformChainLoop(loop: ChainLoop, lift: (z: number) => number, floor?: (z: number) => number): ChainLoop {
   const n = Math.max(8, Math.ceil(loop.length / DEFORM_STEP));
   const zs = new Float64Array(n);
   const ys = new Float64Array(n);
@@ -204,7 +206,7 @@ export function deformChainLoop(loop: ChainLoop, lift: (z: number) => number): C
     // lower side: the outer normal (right of the travel direction) points down
     const below = Math.cos(pose.angle) > 0;
     zs[i] = pose.z;
-    ys[i] = pose.y + (below ? lift(pose.z) : 0);
+    ys[i] = below ? Math.max(pose.y, floor ? floor(pose.z) : -Infinity) + lift(pose.z) : pose.y;
   }
   const cum = new Float64Array(n + 1);
   for (let i = 0; i < n; i++) {

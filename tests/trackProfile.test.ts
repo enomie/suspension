@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { buildChainLoop, deformChainLoop } from '../src/shared/chainLoop';
-import { fillTrackProfile, trackLiftAt, TRACK_PROFILE_CELLS, TRACK_PROFILE_LENGTH } from '../src/shared/trackProfile';
+import { trackLiftAt, TRACK_PROFILE_CELLS, TRACK_PROFILE_LENGTH } from '../src/shared/trackProfile';
 
 const wheels = [-1, 0, 1].map((z) => ({ z, y: 0, radius: 0.3 }));
 
 describe('track profile grid', () => {
-  it('interpolates samples, 0 outside and across wheel gaps', () => {
+  it('reads back the cell values linearly, 0 outside the grid, sides separate', () => {
     const out = new Float64Array(TRACK_PROFILE_LENGTH);
-    fillTrackProfile(out, 0, [{ z: -0.2, lift: 0 }, { z: 0, lift: 0.4 }, { z: 0.2, lift: 0 }, { z: 1.5, lift: 0.3 }], -2, 2);
-    expect(trackLiftAt(out, 0, 0, 0, -2, 2)).toBeGreaterThan(0.3); // peak, a little flattened by the cell width
-    expect(trackLiftAt(out, 0, 0, 1.0, -2, 2)).toBe(0); // wide gap: not bridged
-    expect(trackLiftAt(out, 0, 0, -1.5, -2, 2)).toBe(0);
-    expect(out.slice(TRACK_PROFILE_CELLS).every((v) => v === 0)).toBe(true); // other side untouched
+    out[TRACK_PROFILE_CELLS / 2] = 0.4; // left track, cell just behind the middle
+    expect(trackLiftAt(out, 0, 0, 2.5 / TRACK_PROFILE_CELLS * 4 - 2 + 0.0, -2, 2)).toBeGreaterThanOrEqual(0);
+    expect(trackLiftAt(out, 0, 0, 0.03, -2, 2)).toBeGreaterThan(0.2);
+    expect(trackLiftAt(out, 0, 1, 0.03, -2, 2)).toBe(0);
+    expect(trackLiftAt(out, 0, 0, 3, -2, 2)).toBe(0);
   });
 });
 

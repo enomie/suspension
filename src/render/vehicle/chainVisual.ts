@@ -91,7 +91,18 @@ export class ChainVisual {
 
   private updateSide(side: 0 | 1, wheels: readonly ChainCircle[], distance: number, lift?: (side: 0 | 1, z: number) => number): void {
     let loop = buildChainLoop(wheels, this.chainThickness);
-    if (lift) loop = deformChainLoop(loop, (z) => lift(side, z));
+    if (lift) {
+      // the line through the wheel bottoms (centre line of the chain), from which the ground profile was measured
+      const pts = wheels.map((w) => ({ z: w.z, y: w.y - w.radius - this.chainThickness / 2 })).sort((a, b) => a.z - b.z);
+      const floor = (z: number): number => {
+        if (z < pts[0].z || z > pts[pts.length - 1].z) return -Infinity;
+        let i = 0;
+        while (i + 2 < pts.length && pts[i + 1].z < z) i++;
+        const t = (z - pts[i].z) / Math.max(1e-9, pts[i + 1].z - pts[i].z);
+        return pts[i].y + (pts[i + 1].y - pts[i].y) * t;
+      };
+      loop = deformChainLoop(loop, (z) => lift(side, z), floor);
+    }
     const pitch = loop.length / this.linkCount;
     const k = this.widthScale;
     for (let i = 0; i < this.linkCount; i++) {
