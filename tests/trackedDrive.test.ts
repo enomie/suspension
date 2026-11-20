@@ -116,17 +116,6 @@ describe('tracked drive', () => {
     expect(Math.hypot(t1.x - t0.x, t1.z - t0.z)).toBeLessThan(1.5);
   });
 
-  it('stays at the top speed and stable on a long straight run', () => {
-    const { v, run } = setup();
-    run(1);
-    run(30, input({ throttle: 1 }));
-    expect(v.forwardSpeed).toBeGreaterThan(11);
-    expect(v.forwardSpeed).toBeLessThan(14.5);
-    run(15, input({ throttle: 1 }));
-    expect(v.forwardSpeed).toBeGreaterThan(11);
-    expect(Math.abs(v.chassis.angvel().y)).toBeLessThan(0.2);
-  });
-
   it('brakes to a stop (holding the brake on would then reverse)', () => {
     const { v, run } = setup();
     run(1);

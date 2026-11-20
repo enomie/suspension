@@ -46,8 +46,6 @@ export interface TrackedVehicleSpec {
   drive: DriveSpec;
   /** speed difference of the tracks at full steer [m/s], default `DEFAULT_TURN_SPEED`: higher = tighter turns */
   turnSpeed?: number;
-  /** top speed forward [m/s], default `DEFAULT_MAX_SPEED`: the drive does not push beyond it (the vehicle gets unstable at about 16 m/s) */
-  maxSpeed?: number;
 }
 
 /** Value limits of a tracked vehicle [min, max] */
@@ -61,7 +59,6 @@ export const TRACKED_LIMITS = {
   beltWidth: [0.2, 1],
   chainThickness: [0.01, 0.15],
   turnSpeed: [0.5, 6],
-  maxSpeed: [3, 30],
 } as const;
 
 const inRange = (v: number, [min, max]: readonly [number, number] | readonly number[]): boolean => v >= min && v <= max;
@@ -81,7 +78,6 @@ export function validateTrackedSpec(spec: TrackedVehicleSpec): string[] {
   if (!inRange(spec.chainThickness, L.chainThickness)) errors.push(`chainThickness ${spec.chainThickness} outside ${L.chainThickness[0]}…${L.chainThickness[1]}`);
   if (spec.track < spec.beltWidth) errors.push(`track ${spec.track} is smaller than beltWidth ${spec.beltWidth}: the tracks would overlap`);
   if (spec.turnSpeed !== undefined && !inRange(spec.turnSpeed, L.turnSpeed)) errors.push(`turnSpeed ${spec.turnSpeed} outside ${L.turnSpeed[0]}…${L.turnSpeed[1]}`);
-  if (spec.maxSpeed !== undefined && !inRange(spec.maxSpeed, L.maxSpeed)) errors.push(`maxSpeed ${spec.maxSpeed} outside ${L.maxSpeed[0]}…${L.maxSpeed[1]}`);
   if (!spec.linkAsset) errors.push('linkAsset is empty');
 
   axles.forEach((a, i) => {
