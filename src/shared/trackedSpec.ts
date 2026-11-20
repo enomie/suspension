@@ -1,4 +1,5 @@
-import type { AxleSpec, ChassisSpec, DriveSpec } from './vehicleSpec';
+import type { AxleSpec, ChassisSpec, DriveSpec, VehicleSpec } from './vehicleSpec';
+import type { ChainCircle } from './chainLoop';
 
 /**
  * Tracked vehicle description (pure, no Rapier/three), like `VehicleSpec` for wheeled vehicles.
@@ -19,6 +20,7 @@ export interface TrackEndWheelSpec {
 }
 
 export interface TrackedVehicleSpec {
+  type: 'tracked';
   name: string;
   /** display name (HUD) */
   label?: string;
@@ -100,4 +102,36 @@ export function validateTrackedSpec(spec: TrackedVehicleSpec): string[] {
     if (sprocket.z - sprocket.radius < last.z + last.wheel.radius) errors.push('sprocket must sit behind the last road wheel without overlapping it');
   }
   return errors;
+}
+
+/** true for a tracked vehicle description, false for a wheeled one */
+export function isTrackedSpec(spec: VehicleSpec | TrackedVehicleSpec): spec is TrackedVehicleSpec {
+  return spec.type === 'tracked';
+}
+
+/** Width of a road wheel as drawn, as a share of the belt width: the chain is wider and runs around it */
+export const ROAD_WHEEL_VISUAL_WIDTH = 0.8;
+
+/**
+ * The tracked vehicle as a wheeled description, for everything that only needs the chassis and the road axles
+ * (ladder frame, centre of mass, HUD): road wheels keep their own radius, without the chain.
+ */
+export function trackedRenderSpec(spec: TrackedVehicleSpec): VehicleSpec {
+  return {
+    name: spec.name,
+    label: spec.label,
+    chassis: spec.chassis,
+    axles: spec.axles.map((a) => ({ ...a, wheel: { ...a.wheel, width: spec.beltWidth * ROAD_WHEEL_VISUAL_WIDTH } })),
+    steering: { mode: 'crab', rate: 1, returnRate: 1 },
+    drive: spec.drive,
+  };
+}
+
+/** Wheel circles seen from the side at design ride, in loop order: idler, road wheels front to back, sprocket */
+export function designChainWheels(spec: TrackedVehicleSpec): ChainCircle[] {
+  return [
+    { z: spec.idler.z, y: spec.idler.y, radius: spec.idler.radius },
+    ...spec.axles.map((a) => ({ z: a.z, y: a.y, radius: a.wheel.radius })),
+    { z: spec.sprocket.z, y: spec.sprocket.y, radius: spec.sprocket.radius },
+  ];
 }

@@ -2,6 +2,7 @@ import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import type { BodyPoint, VehicleLayout } from '../../shared/vehicleLayout';
 import type { Attach, Vec3, VehicleSpec } from './types';
 import type { BuiltVehicle } from './buildVehicle';
+import { isTrackedSpec, trackedRenderSpec, ROAD_WHEEL_VISUAL_WIDTH, type TrackedVehicleSpec } from '../../shared/trackedSpec';
 
 /**
  * all bodies with visible pose, fixed order = index in snapshot.
@@ -11,7 +12,9 @@ export function poseBodies(built: BuiltVehicle): RAPIER.RigidBody[] {
 }
 
 /** physics vehicle → plain data layout for rendering */
-export function describeLayout(spec: VehicleSpec, built: BuiltVehicle): VehicleLayout {
+export function describeLayout(full: VehicleSpec | TrackedVehicleSpec, built: BuiltVehicle): VehicleLayout {
+  const tracked = isTrackedSpec(full) ? full : undefined;
+  const spec = tracked ? trackedRenderSpec(tracked) : (full as VehicleSpec);
   const bodies = poseBodies(built);
   const index = new Map(bodies.map((b, i) => [b.handle, i]));
   const idx = (b: RAPIER.RigidBody) => index.get(b.handle)!;
@@ -29,12 +32,16 @@ export function describeLayout(spec: VehicleSpec, built: BuiltVehicle): VehicleL
   });
   return {
     spec,
+    tracked,
     bodyCount: bodies.length,
     chassis: idx(built.chassis),
     corners: built.corners.map((c) => ({
       id: c.id,
+      axle: c.axleIndex,
+      side: c.side,
       wheel: idx(c.wheel),
-      wheelSpec: c.axle.wheel,
+      // tracked: the road wheel as drawn (the collider is as wide as the belt and includes the chain)
+      wheelSpec: tracked ? { ...tracked.axles[c.axleIndex].wheel, width: tracked.beltWidth * ROAD_WHEEL_VISUAL_WIDTH } : c.axle.wheel,
       knuckle: idx(c.knuckle ?? c.carrier),
     })),
     links: built.corners.flatMap((c) => c.visuals.map((v) => ({ kind: v.kind, a: point(v.a), b: point(v.b) }))),

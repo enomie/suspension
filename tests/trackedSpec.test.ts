@@ -14,6 +14,7 @@ const axle = (z: number): AxleSpec => ({
 
 function spec(): TrackedVehicleSpec {
   return {
+    type: 'tracked',
     name: 'tank',
     chassis: { size: [2.4, 0.6, 5], mass: 12000 },
     axles: [axle(-1.2), axle(0), axle(1.2)],

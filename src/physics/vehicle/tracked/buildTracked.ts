@@ -1,5 +1,5 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
-import type { AxleSpec } from '../../../shared/vehicleSpec';
+import { frameHalfLength, type AxleSpec } from '../../../shared/vehicleSpec';
 import { validateTrackedSpec, type TrackEndWheelSpec, type TrackedVehicleSpec } from '../../../shared/trackedSpec';
 import type { BuiltVehicle } from '../buildVehicle';
 import type { Corner } from '../types';
@@ -13,8 +13,6 @@ import { axleLoadShares } from '../tuning';
 export const END_COLLIDER_RADIUS_SHARE = 0.5;
 /** edge radius of the idler and sprocket colliders [m] */
 const END_COLLIDER_EDGE_RADIUS = 0.03;
-/** extra length of the frame behind the outermost wheel centre [m] */
-const FRAME_END_MARGIN = 0.04;
 
 export interface BuiltTracked extends BuiltVehicle {
   /** idler and sprocket colliders (left and right of each), fixed to the chassis */
@@ -68,8 +66,8 @@ export function buildTrackedVehicle(
   const errors = validateTrackedSpec(spec);
   if (errors.length) throw new Error(`tracked vehicle '${spec.name}': ${errors.join('; ')}`);
 
-  const reach = Math.max(Math.abs(spec.idler.z), Math.abs(spec.sprocket.z), ...spec.axles.map((a) => Math.abs(a.z)));
-  const chassis = createChassis(R, world, spec.chassis, pos, reach + FRAME_END_MARGIN);
+  // hull = the ladder frame over the road axles, as drawn; idler and sprocket have their own small colliders
+  const chassis = createChassis(R, world, spec.chassis, pos, frameHalfLength(spec));
   const names = new Map<number, string>([[chassis.handle, `${spec.name}.chassis`]]);
 
   const axles = trackContactAxles(spec);

@@ -167,6 +167,8 @@ export interface DriveSpec {
 }
 
 export interface VehicleSpec {
+  /** vehicle type: wheeled (default); tracked vehicles use `TrackedVehicleSpec` */
+  type?: 'wheeled';
   name: string;
   /** display name (HUD) */
   label?: string;
@@ -237,7 +239,7 @@ const CROSS_MEMBER_HALF_DEPTH = 0.04;
  * Half length of the visible ladder frame (and of its collider): the two side rails run from the front axle to the
  * rear axle, one cross member per axle, nothing sticks out. Mass and inertia still come from the full `chassis.size`.
  */
-export function frameHalfLength(spec: VehicleSpec): number {
+export function frameHalfLength(spec: Pick<VehicleSpec, 'axles'>): number {
   const reach = Math.max(0, ...spec.axles.map((a) => Math.abs(a.z)));
   // a single axle still needs rails long enough for a valid collider
   return Math.max(0.3, reach + CROSS_MEMBER_HALF_DEPTH);

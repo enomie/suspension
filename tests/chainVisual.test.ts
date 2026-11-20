@@ -61,7 +61,7 @@ describe('ChainVisual', () => {
 
   it('places the links on the loop of both tracks, plates outside the wheels', () => {
     const v = new ChainVisual(base);
-    v.update(wheels, 0);
+    v.update(wheels, wheels, 0, 0);
     const plate = v.group.children[0];
     let minY = Infinity;
     let maxY = -Infinity;
@@ -81,7 +81,7 @@ describe('ChainVisual', () => {
 
   it('scales the link across the track to the belt width', () => {
     const v = new ChainVisual({ ...base, beltWidth: 0.6 });
-    v.update(wheels, 0);
+    v.update(wheels, wheels, 0, 0);
     const m = instance(v.group.children[0], 0);
     expect(new Vector3(1, 0, 0).transformDirection(m).length()).toBeCloseTo(1, 9);
     expect(new Vector3().setFromMatrixScale(m).x).toBeCloseTo(0.6, 5);
@@ -89,20 +89,20 @@ describe('ChainVisual', () => {
 
   it('moving the distance by one pitch puts every link where the next one was', () => {
     const v = new ChainVisual(base);
-    v.update(wheels, 0);
+    v.update(wheels, wheels, 0, 0);
     const first = origin(instance(v.group.children[0], 1));
     const pitch = buildChainLoop(wheels, 0.05).length / v.linkCount;
-    v.update(wheels, pitch);
+    v.update(wheels, wheels, pitch, pitch);
     const shifted = origin(instance(v.group.children[0], 0));
     expect(shifted.distanceTo(first)).toBeLessThan(1e-6);
   });
 
   it('follows a wheel that moved up: the chain lifts with it', () => {
     const v = new ChainVisual(base);
-    v.update(wheels, 0);
+    v.update(wheels, wheels, 0, 0);
     const before = Math.min(...Array.from({ length: v.linkCount }, (_, i) => origin(instance(v.group.children[0], i)).y));
     const raised = wheels.map((w, i) => (i === 1 ? { ...w, y: 0.15 } : w));
-    v.update(raised, 0);
+    v.update(raised, raised, 0, 0);
     // the lowest points are still the outer wheels' bottoms: a raised middle wheel does not lift the straight run
     const after = Math.min(...Array.from({ length: v.linkCount }, (_, i) => origin(instance(v.group.children[0], i)).y));
     expect(after).toBeCloseTo(before, 2);

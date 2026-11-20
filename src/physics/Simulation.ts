@@ -1,9 +1,10 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import { createPhysicsWorld } from './rapier';
 import { PhysicsTiles } from './terrainColliders';
-import { Vehicle } from './vehicle/Vehicle';
+import { createVehicle } from './vehicle/createVehicle';
+import type { SimVehicle } from './vehicle/simVehicle';
 import { describeLayout, poseBodies } from './vehicle/layout';
-import { PRESETS } from './vehicle/presets';
+import { ALL_PRESETS } from './vehicle/presets';
 import { sampleTerrainHeightWorld } from '../shared/terrainHeight';
 import { ORIGIN } from '../shared/origin';
 import { OriginShifter } from '../shared/originShifter';
@@ -11,6 +12,7 @@ import { PHYSICS_DT, PHYSICS_SUBSTEPS } from '../shared/stepClock';
 import { writeVehicleSnapshot } from './vehicle/snapshot';
 import { neutralInput, type DriverInput } from '../shared/driverInput';
 import type { VehicleSpec } from '../shared/vehicleSpec';
+import type { TrackedVehicleSpec } from '../shared/trackedSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import { setTerrain, type TerrainConfig } from '../shared/terrain';
 
@@ -22,7 +24,7 @@ export class Simulation {
   readonly world: RAPIER.World;
   readonly tiles: PhysicsTiles;
   readonly origin = new OriginShifter();
-  vehicle: Vehicle;
+  vehicle: SimVehicle;
   layout: VehicleLayout;
   private bodies: RAPIER.RigidBody[];
   gen = 0;
@@ -47,10 +49,11 @@ export class Simulation {
         b.setTranslation({ x: p.x - dx, y: p.y, z: p.z - dz }, false);
       }),
     );
-    this.preset = Math.max(0, Math.min(PRESETS.length - 1, opts.preset));
-    this.vehicle = new Vehicle(R, this.world, PRESETS[this.preset], this.spawnPoint(0, 0));
+    this.preset = Math.max(0, Math.min(ALL_PRESETS.length - 1, opts.preset));
+    const spec = ALL_PRESETS[this.preset];
+    this.vehicle = createVehicle(R, this.world, spec, this.spawnPoint(0, 0));
     this.bodies = poseBodies(this.vehicle.built);
-    this.layout = describeLayout(this.vehicle.spec, this.vehicle.built);
+    this.layout = describeLayout(spec, this.vehicle.built);
   }
 
   private spawnPoint(lx: number, lz: number) {
@@ -59,14 +62,15 @@ export class Simulation {
   }
 
   /** New vehicle (preset) at current position; new generation */
-  spawn(preset = this.preset, custom?: VehicleSpec): void {
-    if (!custom && (preset < 0 || preset >= PRESETS.length)) return;
+  spawn(preset = this.preset, custom?: VehicleSpec | TrackedVehicleSpec): void {
+    if (!custom && (preset < 0 || preset >= ALL_PRESETS.length)) return;
     const t = this.vehicle.chassis.translation();
     this.vehicle.dispose();
     this.preset = custom ? -1 : preset;
-    this.vehicle = new Vehicle(this.R, this.world, custom ?? PRESETS[preset], this.spawnPoint(t.x, t.z));
+    const spec = custom ?? ALL_PRESETS[preset];
+    this.vehicle = createVehicle(this.R, this.world, spec, this.spawnPoint(t.x, t.z));
     this.bodies = poseBodies(this.vehicle.built);
-    this.layout = describeLayout(this.vehicle.spec, this.vehicle.built);
+    this.layout = describeLayout(spec, this.vehicle.built);
     this.gen++;
   }
 

@@ -3,6 +3,8 @@ import type { VehicleSpec } from '../types';
 import { car, makeCar } from './car';
 import { trophyTruck } from './trophyTruck';
 import { moped, motorcycle } from './motorcycle';
+import { TRACKED_PRESETS } from './tracked';
+import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
 
 /** Preset index → suspension layout (same test chassis). */
 export const PRESETS: VehicleSpec[] = [
@@ -20,3 +22,6 @@ export const PRESETS: VehicleSpec[] = [
   motorcycle,
   moped,
 ];
+
+/** All presets by preset index: the wheeled ones first, then the tracked ones */
+export const ALL_PRESETS: (VehicleSpec | TrackedVehicleSpec)[] = [...PRESETS, ...TRACKED_PRESETS];

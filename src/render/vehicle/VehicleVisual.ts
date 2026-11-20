@@ -12,6 +12,7 @@ import { createDifferentialMarkers } from './differentialVisual';
 import { createComMarker } from './comVisual';
 import { createPreviewBox } from './previewBoxVisual';
 import { JointRenderer } from './jointVisual';
+import { TrackedVisual } from './trackedVisual';
 
 const tireMat = new MeshStandardMaterial({ color: 0x202226, roughness: 0.9 });
 const rimMat = new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.4, metalness: 0.3 });
@@ -104,6 +105,8 @@ export class VehicleVisual implements BodyPoses {
   private com: Mesh;
   private links: LinkRenderer;
   private joints: JointRenderer;
+  /** tracked vehicles: idler, sprocket and chain */
+  private tracked?: TrackedVisual;
   private state: Float64Array | null = null;
   private q0: number;
   private inboardPlaced = false;
@@ -128,6 +131,10 @@ export class VehicleVisual implements BodyPoses {
       w.name = `${c.id}.wheel`;
       return w;
     });
+    if (layout.tracked) {
+      this.tracked = new TrackedVisual(layout);
+      this.chassis.add(this.tracked.group);
+    }
     this.links = new LinkRenderer(layout);
     this.joints = new JointRenderer(layout);
     this.root.add(this.chassis, ...this.wheels, this.links.root, this.joints.root);
@@ -174,6 +181,7 @@ export class VehicleVisual implements BodyPoses {
     });
     this.links.sync(this);
     this.joints.sync(this);
+    this.tracked?.update(this, L, this.corners.map((c) => c.telemetry), s[1]);
     this.root.visible = true;
   }
 

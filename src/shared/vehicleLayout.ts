@@ -1,4 +1,5 @@
-import type { Vec3, VehicleSpec, WheelSpec } from './vehicleSpec';
+import type { Side, Vec3, VehicleSpec, WheelSpec } from './vehicleSpec';
+import type { TrackedVehicleSpec } from './trackedSpec';
 
 /**
  * what rendering needs about a vehicle — plain data, produced by physics worker
@@ -12,12 +13,18 @@ export interface BodyPoint {
 }
 
 export interface VehicleLayout {
+  /** what the renderer draws: the vehicle itself, or for a tracked vehicle its chassis and road axles (see `trackedRenderSpec`) */
   spec: VehicleSpec;
+  /** tracked vehicles only: the full description, for idler, sprocket and chain */
+  tracked?: TrackedVehicleSpec;
   /** number of bodies in snapshot */
   bodyCount: number;
   chassis: number;
   corners: {
     id: string;
+    /** index of the axle (0 = frontmost) and side of the vehicle */
+    axle: number;
+    side: Side;
     wheel: number;
     wheelSpec: WheelSpec;
     /** body where knuckle attaches (steer knuckle or wheel carrier) */
