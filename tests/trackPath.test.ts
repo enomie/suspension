@@ -54,14 +54,22 @@ describe('lower run path', () => {
     }
   });
 
-  it('samples at equal spacing and marks the arcs of the inner wheels and their surroundings', () => {
+  it('samples per free stretch: more for a longer gap, within min and max, none near a road wheel arc', () => {
+    const opts = { spacing: 0.15, clearance: 0.12, min: 3, max: 8 };
+    const count = (gap: number) => {
+      // three wheels: idler, road wheel, road wheel, sprocket with `gap` between road wheels
+      const path = lowerRunPath([wheel(-2), wheel(-1), wheel(-1 + gap), wheel(1 + gap)]);
+      return samplePath(path, opts).filter((p) => p.z > -1 && p.z < -1 + gap).length;
+    };
+    expect(count(0.8)).toBeGreaterThanOrEqual(3);
+    expect(count(1.0)).toBeGreaterThanOrEqual(count(0.8));
+    expect(count(3.0)).toBe(8); // capped
+    expect(count(0.05)).toBeLessThanOrEqual(3); // tiny gap: the clearance eats it
     const path = lowerRunPath([wheel(-2), wheel(-1), wheel(0), wheel(1)]);
-    const samples = samplePath(path, 0.2, 0.12);
-    expect(samples.length).toBeGreaterThan(10);
-    expect(samples.some((s) => s.atWheel)).toBe(true);
-    expect(samples.some((s) => !s.atWheel)).toBe(true);
-    // z = −1 is the bottom of an inner wheel: marked
-    const near = samples.reduce((a, b) => (Math.abs(b.z + 1) < Math.abs(a.z + 1) ? b : a));
-    expect(near.atWheel).toBe(true);
+    for (const s of samplePath(path, opts)) {
+      // z = −1 and 0 are the bottoms of the inner wheels: no sample within the clearance of their arcs
+      expect(Math.abs(s.z + 1)).toBeGreaterThan(0.1);
+      expect(Math.abs(s.z - 0)).toBeGreaterThan(0.1);
+    }
   });
 });

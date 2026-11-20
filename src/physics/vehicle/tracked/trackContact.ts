@@ -24,10 +24,11 @@ import { GROUP_ALL, GROUP_TERRAIN, groups } from '../groups';
 
 /** probe origin height above the chain line [m]: must exceed the tallest obstacle to detect */
 export const PROBE_LIFT = 0.8;
-/** distance between contact points along the lower run [m] */
-export const SAMPLE_SPACING = 0.2;
-/** no contact points this close to a wheel bottom [m]: the wheel collider already touches there */
-export const WHEEL_CLEARANCE = 0.12;
+/**
+ * Contact points per free stretch between two road wheels: one per 0.15 m (half the width of a log top), 3 at least, 8 at
+ * most, so the count follows the gap; none within 0.12 m of a road wheel arc (its collider already touches there)
+ */
+export const SAMPLES = { spacing: 0.15, clearance: 0.12, min: 3, max: 8 } as const;
 /** support stiffness of one contact point as a share of the road wheel spring rate */
 const SUPPORT_STIFFNESS_SHARE = 0.5;
 /** support damping time constant [s]: c = k · this */
@@ -176,8 +177,7 @@ export class TrackContact {
     const lv = this.chassis.linvel();
     const av = this.chassis.angvel();
 
-    for (const sample of samplePath(this.path(side), SAMPLE_SPACING, WHEEL_CLEARANCE)) {
-      if (sample.atWheel) continue; // the wheel collider touches there
+    for (const sample of samplePath(this.path(side), SAMPLES)) {
       this.toWorld(side, sample.z, sample.y, _pa); // point on the chain
       ray.origin.x = _pa.x + _up.x * PROBE_LIFT;
       ray.origin.y = _pa.y + _up.y * PROBE_LIFT;

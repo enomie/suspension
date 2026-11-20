@@ -99,36 +99,57 @@ export interface PathSample {
   y: number;
   /** distance along the path [m] */
   s: number;
-  /** true on the arc of an inner circle (a road wheel) or right next to it: the wheel collider is there */
-  atWheel: boolean;
+}
+
+export interface SampleOptions {
+  /** wanted distance between samples [m]: a log's top is about 0.3 m wide, so half of that never misses it */
+  spacing: number;
+  /** no samples this close to the arc of a road wheel [m]: its collider touches there */
+  clearance: number;
+  /** samples per free stretch between two road wheels (or an end and its neighbour): at least / at most */
+  min: number;
+  max: number;
 }
 
 /**
- * Points at equal spacing along the path. `atWheel` marks those on the arc of a circle other than the first and the last
- * (idler and sprocket have no collider) and within `clearance` [m] of such an arc.
+ * Contact samples along the path. The stretches between the arcs of the road wheels (circles other than the first and the
+ * last: idler and sprocket have no collider) are sampled one by one, `clearance` away from each arc, with
+ * `round(length / spacing)` samples (between `min` and `max`), spread evenly: a longer gap gets more samples, a short
+ * one never fewer than `min`. The stretch from the front end to the first road wheel and from the last to the rear end
+ * count the same way (idler and sprocket arcs are part of them).
  */
-export function samplePath(path: readonly PathPoint[], spacing: number, clearance: number): PathSample[] {
+export function samplePath(path: readonly PathPoint[], o: SampleOptions): PathSample[] {
   const last = Math.max(...path.map((p) => p.circle));
-  const spans = new Map<number, [number, number]>();
-  for (const p of path) {
-    if (p.circle <= 0 || p.circle >= last) continue;
-    const s = spans.get(p.circle);
-    if (!s) spans.set(p.circle, [p.s, p.s]);
-    else s[1] = p.s;
+  const spans: [number, number][] = [];
+  for (let c = 1; c < last; c++) {
+    const s = path.filter((p) => p.circle === c).map((p) => p.s);
+    if (s.length) spans.push([Math.min(...s), Math.max(...s)]);
   }
   const total = path[path.length - 1].s;
-  const n = Math.max(1, Math.round(total / spacing));
+  // free stretches: between the arcs, `clearance` away from each
+  const stretches: [number, number][] = [];
+  let from = 0;
+  for (const [s0, s1] of spans) {
+    stretches.push([from, s0 - o.clearance]);
+    from = s1 + o.clearance;
+  }
+  stretches.push([from, total]);
+
   const out: PathSample[] = [];
   let k = 0;
-  for (let j = 0; j < n; j++) {
-    const s = ((j + 0.5) / n) * total;
-    while (k + 2 < path.length && path[k + 1].s < s) k++;
-    const a = path[k];
-    const b = path[k + 1];
-    const t = b.s - a.s > 1e-9 ? (s - a.s) / (b.s - a.s) : 0;
-    let atWheel = false;
-    for (const [s0, s1] of spans.values()) if (s >= s0 - clearance && s <= s1 + clearance) atWheel = true;
-    out.push({ z: a.z + (b.z - a.z) * t, y: a.y + (b.y - a.y) * t, s, atWheel });
+  for (const [a, b] of stretches) {
+    const len = b - a;
+    if (len <= 1e-6) continue;
+    const n = Math.max(o.min, Math.min(o.max, Math.round(len / o.spacing)));
+    for (let j = 0; j < n; j++) {
+      const s = a + ((j + 0.5) / n) * len;
+      while (k > 0 && path[k].s > s) k--;
+      while (k + 2 < path.length && path[k + 1].s < s) k++;
+      const p = path[k];
+      const q = path[k + 1];
+      const t = q.s - p.s > 1e-9 ? (s - p.s) / (q.s - p.s) : 0;
+      out.push({ z: p.z + (q.z - p.z) * t, y: p.y + (q.y - p.y) * t, s });
+    }
   }
   return out;
 }
