@@ -69,8 +69,10 @@ export interface AxleSpec {
   twin?: boolean;
   /** driven: share of total torque */
   drive?: { share: number };
+  /** driven axles only: the axle has a differential (shown as a sphere in the preview) */
+  differential?: boolean;
   brake: { torque: number };
-  /** handbrake (rear axles only) */
+  /** handbrake: acts on this axle regardless of the service brake */
   handbrake?: { torque: number };
 }
 

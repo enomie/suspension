@@ -19,6 +19,8 @@ const axle = (o: Partial<CustomAxleConfig>): CustomAxleConfig => ({
   steer: 'none',
   suspension: 'solidAxle',
   drive: false,
+  differential: false,
+  handbrake: false,
   wheelRadius: 0.33,
   ...o,
 });
@@ -182,5 +184,42 @@ describe('custom wheelspin field', () => {
     expect(buildCustomSpec({ ...DEFAULT_CUSTOM, wheelspin: 10 }).drive.maxSlipSpeed).toBe(10);
     expect(buildCustomSpec({ ...DEFAULT_CUSTOM, wheelspin: 99 }).drive.maxSlipSpeed).toBe(CUSTOM_LIMITS.wheelspin[1]);
     expect(buildCustomSpec({ ...DEFAULT_CUSTOM, wheelspin: 0 }).drive.maxSlipSpeed).toBe(CUSTOM_LIMITS.wheelspin[0]);
+  });
+});
+
+describe('profile: handbrake, differential, weight, centre of mass', () => {
+  const two = (a0: Partial<CustomAxleConfig>, a1: Partial<CustomAxleConfig>, o: Partial<CustomVehicleConfig> = {}) =>
+    buildCustomSpec({ ...DEFAULT_CUSTOM, ...o, axles: [axle({ steer: 'steer', suspension: 'strut', ...a0 }), axle(a1)] });
+
+  it('puts the handbrake only on checked axles, all with the one vehicle torque', () => {
+    const s = two({ handbrake: true }, { handbrake: true }, { handbrakeTorque: 1234 });
+    expect(s.axles.map((a) => a.handbrake?.torque)).toEqual([1234, 1234]);
+    expect(two({}, {}).axles.map((a) => a.handbrake)).toEqual([undefined, undefined]);
+    expect(two({}, { handbrake: true }, { handbrakeTorque: 1e9 }).axles[1].handbrake?.torque).toBe(CUSTOM_LIMITS.handbrakeTorque[1]);
+  });
+
+  it('keeps the differential only on driven axles', () => {
+    const s = two({ differential: true }, { drive: true, differential: true });
+    expect(s.axles.map((a) => a.differential)).toEqual([undefined, true]);
+    expect(two({}, { drive: true }).axles[1].differential).toBeUndefined();
+  });
+
+  it('weight is the total mass: chassis plus wheels', () => {
+    const s = buildCustomSpec({ ...DEFAULT_CUSTOM, weight: 2000 });
+    const wheels = s.axles.reduce((m, a) => m + (a.track > 0 ? 2 : 1) * a.wheel.mass, 0);
+    expect(s.chassis.mass + wheels).toBeCloseTo(2000);
+    expect(buildCustomSpec({ ...DEFAULT_CUSTOM, weight: 1e9 }).chassis.mass).toBeLessThanOrEqual(CUSTOM_LIMITS.weight[1]);
+    expect(customFromSpec(s).weight).toBeCloseTo(2000);
+  });
+
+  it('centre of mass is one clamped global offset and round-trips', () => {
+    const s = buildCustomSpec({ ...DEFAULT_CUSTOM, comOffset: [0.1, -0.3, 9] });
+    expect(s.chassis.comOffset).toEqual([0.1, -0.3, CUSTOM_LIMITS.comOffset.z[1]]);
+    expect(customFromSpec(buildCustomSpec({ ...DEFAULT_CUSTOM, comOffset: [0.1, -0.3, 0.2] })).comOffset).toEqual([0.1, -0.3, 0.2]);
+  });
+
+  it('default profile reproduces the previous behaviour (handbrake on the rear axle only)', () => {
+    const s = buildCustomSpec(DEFAULT_CUSTOM);
+    expect(s.axles.map((a) => !!a.handbrake)).toEqual([false, true]);
   });
 });

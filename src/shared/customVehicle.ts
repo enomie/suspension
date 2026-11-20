@@ -1,5 +1,5 @@
 import { torusWheelWidth } from './unitTorus';
-import type { AxleSpec, SuspensionType, VehicleSpec, WheelShape, WheelSpec } from './vehicleSpec';
+import type { AxleSpec, SuspensionType, Vec3, VehicleSpec, WheelShape, WheelSpec } from './vehicleSpec';
 
 /** What a custom axle does with the steering input */
 export type SteerMode = 'none' | 'steer' | 'counter';
@@ -16,6 +16,10 @@ export interface CustomAxleConfig {
   suspension: SuspensionType;
   /** driven axle (torque is shared equally between driven axles) */
   drive: boolean;
+  /** driven axles only: the axle has a differential (ignored when `drive` is false) */
+  differential: boolean;
+  /** the handbrake acts on this axle; independent of the service brake, which brakes every wheel */
+  handbrake: boolean;
   wheelShape: WheelShape;
   wheelRadius: number;
   /** tire width [m] of a `cylinder` wheel (a torus wheel gets its width from the radius) */
@@ -31,6 +35,12 @@ export interface CustomVehicleConfig {
   torque: number;
   /** engine power [kW]: top speed together with rolling and air drag */
   power: number;
+  /** total vehicle mass including wheels [kg]; the chassis mass is what remains after the wheels */
+  weight: number;
+  /** handbrake torque per wheel on the axles that have `handbrake` [N·m]: one value for the whole vehicle */
+  handbrakeTorque: number;
+  /** centre of mass relative to the chassis box centre [m] (x, y, z; −z = front) */
+  comOffset: Vec3;
   /** wheelspin: how much faster than the ground a wheel may spin [m/s] (slip limit; 2.5 = hardly any) */
   wheelspin: number;
 }
@@ -44,6 +54,9 @@ export const CUSTOM_LIMITS = {
   torque: [200, 30000],
   power: [5, 1000],
   wheelspin: [2.5, 15],
+  weight: [300, 30000],
+  handbrakeTorque: [0, 20000],
+  comOffset: { x: [-0.5, 0.5], y: [-0.6, 0.6], z: [-2, 2] },
 } as const;
 
 /** Suspension types that can carry a steering knuckle (long-arm and beam types are non-steering only) */
@@ -102,15 +115,34 @@ export function suspensionsFor(steer: SteerMode, wheels: WheelLayout = 'pair'): 
 export const DEFAULT_CUSTOM: CustomVehicleConfig = {
   wheelbase: 3.2,
   axles: [
-    { wheels: 'pair', track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
-    { wheels: 'pair', track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
+    { wheels: 'pair', track: 1.6, steer: 'steer', suspension: 'doubleWishbone', drive: false, differential: false, handbrake: false, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
+    { wheels: 'pair', track: 1.6, steer: 'none', suspension: 'solidAxle', drive: true, differential: false, handbrake: true, wheelShape: 'cylinder', wheelRadius: 0.33, wheelWidth: 0.22 },
   ],
   torque: 2400,
   power: 360,
+  weight: 1280,
+  handbrakeTorque: 3500,
+  comOffset: [0, -0.2, 0],
   wheelspin: 2.5,
 };
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, x));
+
+/** Chassis mass never drops below this, whatever the wheels weigh [kg] */
+const MIN_CHASSIS_MASS = 100;
+
+const wheelMass = (radius: number) => 20 * (radius / 0.33) ** 2;
+
+/** Number of wheels on an axle (a bogie carries two per side) */
+function wheelCount(a: Pick<AxleSpec, 'track' | 'twin' | 'suspension'>): number {
+  return (a.track > 0 || a.twin ? 2 : 1) * (a.suspension === 'bogie' ? 2 : 1);
+}
+
+const clampCom = ([x, y, z]: Vec3): Vec3 => [
+  clamp(x, CUSTOM_LIMITS.comOffset.x),
+  clamp(y, CUSTOM_LIMITS.comOffset.y),
+  clamp(z, CUSTOM_LIMITS.comOffset.z),
+];
 
 /** VehicleSpec → config: the panel shows what a preset is made of (only what the panel can express; values are clamped to its limits) */
 export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
@@ -123,10 +155,15 @@ export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
       steer: !a.steer ? 'none' : a.steer.counter ? 'counter' : 'steer',
       suspension: a.suspension,
       drive: !!a.drive,
+      differential: !!a.differential,
+      handbrake: !!a.handbrake,
       wheelShape: a.wheel.shape,
       wheelRadius: clamp(a.wheel.radius, CUSTOM_LIMITS.wheelRadius),
       wheelWidth: clamp(a.wheel.width, CUSTOM_LIMITS.wheelWidth),
     })),
+    weight: clamp(spec.chassis.mass + axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0), CUSTOM_LIMITS.weight),
+    handbrakeTorque: clamp(axles.find((a) => a.handbrake)?.handbrake?.torque ?? DEFAULT_CUSTOM.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque),
+    comOffset: clampCom(spec.chassis.comOffset ?? [0, 0, 0]),
     torque: clamp(spec.drive.maxTorque, CUSTOM_LIMITS.torque),
     power: clamp(spec.drive.maxPower / 1000, CUSTOM_LIMITS.power),
     wheelspin: clamp(spec.drive.maxSlipSpeed ?? DEFAULT_CUSTOM.wheelspin, CUSTOM_LIMITS.wheelspin),
@@ -142,18 +179,18 @@ const BOX_MARGIN = 0.7;
 export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   const n = Math.round(clamp(config.axles.length, CUSTOM_LIMITS.axles));
   const wheelbase = clamp(config.wheelbase, CUSTOM_LIMITS.wheelbase);
-  const mass = 500 + 350 * n;
   const half = n === 1 ? 0 : wheelbase / 2;
 
+  const brakeMass = 500 + 350 * n; // sizes the service brake only; the real chassis mass comes from `weight`
   const axles: AxleSpec[] = Array.from({ length: n }, (_, i) => {
     const c = config.axles[i];
     const radius = clamp(c.wheelRadius, CUSTOM_LIMITS.wheelRadius);
     const width = c.wheelShape === 'torus' ? torusWheelWidth(radius) : clamp(c.wheelWidth, CUSTOM_LIMITS.wheelWidth);
-    const wheel: WheelSpec = { radius, width, mass: 20 * (radius / 0.33) ** 2, friction: 1.1, shape: c.wheelShape };
+    const wheel: WheelSpec = { radius, width, mass: wheelMass(radius), friction: 1.1, shape: c.wheelShape };
     // a steering axle needs a type that can carry a knuckle
     const allowed = suspensionsFor(c.steer, c.wheels);
     const suspension = allowed.includes(c.suspension) ? c.suspension : allowed[0];
-    const brake = (mass * 12 * radius) / (2 * n);
+    const brake = (brakeMass * 12 * radius) / (2 * n);
     return {
       z: n === 1 ? 0 : -half + (2 * half * i) / (n - 1),
       track: c.wheels === 'pair' ? clamp(c.track, CUSTOM_LIMITS.track) : 0,
@@ -163,17 +200,21 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
       wheel,
       steer: c.steer === 'none' ? undefined : { maxAngle: 0.55, counter: c.steer === 'counter' || undefined },
       drive: c.drive ? { share: 1 } : undefined,
+      differential: c.drive && c.differential ? true : undefined,
       brake: { torque: brake },
-      handbrake: i === n - 1 ? { torque: brake * 3 } : undefined,
+      handbrake: c.handbrake ? { torque: clamp(config.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque) } : undefined,
       bogieSpacing: suspension === 'bogie' ? radius * 2 + 0.4 : undefined,
       twin: c.wheels === 'centerDouble' || undefined,
     };
   });
 
+  const wheelsMass = axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0);
+  const mass = Math.max(MIN_CHASSIS_MASS, clamp(config.weight, CUSTOM_LIMITS.weight) - wheelsMass);
+
   return {
     name: 'custom',
     label: 'Custom',
-    chassis: { size: [1.4, 0.5, 2 * half + 2 * BOX_MARGIN], mass, comOffset: [0, -0.2, 0] },
+    chassis: { size: [1.4, 0.5, 2 * half + 2 * BOX_MARGIN], mass, comOffset: clampCom(config.comOffset) },
     axles,
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
     drive: {
