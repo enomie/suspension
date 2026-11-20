@@ -60,6 +60,7 @@ const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.s
   vehicle?.setToggles(t);
 });
 const customPanel = new CustomPanel(document.querySelector<HTMLDivElement>('#custom-panel-host')!, (spec) => physics.spawn(-1, spec));
+const keyboard = new Keyboard();
 const showVehicle = () => {
   vehicle?.dispose();
   vehicle = new VehicleVisual(physics.layout);
@@ -79,7 +80,6 @@ origin.on((dx, dz) => cameraRig.shift(dx, dz));
 origin.on(() => terrain.onOriginShift());
 
 // ── input / HUD / debug ────────────────────────────────────────
-const keyboard = new Keyboard();
 const hud = new TelemetryHud(document.querySelector<HTMLDivElement>('#hud')!);
 const debug = new DebugToggles(stage, terrain, physics, keyboard, (params.get('debug') ?? '').split(','));
 Object.assign(window, {
