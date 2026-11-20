@@ -9,6 +9,11 @@ function box(w: number, h: number, l: number, x: number, y: number, z: number): 
   return new BoxGeometry(Math.max(w, 0.02), Math.max(h, 0.02), Math.max(l, 0.02)).translate(x, y, z);
 }
 
+/** Height of the top of the side rails in chassis space [m] */
+export function frameTopY(spec: VehicleSpec): number {
+  return -spec.chassis.size[1] / 2 + RAIL + 0.1;
+}
+
 /**
  * Ladder frame instead of a body (chassis-local, 1 draw call): 2 side rails (front axle to rear axle) and one cross member per axle.
  * Frame only: everything the suspension needs (mount plates, joints) belongs to the suspension (`MountRenderer`).

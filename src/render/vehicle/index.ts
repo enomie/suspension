@@ -8,4 +8,6 @@ export { LinkRenderer, type BodyPoses } from './linkVisual';
 export { JointRenderer } from './jointVisual';
 export { createMountPlates } from './mountVisual';
 export { createFrameVisual } from './frameVisual';
+export { createDifferentialMarkers } from './differentialVisual';
+export { createPreviewBox } from './previewBoxVisual';
 export { MAT } from './materials';

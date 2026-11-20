@@ -48,6 +48,7 @@ scene.add(terrain.root);
 // ── physics (worker; ?worker=0 → main thread) ────────────────────
 let vehicle: VehicleVisual | null = null;
 let frameVisible = true;
+let boxVisible = true;
 let jointsVisible = true;
 const physics = await PhysicsClient.create({
   preset: 0,
@@ -62,6 +63,9 @@ const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.s
 }, (on) => {
   jointsVisible = on;
   vehicle?.setJointsVisible(on);
+}, (on) => {
+  boxVisible = on;
+  vehicle?.setPreviewBoxVisible(on);
 });
 const customPanel = new CustomPanel(document.querySelector<HTMLDivElement>('#custom-panel-host')!, (spec) => physics.spawn(-1, spec));
 const showVehicle = () => {
@@ -69,6 +73,7 @@ const showVehicle = () => {
   vehicle = new VehicleVisual(physics.layout);
   vehicle.setFrameVisible(frameVisible);
   vehicle.setJointsVisible(jointsVisible);
+  vehicle.setPreviewBoxVisible(boxVisible);
   scene.add(vehicle.root);
   vehiclePicker.setPreset(physics.preset);
   // a preset fills the custom panel (same concept); a custom vehicle came from the panel, which already shows it
