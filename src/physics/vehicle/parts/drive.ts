@@ -4,12 +4,12 @@ import type { DriverInput } from '../../../shared/driverInput';
 import { axleForce, dragCoeff, ROLLING_FORCE_PER_WHEEL } from '../../../shared/performance';
 
 /** velocity motor damping factor [N·m·s/rad] — high = stiff, torque capped via MaxForce. */
-const MOTOR_FACTOR = 1e4;
+export const MOTOR_FACTOR = 1e4;
 /**
  * default slip limit (ASR, `DriveSpec.maxSlipSpeed` overrides): wheel tangential speed at most this much above vehicle speed [m/s].
  * Without it an unloaded wheel spins to vMax (each wheel has its own motor = open diff with no load).
  */
-const DEFAULT_MAX_SLIP_SPEED = 2.5;
+export const DEFAULT_MAX_SLIP_SPEED = 2.5;
 /** below this speed [m/s], S switches from brake to reverse */
 const REVERSE_THRESHOLD = 0.6;
 
