@@ -9,10 +9,9 @@ import {
   type CustomAxleConfig,
   type CustomVehicleConfig,
   type SteerMode,
-  type WheelLayout,
 } from '../shared/customVehicle';
 import { topSpeed } from '../shared/performance';
-import type { VehicleSpec, WheelShape } from '../shared/vehicleSpec';
+import type { SuspensionType, VehicleSpec } from '../shared/vehicleSpec';
 
 const STEER_LABELS: Record<SteerMode, string> = { none: 'No steering', steer: 'Steering', counter: 'Counter-steering' };
 
@@ -28,6 +27,21 @@ function option(value: string, text: string): HTMLOptionElement {
 
 function field(label: string, input: HTMLElement): HTMLLabelElement {
   return el('label', {}, label, input);
+}
+
+/** dropdown over the keys of a label table */
+function labelSelect<T extends string>(labels: Record<T, string>, value: T, onChange: (v: T) => void): HTMLSelectElement {
+  const select = el('select');
+  for (const key of Object.keys(labels) as T[]) select.append(option(key, labels[key]));
+  select.value = value;
+  select.addEventListener('change', () => onChange(select.value as T));
+  return select;
+}
+
+function checkbox(checked: boolean, onChange: (on: boolean) => void): HTMLInputElement {
+  const box = el('input', { type: 'checkbox', checked });
+  box.addEventListener('change', () => onChange(box.checked));
+  return box;
 }
 
 function numberInput(value: number, [min, max]: readonly [number, number], step: number, onChange: (v: number) => void): HTMLInputElement {
@@ -143,25 +157,11 @@ export class CustomPanel {
   private axleRow(c: CustomAxleConfig, i: number): HTMLElement {
     const last = this.config.axles.length - 1;
     const tag = i === 0 ? ' (front)' : i === last ? ' (rear)' : '';
+    return el('fieldset', {}, el('legend', { textContent: `Axle ${i + 1}${tag}` }), ...this.layoutFields(c), ...this.wheelFields(c), ...this.driveFields(c));
+  }
 
-    const wheels = el('select');
-    for (const w of Object.keys(WHEEL_LAYOUT_LABELS) as WheelLayout[]) wheels.append(option(w, WHEEL_LAYOUT_LABELS[w]));
-    wheels.value = c.wheels;
-
-    const shape = el('select');
-    for (const w of Object.keys(WHEEL_SHAPE_LABELS) as WheelShape[]) shape.append(option(w, WHEEL_SHAPE_LABELS[w]));
-    shape.value = c.wheelShape;
-    const widthInput = numberInput(c.wheelWidth, CUSTOM_LIMITS.wheelWidth, 0.01, (v) => (c.wheelWidth = v));
-    widthInput.disabled = c.wheelShape === 'torus';
-    shape.addEventListener('change', () => {
-      c.wheelShape = shape.value as WheelShape;
-      widthInput.disabled = c.wheelShape === 'torus';
-    });
-
-    const steer = el('select');
-    for (const m of Object.keys(STEER_LABELS) as SteerMode[]) steer.append(option(m, STEER_LABELS[m]));
-    steer.value = c.steer;
-
+  /** wheel layout, steering, suspension and track: the suspension list depends on layout and steering, the track on the layout */
+  private layoutFields(c: CustomAxleConfig): HTMLLabelElement[] {
     const susp = el('select');
     const fillSuspension = () => {
       const allowed = suspensionsFor(c.steer, c.wheels);
@@ -169,46 +169,46 @@ export class CustomPanel {
       susp.replaceChildren(...allowed.map((t) => option(t, SUSPENSION_LABELS[t])));
       susp.value = c.suspension;
     };
-    fillSuspension();
-    steer.addEventListener('change', () => {
-      c.steer = steer.value as SteerMode;
-      fillSuspension();
-    });
+    susp.addEventListener('change', () => (c.suspension = susp.value as SuspensionType));
     const trackInput = numberInput(c.track, CUSTOM_LIMITS.track, 0.05, (v) => (c.track = v));
     trackInput.disabled = c.wheels !== 'pair';
-    wheels.addEventListener('change', () => {
-      c.wheels = wheels.value as WheelLayout;
-      trackInput.disabled = c.wheels !== 'pair';
+
+    const wheels = labelSelect(WHEEL_LAYOUT_LABELS, c.wheels, (v) => {
+      c.wheels = v;
+      trackInput.disabled = v !== 'pair';
       fillSuspension();
       this.refreshTopSpeed();
     });
-    susp.addEventListener('change', () => (c.suspension = susp.value as CustomAxleConfig['suspension']));
+    const steer = labelSelect(STEER_LABELS, c.steer, (v) => {
+      c.steer = v;
+      fillSuspension();
+    });
+    fillSuspension();
+    return [field('Wheels', wheels), field('Steering', steer), field('Suspension', susp), field('Track (m)', trackInput)];
+  }
 
-    const drive = el('input', { type: 'checkbox', checked: c.drive });
-    const differential = el('input', { type: 'checkbox', checked: c.differential, disabled: !c.drive });
-    differential.addEventListener('change', () => (c.differential = differential.checked));
-    drive.addEventListener('change', () => {
-      c.drive = drive.checked;
-      differential.disabled = !c.drive;
+  /** wheel radius, shape and width (a torus gets its width from the radius) */
+  private wheelFields(c: CustomAxleConfig): HTMLLabelElement[] {
+    const widthInput = numberInput(c.wheelWidth, CUSTOM_LIMITS.wheelWidth, 0.01, (v) => (c.wheelWidth = v));
+    widthInput.disabled = c.wheelShape === 'torus';
+    const shape = labelSelect(WHEEL_SHAPE_LABELS, c.wheelShape, (v) => {
+      c.wheelShape = v;
+      widthInput.disabled = v === 'torus';
+    });
+    const radius = numberInput(c.wheelRadius, CUSTOM_LIMITS.wheelRadius, 0.01, (v) => ((c.wheelRadius = v), this.refreshTopSpeed()));
+    return [field('Radius (m)', radius), field('Wheel shape', shape), field('Width (m)', widthInput)];
+  }
+
+  /** driven, differential (driven axles only) and handbrake */
+  private driveFields(c: CustomAxleConfig): HTMLLabelElement[] {
+    const differential = checkbox(c.differential, (on) => (c.differential = on));
+    differential.disabled = !c.drive;
+    const drive = checkbox(c.drive, (on) => {
+      c.drive = on;
+      differential.disabled = !on;
       this.refreshTopSpeed();
     });
-    const handbrake = el('input', { type: 'checkbox', checked: c.handbrake });
-    handbrake.addEventListener('change', () => (c.handbrake = handbrake.checked));
-
-    return el(
-      'fieldset',
-      {},
-      el('legend', { textContent: `Axle ${i + 1}${tag}` }),
-      field('Wheels', wheels),
-      field('Steering', steer),
-      field('Suspension', susp),
-      field('Track (m)', trackInput),
-      field('Radius (m)', numberInput(c.wheelRadius, CUSTOM_LIMITS.wheelRadius, 0.01, (v) => ((c.wheelRadius = v), this.refreshTopSpeed()))),
-      field('Wheel shape', shape),
-      field('Width (m)', widthInput),
-      field('Driven', drive),
-      field('Differential', differential),
-      field('Handbrake', handbrake),
-    );
+    const handbrake = checkbox(c.handbrake, (on) => (c.handbrake = on));
+    return [field('Driven', drive), field('Differential', differential), field('Handbrake', handbrake)];
   }
 }
