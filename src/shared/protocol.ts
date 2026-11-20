@@ -1,5 +1,6 @@
 import type { DriverInput } from './driverInput';
 import type { VehicleSpec } from './vehicleSpec';
+import type { TrackedVehicleSpec } from './trackedSpec';
 import type { VehicleLayout } from './vehicleLayout';
 import type { TerrainConfig } from './terrain/types';
 
@@ -8,7 +9,7 @@ export type ToWorker =
   | { type: 'init'; preset: number; x: number; z: number; terrain: TerrainConfig }
   | { type: 'input'; input: DriverInput }
   /** `spec` = custom vehicle (then `preset` is -1) */
-  | { type: 'spawn'; preset: number; spec?: VehicleSpec };
+  | { type: 'spawn'; preset: number; spec?: VehicleSpec | TrackedVehicleSpec };
 
 /** physics worker → main thread */
 export type FromWorker =

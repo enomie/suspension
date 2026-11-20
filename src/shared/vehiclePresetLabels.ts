@@ -1,4 +1,4 @@
-/** Display names for preset index 0…12 (order = physics/vehicle/presets). */
+/** Display names for preset index 0…13 (order = `ALL_PRESETS` in physics/vehicle/presets). */
 export const VEHICLE_PRESET_LABELS = [
   'Sliding strut',
   'Double wishbone',
@@ -13,4 +13,5 @@ export const VEHICLE_PRESET_LABELS = [
   'Trophy Truck',
   'Motorcycle',
   'Moped',
+  'Tracked vehicle',
 ] as const;

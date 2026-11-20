@@ -5,6 +5,7 @@ import type { DriverInput } from '../../../shared/driverInput';
 import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
 import { applyAirDrag } from '../parts/drive';
 import { applyTrackDrive } from './applyTrackDrive';
+import { updateCornerTelemetry } from '../parts/telemetry';
 import { buildTrackedVehicle, type BuiltTracked } from './buildTracked';
 
 const _q = new Quaternion();
@@ -41,6 +42,11 @@ export class TrackedVehicle {
     this.forwardSpeed = _v.x * lv.x + _v.y * lv.y + _v.z * lv.z;
     applyTrackDrive(this.corners, this.spec, input, this.forwardSpeed);
     applyAirDrag(this.chassis, dt, !!input.boost);
+  }
+
+  /** after world.step(): refresh telemetry. */
+  updateTelemetry(): void {
+    updateCornerTelemetry(this.chassis, this.corners);
   }
 
   dispose(): void {

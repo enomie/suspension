@@ -41,8 +41,8 @@ export function linkMatrix(pose: ChainPose, x: number, out: Matrix4): Matrix4 {
 /**
  * The visible chain of a tracked vehicle: the link asset repeated along the chain loop on both sides.
  * One instanced mesh per part of the link (a few draw calls in total). Add `group` to the chassis group.
- * Every frame: `update(wheels, distance)` with the current wheel circles (the chain follows the suspension) and the
- * distance the track has covered.
+ * Every frame: `update(left, right, ...)` with the current wheel circles of each side (the chain follows the suspension)
+ * and the distance each track has covered.
  */
 export class ChainVisual {
   readonly group = new Group();
@@ -71,25 +71,30 @@ export class ChainVisual {
   }
 
   /**
-   * @param wheels current wheel circles (chassis-local), same wheels and order as at construction
-   * @param distance distance the track surface has moved along the ground [m], forward driving = positive
+   * @param left current wheel circles of the left track (chassis-local), same wheels and order as at construction
+   * @param right same for the right track
+   * @param distanceLeft distance the left track surface has moved along the ground [m], forward driving = positive
+   * @param distanceRight same for the right track
    */
-  update(wheels: readonly ChainCircle[], distance: number): void {
+  update(left: readonly ChainCircle[], right: readonly ChainCircle[], distanceLeft: number, distanceRight: number): void {
+    this.updateSide(0, left, distanceLeft);
+    this.updateSide(1, right, distanceRight);
+    for (const m of this.meshes) m.instanceMatrix.needsUpdate = true;
+  }
+
+  private updateSide(side: number, wheels: readonly ChainCircle[], distance: number): void {
     const loop = buildChainLoop(wheels, this.chainThickness);
     const pitch = loop.length / this.linkCount;
     const k = this.widthScale;
-    for (let side = 0; side < 2; side++) {
-      for (let i = 0; i < this.linkCount; i++) {
-        loop.at(distance + i * pitch, _pose);
-        linkMatrix(_pose, this.xs[side], _link);
-        this.asset.parts.forEach((p, j) => {
-          _pos.set(p.position[0] * k, p.position[1], p.position[2]);
-          _scale.set(p.size[0] * k, p.size[1], p.size[2]);
-          _part.compose(_pos, _q.identity(), _scale);
-          this.meshes[j].setMatrixAt(side * this.linkCount + i, _part.premultiply(_link));
-        });
-      }
+    for (let i = 0; i < this.linkCount; i++) {
+      loop.at(distance + i * pitch, _pose);
+      linkMatrix(_pose, this.xs[side], _link);
+      this.asset.parts.forEach((p, j) => {
+        _pos.set(p.position[0] * k, p.position[1], p.position[2]);
+        _scale.set(p.size[0] * k, p.size[1], p.size[2]);
+        _part.compose(_pos, _q.identity(), _scale);
+        this.meshes[j].setMatrixAt(side * this.linkCount + i, _part.premultiply(_link));
+      });
     }
-    for (const m of this.meshes) m.instanceMatrix.needsUpdate = true;
   }
 }

@@ -1,6 +1,6 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import { BODY_STRIDE, CORNER_STRIDE, HEADER, snapshotLength } from '../../shared/snapshot';
-import type { Vehicle } from './Vehicle';
+import type { SimVehicle } from './simVehicle';
 
 /**
  * vehicle state as snapshot (format: shared/snapshot.ts) — for worker AND projects without worker:
@@ -8,7 +8,7 @@ import type { Vehicle } from './Vehicle';
  * `bodies` = poseBodies(vehicle.built) (Reihenfolge = Layout-Indizes), `origin` = Floating Origin (sonst {0,0}).
  */
 export function writeVehicleSnapshot(
-  vehicle: Vehicle,
+  vehicle: Pick<SimVehicle, 'forwardSpeed' | 'corners'>,
   bodies: RAPIER.RigidBody[],
   opts: { gen?: number; stamp?: number; origin?: { x: number; z: number }; out?: Float64Array } = {},
 ): Float64Array {

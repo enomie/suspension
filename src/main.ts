@@ -68,8 +68,8 @@ const showVehicle = () => {
   keyboard.resetDiffLock();
   scene.add(vehicle.root);
   vehiclePicker.setPreset(physics.preset);
-  // a preset fills the custom panel (same concept); a custom vehicle came from the panel, which already shows it
-  if (physics.preset >= 0) customPanel.load(customFromSpec(physics.layout.spec));
+  // a wheeled preset fills the custom panel (same concept; the panel has no tracked fields yet); a custom vehicle came from the panel, which already shows it
+  if (physics.preset >= 0 && !physics.layout.tracked) customPanel.load(customFromSpec(physics.layout.spec));
 };
 physics.onVehicle = showVehicle;
 showVehicle();
