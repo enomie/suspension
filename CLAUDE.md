@@ -11,6 +11,9 @@
 - Goal: production status, so the suspension code can be integrated into other games.
 - The codebase is small; write it properly now (clean API, no hacks, documented, tested) rather than patching later.
 
+## Wheels
+- Wheel colliders are rounded cylinders and tori (hull), decided. Never ball colliders, and do not ask about it again.
+
 ## Language
 - Conversation, answers, documentation, comments, and UI labels: **English only**.
 - Code identifiers stay as they are (already English).

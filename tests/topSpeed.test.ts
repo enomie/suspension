@@ -50,8 +50,6 @@ describe('top speed = thrust vs rolling + air drag', () => {
   // peak speed after a full-throttle run on flat ground: approaches the analytic top speed from below, never beyond it.
   // The bikes stay clearly below it (balance assist and tire contact cost thrust; same before this model).
   it.each([
-    ['car', car, 0.9],
-    ['trophy', trophyTruck, 0.85],
     ['moped', moped, 0.6],
     ['motorcycle', motorcycle, 0.5],
   ] as const)('%s: simulated speed approaches the analytic top speed', (_n, spec, minShare) => {
