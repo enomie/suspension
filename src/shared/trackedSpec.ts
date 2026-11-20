@@ -42,6 +42,8 @@ export interface TrackedVehicleSpec {
   /** name of the standardized chain link asset (`Drive_Chain_Link.json`), scaled across its width to `beltWidth` */
   linkAsset: string;
   drive: DriveSpec;
+  /** speed difference of the tracks at full steer [m/s], default `DEFAULT_TURN_SPEED`: higher = tighter turns */
+  turnSpeed?: number;
 }
 
 /** Value limits of a tracked vehicle [min, max] */
@@ -54,6 +56,7 @@ export const TRACKED_LIMITS = {
   endWheelY: [-0.8, 1.2],
   beltWidth: [0.2, 1],
   chainThickness: [0.01, 0.15],
+  turnSpeed: [0.5, 6],
 } as const;
 
 const inRange = (v: number, [min, max]: readonly [number, number] | readonly number[]): boolean => v >= min && v <= max;
@@ -72,6 +75,7 @@ export function validateTrackedSpec(spec: TrackedVehicleSpec): string[] {
   if (!inRange(spec.beltWidth, L.beltWidth)) errors.push(`beltWidth ${spec.beltWidth} outside ${L.beltWidth[0]}…${L.beltWidth[1]}`);
   if (!inRange(spec.chainThickness, L.chainThickness)) errors.push(`chainThickness ${spec.chainThickness} outside ${L.chainThickness[0]}…${L.chainThickness[1]}`);
   if (spec.track < spec.beltWidth) errors.push(`track ${spec.track} is smaller than beltWidth ${spec.beltWidth}: the tracks would overlap`);
+  if (spec.turnSpeed !== undefined && !inRange(spec.turnSpeed, L.turnSpeed)) errors.push(`turnSpeed ${spec.turnSpeed} outside ${L.turnSpeed[0]}…${L.turnSpeed[1]}`);
   if (!spec.linkAsset) errors.push('linkAsset is empty');
 
   axles.forEach((a, i) => {

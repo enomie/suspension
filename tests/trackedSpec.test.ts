@@ -94,6 +94,14 @@ describe('validateTrackedSpec', () => {
     expect(msg).toContain('linkAsset');
   });
 
+  it('checks the turn speed when given', () => {
+    const s = spec();
+    s.turnSpeed = 2.5;
+    expect(validateTrackedSpec(s)).toEqual([]);
+    s.turnSpeed = 20;
+    expect(validateTrackedSpec(s).join()).toContain('turnSpeed');
+  });
+
   it('checks end wheel radius and width limits', () => {
     const s = spec();
     s.idler.radius = 0.01;
