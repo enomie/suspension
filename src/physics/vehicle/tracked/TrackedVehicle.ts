@@ -5,6 +5,7 @@ import type { DriverInput } from '../../../shared/driverInput';
 import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
 import { applyAirDrag } from '../parts/drive';
 import { applyTrackDrive } from './applyTrackDrive';
+import { TrackContact } from './trackContact';
 import { updateCornerTelemetry } from '../parts/telemetry';
 import { buildTrackedVehicle, type BuiltTracked } from './buildTracked';
 
@@ -16,6 +17,8 @@ export class TrackedVehicle {
   readonly built: BuiltTracked;
   /** forward speed [m/s] (+ = chassis −Z) */
   forwardSpeed = 0;
+  /** contact of the chain with the ground between the wheels */
+  readonly contact: TrackContact;
 
   constructor(
     R: typeof RAPIER,
@@ -24,6 +27,7 @@ export class TrackedVehicle {
     pos: { x: number; y: number; z: number },
   ) {
     this.built = buildTrackedVehicle(R, world, spec, pos);
+    this.contact = new TrackContact(R, world, spec, this.built.chassis, this.built.corners);
   }
 
   get chassis(): RAPIER.RigidBody {
@@ -40,7 +44,8 @@ export class TrackedVehicle {
     _q.set(rot.x, rot.y, rot.z, rot.w);
     _v.set(0, 0, -1).applyQuaternion(_q);
     this.forwardSpeed = _v.x * lv.x + _v.y * lv.y + _v.z * lv.z;
-    applyTrackDrive(this.corners, this.spec, input, this.forwardSpeed);
+    const { cmd, contactCap } = applyTrackDrive(this.corners, this.spec, input, this.forwardSpeed, this.contact.spanThrust);
+    this.contact.apply(cmd, contactCap, dt);
     applyAirDrag(this.chassis, dt, !!input.boost);
   }
 
