@@ -9,6 +9,7 @@ import { createFrameVisual } from './frameVisual';
 import { LinkRenderer, type BodyPoses } from './linkVisual';
 import { createMountPlates } from './mountVisual';
 import { createDifferentialMarkers } from './differentialVisual';
+import { createComMarker } from './comVisual';
 import { createPreviewBox } from './previewBoxVisual';
 import { JointRenderer } from './jointVisual';
 
@@ -88,6 +89,7 @@ export class VehicleVisual implements BodyPoses {
   readonly absPos = new Vector3();
   private wheels: Group[];
   private frame: Mesh;
+  private com: Mesh;
   private links: LinkRenderer;
   private joints: JointRenderer;
   private state: Float64Array | null = null;
@@ -105,6 +107,8 @@ export class VehicleVisual implements BodyPoses {
     this.frame = createFrameVisual(layout.spec);
     this.frame.visible = layout.spec.chassis.frame !== false;
     this.chassis.add(this.frame, createMountPlates(layout.mounts), createDifferentialMarkers(layout.spec));
+    this.com = createComMarker(layout.spec);
+    this.chassis.add(this.com);
     const box = createPreviewBox(layout.spec);
     if (box) this.chassis.add(box);
     this.wheels = layout.corners.map((c) => {
@@ -177,6 +181,11 @@ export class VehicleVisual implements BodyPoses {
   /** show/hide ladder frame (suspension and wheels stay visible) */
   setFrameVisible(on: boolean): void {
     this.frame.visible = on && this.spec.chassis.frame !== false;
+  }
+
+  /** Show or hide the white centre-of-mass marker (debug) */
+  setComVisible(on: boolean): void {
+    this.com.visible = on;
   }
 
   /** Show or hide the joint markers (balls and hinge cylinders) */

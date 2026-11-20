@@ -45,3 +45,14 @@ describe('preview box', () => {
     expect(createPreviewBox(buildCustomSpec({ ...DEFAULT_CUSTOM, colliderBox: false }))).toBeNull();
   });
 });
+
+describe('centre of mass marker', () => {
+  it('sits at the profile COM offset and can be hidden', async () => {
+    const { createComMarker } = await import('../src/render/vehicle/comVisual');
+    const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, comOffset: [0.1, -0.3, 0.4] });
+    const m = createComMarker(spec);
+    expect(m.position.toArray()).toEqual([0.1, -0.3, 0.4]);
+    m.visible = false;
+    expect(m.visible).toBe(false);
+  });
+});

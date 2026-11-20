@@ -5,7 +5,7 @@ export class VehiclePicker {
   readonly select: HTMLSelectElement;
   private syncing = false;
 
-  constructor(parent: HTMLElement, onSelect: (preset: number) => void, onFrame: (visible: boolean) => void, onJoints: (visible: boolean) => void) {
+  constructor(parent: HTMLElement, onSelect: (preset: number) => void, onFrame: (visible: boolean) => void, onJoints: (visible: boolean) => void, onCom: (visible: boolean) => void) {
     const wrap = document.createElement('div');
     wrap.id = 'vehicle-picker';
     const label = document.createElement('label');
@@ -33,7 +33,7 @@ export class VehiclePicker {
       l.append(box, ` ${text}`);
       return l;
     };
-    wrap.append(label, this.select, toggle('Ladder frame', onFrame), toggle('Joints', onJoints));
+    wrap.append(label, this.select, toggle('Ladder frame', onFrame), toggle('Joints', onJoints), toggle('Center of mass', onCom));
     parent.appendChild(wrap);
   }
 

@@ -9,5 +9,6 @@ export { JointRenderer } from './jointVisual';
 export { createMountPlates } from './mountVisual';
 export { createFrameVisual } from './frameVisual';
 export { createDifferentialMarkers } from './differentialVisual';
+export { createComMarker } from './comVisual';
 export { createPreviewBox } from './previewBoxVisual';
 export { MAT } from './materials';
