@@ -28,7 +28,7 @@ const SEAT_THICKNESS = 0.012;
 const SLIM = { spring: 0.09, seat: 0.11, seatThickness: 0.01 };
 const KNUCKLE: [number, number, number] = [0.07, 0.24, 0.12];
 /** knuckle box offset inboard (knuckle-local X) to sit behind brake disc [m] */
-export const KNUCKLE_INBOARD = 0.05;
+const KNUCKLE_INBOARD = 0.05;
 const DAMPER_TUBE = 0.2;
 
 function world(poses: BodyPoses, at: BodyPoint, out: Vector3): Vector3 {

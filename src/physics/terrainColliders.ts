@@ -13,13 +13,6 @@ function fillColumns(h: Float32Array, ix: number, iz: number, fromCol: number, t
     for (let row = 0; row < S1; row++) h[col * S1 + row] = sampleTerrainHeightWorld(x0 + col * CELL, z0 + row * CELL);
 }
 
-/** heightfield tile (absolute grid, 0.5 m), complete */
-export function tileHeights(ix: number, iz: number): Float32Array {
-  const h = new Float32Array(S1 * S1);
-  fillColumns(h, ix, iz, 0, S1);
-  return h;
-}
-
 interface Job {
   key: string;
   ix: number;

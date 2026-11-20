@@ -1,7 +1,7 @@
 # Requirements: custom vehicle profile
 
 Status: implemented (physics, panel, preview). Open points are marked **Q**.
-How to use the profile in another project: `src/docs/INTEGRATION_VEHICLE.md`, section "Custom vehicle profile".
+How to use the profile in another project: [INTEGRATION_VEHICLE.md](INTEGRATION_VEHICLE.md), section "Custom vehicle profile".
 
 ## Goal
 - Production status, so suspension can be integrated into other games.

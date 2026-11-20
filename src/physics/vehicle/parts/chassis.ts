@@ -9,14 +9,14 @@ import { FRAME_RAIL, FRAME_RAIL_X, frameRailY } from '../../../shared/vehicleSpe
  * Formerly: full box `size` → invisible, landed on ground waves and snagged on
  * triangle edges ("invisible wall"). rounding lets the frame slide over edges.
  */
-export function frameColliderBox(spec: ChassisSpec, halfLength = spec.size[2] / 2): { half: [number, number, number]; y: number } {
+function frameColliderBox(spec: ChassisSpec, halfLength = spec.size[2] / 2): { half: [number, number, number]; y: number } {
   const h = spec.size[1];
   const y = frameRailY(h);
   return { half: [FRAME_RAIL_X + FRAME_RAIL / 2, FRAME_RAIL / 2 + 0.01, halfLength], y };
 }
 
 /** collider primitive → Rapier ColliderDesc (chassis-local) */
-export function primitiveDesc(R: typeof RAPIER, p: ColliderPrimitive): RAPIER.ColliderDesc {
+function primitiveDesc(R: typeof RAPIER, p: ColliderPrimitive): RAPIER.ColliderDesc {
   const r = p.rounded ?? 0;
   let d: RAPIER.ColliderDesc;
   switch (p.shape) {

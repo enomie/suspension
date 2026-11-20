@@ -107,7 +107,7 @@ export function rope(ctx: BuildContext, b1: RAPIER.RigidBody, w1: P, b2: RAPIER.
 }
 
 /** spring/damper values at wheel center */
-export interface WheelRate {
+interface WheelRate {
   kWheel: number;
   cWheel: number;
   /** static load per wheel [N] */

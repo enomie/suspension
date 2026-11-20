@@ -44,3 +44,4 @@ Docs live **in `src/`** so they travel with the code when copied: [src/README.md
 | [src/docs/TERRAIN.md](src/docs/TERRAIN.md) | Grid, generator, LOD, geomorphing |
 | [src/docs/VEHICLE_KIT.md](src/docs/VEHICLE_KIT.md) | Concepts, parts, joints, Rapier rules |
 | [src/docs/VEHICLE_PLAN.md](src/docs/VEHICLE_PLAN.md) | Decisions, status |
+| [src/docs/requirements.md](src/docs/requirements.md) | Custom vehicle profile: requirements and decisions |
