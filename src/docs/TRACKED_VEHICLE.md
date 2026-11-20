@@ -66,7 +66,7 @@ Forward = −Z, `z` and `y` are relative to the chassis origin (`y` = wheel cent
 | `chainThickness` | Thickness of the chain around the wheels |
 | `linkAsset` | Name of the link asset |
 | `drive` | `maxTorque`, `maxPower`, `reverseSpeed`, optional `maxSlipSpeed` |
-| `turnSpeed` | Optional: speed difference of the tracks at full steer, default 2.5 m/s |
+| `turnSpeed` | Optional: speed difference of the tracks at full steer, default 3 m/s |
 
 `validateTrackedSpec()` returns one message per problem: axle count, order and overlap, strut only, idler in front
 of and sprocket behind the road wheels, tracks not overlapping, values within `TRACKED_LIMITS`.
@@ -78,18 +78,25 @@ one: it corrects values instead of rejecting them.
 `trackCommand(side, input, forwardSpeed, params)` returns what one track does. Priority: handbrake, brake,
 drive, idle.
 
-- **Throttle:** both tracks run at the vehicle speed plus the slip allowance, with up to the throttle's share of the thrust.
-- **Steering:** steer +1 (left) slows the left track and speeds up the right one by `turnSpeed`. The slip allowance fades with steering, so the inner track does not hold the vehicle speed and fight the turn.
+- **Mixing:** throttle and steering are mixed like a tank's two sticks. Each track gets `throttle ∓ steer`; if that exceeds full power, both are scaled down together, so the turn keeps its ratio. The engine thrust is shared between the tracks by their demand, so one track alone gets all of it.
+- **Throttle:** both tracks run at the vehicle speed plus the slip allowance, with their share of the thrust.
+- **Steering:** steer +1 (left) slows the left track and speeds up the right one by `turnSpeed`. The slip allowance fades with steering, so the inner track does not hold the vehicle speed.
+- **Turning while driving:** the inner track brakes to its slower speed. Half steer gives a wide arc (about 28 m radius at 7 m/s for the tank); full steer brakes the inner track hard, so the vehicle slows and pivots.
 - **Turn on the spot:** without throttle the tracks run in opposite directions.
 - **Brake:** brake at standstill reverses (up to `reverseSpeed`); brake while moving, or throttle while moving backwards, brakes. Holding the brake until it reverses is the same as on a wheeled vehicle.
-- **Handbrake / no input:** the handbrake parks the vehicle; with no input the tracks hold it with 30 % of the brake torque.
+- **Handbrake / no input:** both hold the vehicle with the full brake torque, so it stays parked on a slope. A tracked vehicle stops when the input is released.
 
-`applyTrackDrive()` sets the velocity motor of every road wheel from its side's command. The torque cap is the thrust
-(torque limit at low speed, power limit at high speed) split evenly over all road wheels. A road wheel's radius includes
-the chain, so speeds are at the outer surface of the track.
+`applyTrackDrive()` sets the velocity motor of every road wheel from its side's command. The thrust (torque limit at low
+speed, power limit at high speed) is split evenly over the road wheels of a track. A road wheel's radius includes the
+chain, so speeds are at the outer surface of the track.
 
-Skid steering needs low friction: a heavy vehicle with car-like wheel friction (1.1) hardly turns. The preset and the custom
-panel use 0.3.
+### Climbing
+
+Thrust at low speed is `maxTorque / (wheel radius + chain)`. The tank preset has 44 000 N·m, about its own weight in thrust
+(weight 12.8 t = 126 kN, thrust 126 kN): enough for steep slopes. What limits the climb is traction, not torque:
+measured in simulation on a plane (not part of the test suite), the tank climbs 20° at any wheel friction, 30° from a wheel friction of about 0.6
+(ground friction 0.95 combines by average), and slips on 40° and more whatever the friction. Wheel friction in the preset
+and the custom panel is 0.8. Turning on the spot works at every friction tried (0.3 to 1.0) at this thrust.
 
 ## Chain
 

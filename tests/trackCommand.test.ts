@@ -3,6 +3,7 @@ import { neutralInput, type DriverInput } from '../src/shared/driverInput';
 import { HANDBRAKE_FACTOR, IDLE_HOLD_SHARE, trackCommand, type TrackDriveParams } from '../src/shared/trackDrive';
 
 const P: TrackDriveParams = { reverseSpeed: 5, slipSpeed: 2.5, turnSpeed: 2 };
+const amounts = (i: DriverInput, v = 0) => [trackCommand('L', i, v, P).amount, trackCommand('R', i, v, P).amount];
 const input = (o: Partial<DriverInput>): DriverInput => ({ ...neutralInput(), ...o });
 
 describe('trackCommand', () => {
@@ -74,6 +75,25 @@ describe('trackCommand', () => {
   it('handbrake wins over everything', () => {
     expect(trackCommand('L', input({ throttle: 1, steer: 1, handbrake: true }), 3, P)).toEqual({ mode: 'park', speed: 0, amount: 1 });
     expect(HANDBRAKE_FACTOR).toBeGreaterThan(1);
+  });
+
+  it('mixes throttle and steering like two sticks: the inner track gets less power, the outer one more', () => {
+    expect(amounts(input({ throttle: 1, steer: 0 }))).toEqual([1, 1]);
+    const [l, r] = amounts(input({ throttle: 0.6, steer: 0.3 }));
+    expect(l).toBeCloseTo(0.3, 9);
+    expect(r).toBeCloseTo(0.9, 9);
+  });
+
+  it('scales a demand above full power down on both tracks, keeping the ratio', () => {
+    const [l, r] = amounts(input({ throttle: 1, steer: 0.5 }));
+    expect(r).toBe(1);
+    expect(l).toBeCloseTo(0.5 / 1.5, 9);
+    // full throttle and full steer: one track only
+    expect(amounts(input({ throttle: 1, steer: 1 }))).toEqual([0, 1]);
+  });
+
+  it('steer without throttle drives both tracks at the steer share, in opposite directions', () => {
+    expect(amounts(input({ steer: 0.4 }))).toEqual([0.4, 0.4]);
   });
 
   it('steer outside −1…1 is clamped', () => {

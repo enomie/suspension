@@ -70,15 +70,15 @@ export const DEFAULT_CUSTOM_TRACKED: CustomTrackedConfig = {
   idler: { distance: 0.9, raise: 0.15, radius: 0.3, width: 0.45 },
   sprocket: { distance: 0.9, raise: 0.45, radius: 0.35, width: 0.45 },
   weight: 12800,
-  torque: 24000,
+  torque: 44000,
   power: 400,
   turnSpeed: DEFAULT_TURN_SPEED,
 };
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, x));
 
-/** Road wheel friction: low, so the tracks can skid-steer (a heavy vehicle with car-like friction hardly turns) */
-const WHEEL_FRICTION = 0.3;
+/** Road wheel friction: high enough to climb steep slopes (traction, not torque, limits the climb); the tracks still skid-steer at this thrust */
+const WHEEL_FRICTION = 0.8;
 /** Road wheel mass [kg] at radius 0.3 m, scaled with the radius squared */
 const WHEEL_MASS_AT_0_3 = 100;
 /** Chassis mass never drops below this, whatever the wheels weigh [kg] */

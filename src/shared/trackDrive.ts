@@ -8,11 +8,13 @@ import type { DriverInput } from './driverInput';
  */
 
 /** track speed difference at full steer [m/s]: each track runs this much faster (outer) or slower (inner) than the base speed */
-export const DEFAULT_TURN_SPEED = 2.5;
+export const DEFAULT_TURN_SPEED = 3;
 /** below this speed [m/s], brake switches to reverse (as for wheeled vehicles) */
 export const REVERSE_THRESHOLD = 0.6;
-/** share of the brake torque that holds an idle vehicle (no input): it stops and stays parked instead of rolling on */
-export const IDLE_HOLD_SHARE = 0.3;
+/** a track counts as slowing down when its target is this much below the vehicle speed [m/s] */
+const SLOW_MARGIN = 0.1;
+/** share of the brake torque that holds an idle vehicle (no input): a tracked vehicle stops and stays parked, also on a slope */
+export const IDLE_HOLD_SHARE = 1;
 /** handbrake: brake torque is multiplied by this, so it holds the vehicle on a slope */
 export const HANDBRAKE_FACTOR = 10;
 
@@ -30,7 +32,7 @@ export interface TrackDriveParams {
 /**
  * What one track does:
  *  - `drive`: run at `speed` [m/s, + = forward] with up to `amount` (0…1) of the drive torque cap
- *  - `brake`: hold at 0 with `amount` of the brake torque
+ *  - `brake`: run at `speed` (0 = stop) with `amount` of the brake torque; while driving, the inner track of a turn brakes to its slower speed
  *  - `hold`: hold at 0 with the idle share of the brake torque
  *  - `park`: hold at 0 with the handbrake torque
  */
@@ -53,21 +55,27 @@ export function trackCommand(side: TrackSide, input: DriverInput, forwardSpeed: 
   if (braking) return { mode: 'brake', speed: 0, amount: input.brake > 0 ? input.brake : input.throttle };
 
   const steer = Math.max(-1, Math.min(1, input.steer));
-  let base = 0;
-  let amount = Math.abs(steer);
+  // throttle and steering are mixed like a tank's two sticks: each track gets `throttle ∓ steer`; if that exceeds
+  // full power, both are scaled down together so the turn keeps its ratio (full throttle + full steer = one track only)
+  const t = wantsReverse ? -input.brake : input.throttle;
+  const left = t - steer;
+  const right = t + steer;
+  const scale = Math.max(1, Math.abs(left), Math.abs(right));
+  const amount = Math.abs(side === 'L' ? left : right) / scale;
+  if (t === 0 && steer === 0) return { mode: 'hold', speed: 0, amount: IDLE_HOLD_SHARE };
+
   // the slip allowance fades with steering: at full steer the tracks differ by ±turnSpeed around the vehicle speed
   // (otherwise the inner track would hold the vehicle speed and fight the turn)
   const slip = p.slipSpeed * (1 - Math.abs(steer));
-  if (wantsReverse) {
-    base = -Math.min(p.reverseSpeed, Math.max(0, -forwardSpeed) + slip);
-    amount = Math.max(amount, input.brake);
-  } else if (input.throttle > 0) {
-    base = Math.max(0, forwardSpeed) + slip;
-    amount = Math.max(amount, input.throttle);
-  }
-  if (amount === 0) return { mode: 'hold', speed: 0, amount: IDLE_HOLD_SHARE };
+  let base = 0;
+  if (wantsReverse) base = -Math.min(p.reverseSpeed, Math.max(0, -forwardSpeed) + slip);
+  else if (input.throttle > 0) base = Math.max(0, forwardSpeed) + slip;
 
   // left turn (steer > 0): left track slower, right track faster
   const turn = (side === 'L' ? -steer : steer) * p.turnSpeed;
-  return { mode: 'drive', speed: base + turn, amount };
+  const speed = base + turn;
+  // driving on, the inner track of a turn has to slow down: it brakes (the engine thrust all goes to the outer track)
+  if (input.throttle > 0 && forwardSpeed > REVERSE_THRESHOLD && speed < forwardSpeed - SLOW_MARGIN && steer !== 0)
+    return { mode: 'brake', speed, amount: Math.abs(steer) };
+  return { mode: 'drive', speed, amount };
 }
