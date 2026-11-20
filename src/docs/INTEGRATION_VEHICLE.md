@@ -154,7 +154,7 @@ else types sit at different ride heights.
    (template: `tests/suspensions.test.ts`, `tests/invisibleWall.test.ts`).
 
 ## 4.5 Custom vehicle profile (the part another game needs)
-Pure data in `shared/customVehicle.ts`; `buildCustomSpec(config)` turns it into a `VehicleSpec` (invalid values are clamped or corrected,
+Pure data in `shared/customVehicle.ts` (limits, suspension rules and labels live in `shared/customRules.ts`, re-exported); `buildCustomSpec(config)` turns it into a `VehicleSpec` (invalid values are clamped or corrected,
 limits in `CUSTOM_LIMITS`), `customFromSpec(spec)` goes back. Use `DEFAULT_CUSTOM` as the starting point.
 
 | Field | Meaning |
