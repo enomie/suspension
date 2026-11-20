@@ -1,7 +1,7 @@
 import type { Corner } from '../types';
 import type { DriverInput } from '../../../shared/driverInput';
 import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
-import { DEFAULT_TURN_SPEED, HANDBRAKE_FACTOR, trackCommand, type TrackDriveParams } from '../../../shared/trackDrive';
+import { DEFAULT_MAX_SPEED, DEFAULT_TURN_SPEED, HANDBRAKE_FACTOR, trackCommand, type TrackDriveParams } from '../../../shared/trackDrive';
 import { DEFAULT_MAX_SLIP_SPEED, MOTOR_FACTOR } from '../parts/drive';
 
 /** thrust of the whole vehicle at the track surface [N] at speed v: torque-limited at low, power-limited at high speed */
@@ -20,6 +20,7 @@ export function applyTrackDrive(corners: Corner[], spec: TrackedVehicleSpec, inp
     reverseSpeed: spec.drive.reverseSpeed,
     slipSpeed: spec.drive.maxSlipSpeed ?? DEFAULT_MAX_SLIP_SPEED,
     turnSpeed: spec.turnSpeed ?? DEFAULT_TURN_SPEED,
+    maxSpeed: spec.maxSpeed ?? DEFAULT_MAX_SPEED,
   };
   const left = trackCommand('L', input, forwardSpeed, params);
   const right = trackCommand('R', input, forwardSpeed, params);

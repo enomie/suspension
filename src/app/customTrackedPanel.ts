@@ -49,6 +49,7 @@ export class CustomTrackedSection {
       field('Weight (kg)', num(() => c().weight, (v) => (c().weight = v), L.weight, 100)),
       field('Torque (N·m)', num(() => c().torque, (v) => (c().torque = v), L.torque, 500)),
       field('Power (kW)', num(() => c().power, (v) => (c().power = v), L.power, 10)),
+      field('Top speed (m/s)', num(() => c().maxSpeed, (v) => (c().maxSpeed = v), L.maxSpeed, 1)),
       field('Turn speed (m/s)', num(() => c().turnSpeed, (v) => (c().turnSpeed = v), L.turnSpeed, 0.1)),
     );
   }

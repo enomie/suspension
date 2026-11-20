@@ -9,6 +9,11 @@ import type { DriverInput } from './driverInput';
 
 /** track speed difference at full steer [m/s]: each track runs this much faster (outer) or slower (inner) than the base speed */
 export const DEFAULT_TURN_SPEED = 3;
+/**
+ * default top speed [m/s]: the tank gets unstable (spins out without steering) at about 16 m/s, so the drive does not push beyond this.
+ * There is no other speed limit: thrust against rolling and air drag alone would allow over 300 km/h.
+ */
+export const DEFAULT_MAX_SPEED = 13;
 /** below this speed [m/s], brake switches to reverse (as for wheeled vehicles) */
 export const REVERSE_THRESHOLD = 0.6;
 /** a track counts as slowing down when its target is this much below the vehicle speed [m/s] */
@@ -27,6 +32,8 @@ export interface TrackDriveParams {
   slipSpeed: number;
   /** speed difference per track at full steer [m/s] */
   turnSpeed: number;
+  /** top speed forward [m/s]: the motors do not push the vehicle beyond it */
+  maxSpeed: number;
 }
 
 /**
@@ -69,7 +76,7 @@ export function trackCommand(side: TrackSide, input: DriverInput, forwardSpeed: 
   const slip = p.slipSpeed * (1 - Math.abs(steer));
   let base = 0;
   if (wantsReverse) base = -Math.min(p.reverseSpeed, Math.max(0, -forwardSpeed) + slip);
-  else if (input.throttle > 0) base = Math.max(0, forwardSpeed) + slip;
+  else if (input.throttle > 0) base = Math.min(p.maxSpeed, Math.max(0, forwardSpeed) + slip);
 
   // left turn (steer > 0): left track slower, right track faster
   const turn = (side === 'L' ? -steer : steer) * p.turnSpeed;

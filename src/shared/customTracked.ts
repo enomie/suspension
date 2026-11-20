@@ -1,5 +1,5 @@
 import { PLACEHOLDER_CHAIN_LINK } from './chainLink';
-import { DEFAULT_TURN_SPEED } from './trackDrive';
+import { DEFAULT_MAX_SPEED, DEFAULT_TURN_SPEED } from './trackDrive';
 import { TRACKED_LIMITS, type TrackedVehicleSpec } from './trackedSpec';
 import type { AxleSpec } from './vehicleSpec';
 
@@ -41,6 +41,8 @@ export interface CustomTrackedConfig {
   power: number;
   /** track speed difference at full steer [m/s] */
   turnSpeed: number;
+  /** top speed forward [m/s] */
+  maxSpeed: number;
 }
 
 export const CUSTOM_TRACKED_LIMITS = {
@@ -58,6 +60,7 @@ export const CUSTOM_TRACKED_LIMITS = {
   torque: [2000, 100000],
   power: [50, 2000],
   turnSpeed: TRACKED_LIMITS.turnSpeed,
+  maxSpeed: TRACKED_LIMITS.maxSpeed,
 } as const;
 
 export const DEFAULT_CUSTOM_TRACKED: CustomTrackedConfig = {
@@ -67,12 +70,13 @@ export const DEFAULT_CUSTOM_TRACKED: CustomTrackedConfig = {
   track: 2,
   beltWidth: 0.55,
   chainThickness: 0.05,
-  idler: { distance: 0.9, raise: 0.15, radius: 0.3, width: 0.45 },
-  sprocket: { distance: 0.9, raise: 0.45, radius: 0.35, width: 0.45 },
+  idler: { distance: 0.9, raise: 0.25, radius: 0.2, width: 0.45 },
+  sprocket: { distance: 0.9, raise: 0.3, radius: 0.25, width: 0.45 },
   weight: 12800,
   torque: 44000,
   power: 400,
   turnSpeed: DEFAULT_TURN_SPEED,
+  maxSpeed: DEFAULT_MAX_SPEED,
 };
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, x));
@@ -145,6 +149,7 @@ export function buildTrackedSpec(config: CustomTrackedConfig): TrackedVehicleSpe
     linkAsset: PLACEHOLDER_CHAIN_LINK.name,
     drive: { maxTorque: clamp(config.torque, L.torque), maxPower: 1000 * clamp(config.power, L.power), reverseSpeed: 5 },
     turnSpeed: clamp(config.turnSpeed, L.turnSpeed),
+    maxSpeed: clamp(config.maxSpeed, L.maxSpeed),
   };
 }
 
@@ -186,5 +191,6 @@ function configFromSpec(spec: TrackedVehicleSpec): CustomTrackedConfig {
     torque: clamp(spec.drive.maxTorque, L.torque),
     power: clamp(spec.drive.maxPower / 1000, L.power),
     turnSpeed: clamp(spec.turnSpeed ?? DEFAULT_TURN_SPEED, L.turnSpeed),
+    maxSpeed: clamp(spec.maxSpeed ?? DEFAULT_MAX_SPEED, L.maxSpeed),
   };
 }

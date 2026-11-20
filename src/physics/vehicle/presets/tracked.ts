@@ -13,15 +13,15 @@ const roadAxle = (z: number): AxleSpec => ({
   brake: { torque: 4700 },
 });
 
-/** Medium tank: 4 road axles, raised sprocket at the rear, idler at the front */
+/** Medium tank: 4 road axles, idler at the front, sprocket at the rear, both a little raised */
 export const tank: TrackedVehicleSpec = {
   type: 'tracked',
   name: 'tank',
   label: 'Tracked vehicle',
   chassis: { size: [2.4, 0.6, 5], mass: 12000 },
   axles: [-1.5, -0.5, 0.5, 1.5].map(roadAxle),
-  idler: { z: -2.4, y: -0.35, radius: 0.3, width: 0.45 },
-  sprocket: { z: 2.4, y: -0.05, radius: 0.35, width: 0.45 },
+  idler: { z: -2.4, y: -0.25, radius: 0.2, width: 0.45 },
+  sprocket: { z: 2.4, y: -0.2, radius: 0.25, width: 0.45 },
   track: 2,
   beltWidth: 0.55,
   chainThickness: 0.05,
