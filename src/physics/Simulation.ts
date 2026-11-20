@@ -9,7 +9,8 @@ import { ORIGIN } from '../shared/origin';
 import { OriginShifter } from '../shared/originShifter';
 import { PHYSICS_DT, PHYSICS_SUBSTEPS } from '../shared/stepClock';
 import { writeVehicleSnapshot } from './vehicle/snapshot';
-import type { DriverInput, VehicleSpec } from '../shared/vehicleSpec';
+import { neutralInput, type DriverInput } from '../shared/driverInput';
+import type { VehicleSpec } from '../shared/vehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import { setTerrain, type TerrainConfig } from '../shared/terrain';
 
@@ -26,7 +27,7 @@ export class Simulation {
   private bodies: RAPIER.RigidBody[];
   gen = 0;
   preset: number;
-  input: DriverInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
+  input: DriverInput = neutralInput();
 
   constructor(
     private R: typeof RAPIER,

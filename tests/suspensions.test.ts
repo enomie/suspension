@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
 import { PRESETS } from '../src/physics/vehicle/presets';
-import type { DriverInput, VehicleSpec } from '../src/physics/vehicle/types';
+import type { DriverInput } from '../src/shared/driverInput';
+import type { VehicleSpec } from '../src/physics/vehicle/types';
 
 await RAPIER.init();
 

@@ -185,17 +185,6 @@ export interface VehicleSpec {
 /** Steps the driver cycles through with the lock key: open, 25, 50, 75 %, fully locked */
 export const DIFF_LOCK_LEVELS = [0, 0.25, 0.5, 0.75, 1] as const;
 
-export interface DriverInput {
-  throttle: number; // 0…1
-  brake: number; // 0…1
-  steer: number; // −1 (rechts) … +1 (links)
-  handbrake: boolean;
-  /** Differential lock level 0…1 (see `DIFF_LOCK_LEVELS`): 0 = open, 1 = rigid like a spooled axle, between = clutch. Applies to every differential. */
-  diffLock?: number;
-  /** Boost (Shift): doubles drive torque and top speed */
-  boost?: boolean;
-}
-
 export interface CornerTelemetry {
   /** suspension travel from design ride [m], negative = compressed */
   travel: number;

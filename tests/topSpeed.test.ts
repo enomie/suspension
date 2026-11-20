@@ -6,7 +6,8 @@ import { trophyTruck } from '../src/physics/vehicle/presets/trophyTruck';
 import { moped, motorcycle } from '../src/physics/vehicle/presets/motorcycle';
 import { topSpeed } from '../src/shared/performance';
 import { PHYSICS_DT, PHYSICS_SUBSTEPS } from '../src/shared/stepClock';
-import type { DriverInput, VehicleSpec } from '../src/physics/vehicle/types';
+import type { DriverInput } from '../src/shared/driverInput';
+import type { VehicleSpec } from '../src/physics/vehicle/types';
 
 await RAPIER.init();
 
