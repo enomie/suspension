@@ -42,7 +42,8 @@ function numberInput(value: number, [min, max]: readonly [number, number], step:
 
 /**
  * Collapsible panel to assemble any vehicle: wheelbase (front to rear axle), number of axles (1–5), and per axle
- * wheels (pair, center, center double), steering mode, suspension type (the list depends on wheels and steering), drive, track width and wheel size.
+ * wheels (pair, center, center double), steering mode, suspension type (the list depends on wheels and steering), drive, differential (driven axles only),
+ * handbrake, track width and wheel size. Vehicle-wide: weight, center of mass offset, handbrake torque, engine torque and power.
  * "Apply" builds a `VehicleSpec` and hands it to `onApply`.
  */
 export class CustomPanel {
@@ -69,7 +70,16 @@ export class CustomPanel {
     const power = numberInput(this.config.power, CUSTOM_LIMITS.power, 5, (v) => ((this.config.power = v), this.refreshTopSpeed()));
     const wheelspin = numberInput(this.config.wheelspin, CUSTOM_LIMITS.wheelspin, 0.5, (v) => (this.config.wheelspin = v));
 
+    const weight = numberInput(this.config.weight, CUSTOM_LIMITS.weight, 10, (v) => ((this.config.weight = v), this.refreshTopSpeed()));
+    const handbrake = numberInput(this.config.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque, 100, (v) => (this.config.handbrakeTorque = v));
+    const com = (['x', 'y', 'z'] as const).map((axis, k) =>
+      numberInput(this.config.comOffset[k], CUSTOM_LIMITS.comOffset[axis], 0.05, (v) => (this.config.comOffset[k] = v)),
+    );
+
     this.syncInputs = () => {
+      weight.value = String(this.config.weight);
+      handbrake.value = String(this.config.handbrakeTorque);
+      com.forEach((input, k) => (input.value = String(this.config.comOffset[k])));
       wheelbase.value = String(this.config.wheelbase);
       count.value = String(this.config.axles.length);
       torque.value = String(this.config.torque);
@@ -84,6 +94,11 @@ export class CustomPanel {
       field('Wheelbase (m)', wheelbase),
       field('Axles', count),
       this.axleHost,
+      field('Weight (kg)', weight),
+      field('Center of mass x (m)', com[0]),
+      field('Center of mass y (m)', com[1]),
+      field('Center of mass z (m, − = front)', com[2]),
+      field('Handbrake torque per wheel (N·m)', handbrake),
       field('Torque (N·m)', torque),
       field('Power (kW)', power),
       field('Wheelspin (m/s)', wheelspin),
@@ -165,7 +180,15 @@ export class CustomPanel {
     susp.addEventListener('change', () => (c.suspension = susp.value as CustomAxleConfig['suspension']));
 
     const drive = el('input', { type: 'checkbox', checked: c.drive });
-    drive.addEventListener('change', () => ((c.drive = drive.checked), this.refreshTopSpeed()));
+    const differential = el('input', { type: 'checkbox', checked: c.differential, disabled: !c.drive });
+    differential.addEventListener('change', () => (c.differential = differential.checked));
+    drive.addEventListener('change', () => {
+      c.drive = drive.checked;
+      differential.disabled = !c.drive;
+      this.refreshTopSpeed();
+    });
+    const handbrake = el('input', { type: 'checkbox', checked: c.handbrake });
+    handbrake.addEventListener('change', () => (c.handbrake = handbrake.checked));
 
     return el(
       'fieldset',
@@ -179,6 +202,8 @@ export class CustomPanel {
       field('Wheel shape', shape),
       field('Width (m)', widthInput),
       field('Driven', drive),
+      field('Differential', differential),
+      field('Handbrake', handbrake),
     );
   }
 }
