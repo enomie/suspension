@@ -1,5 +1,5 @@
 import { torusWheelWidth } from './unitTorus';
-import { defaultLowerCollider, type AxleSpec, SuspensionType, Vec3, VehicleSpec, WheelShape, WheelSpec } from './vehicleSpec';
+import { FRAME_OUTER_WIDTH, defaultLowerCollider, type AxleSpec, SuspensionType, Vec3, VehicleSpec, WheelShape, WheelSpec } from './vehicleSpec';
 
 /** What a custom axle does with the steering input */
 export type SteerMode = 'none' | 'steer' | 'counter';
@@ -178,6 +178,8 @@ export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
 const RIDE_HEIGHT = 0.6;
 /** The chassis box (mass, inertia) extends this far beyond the outer axles [m]; the visible frame does not */
 const BOX_MARGIN = 0.7;
+/** Height of the inertia box and the ladder frame's reference [m] */
+const CHASSIS_HEIGHT = 0.5;
 
 /** Config → complete VehicleSpec (pure data; invalid combinations are corrected, not rejected). */
 export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
@@ -185,7 +187,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   const wheelbase = clamp(config.wheelbase, CUSTOM_LIMITS.wheelbase);
   const half = n === 1 ? 0 : wheelbase / 2;
 
-  const brakeMass = 500 + 350 * n; // sizes the service brake only; the real chassis mass comes from `weight`
+  const weight = clamp(config.weight, CUSTOM_LIMITS.weight);
   const axles: AxleSpec[] = Array.from({ length: n }, (_, i) => {
     const c = config.axles[i];
     const radius = clamp(c.wheelRadius, CUSTOM_LIMITS.wheelRadius);
@@ -194,7 +196,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
     // a steering axle needs a type that can carry a knuckle
     const allowed = suspensionsFor(c.steer, c.wheels);
     const suspension = allowed.includes(c.suspension) ? c.suspension : allowed[0];
-    const brake = (brakeMass * 12 * radius) / (2 * n);
+    const brake = (weight * 12 * radius) / (2 * n);
     return {
       z: n === 1 ? 0 : -half + (2 * half * i) / (n - 1),
       track: c.wheels === 'pair' ? clamp(c.track, CUSTOM_LIMITS.track) : 0,
@@ -212,13 +214,15 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
     };
   });
 
+  // inertia box: as wide as the widest axle track (the frame itself has a fixed width)
+  const width = Math.max(FRAME_OUTER_WIDTH, ...axles.map((a) => a.track));
   const wheelsMass = axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0);
-  const mass = Math.max(MIN_CHASSIS_MASS, clamp(config.weight, CUSTOM_LIMITS.weight) - wheelsMass);
+  const mass = Math.max(MIN_CHASSIS_MASS, weight - wheelsMass);
 
   const spec: VehicleSpec = {
     name: 'custom',
     label: 'Custom',
-    chassis: { size: [1.4, 0.5, 2 * half + 2 * BOX_MARGIN], mass, comOffset: clampCom(config.comOffset) },
+    chassis: { size: [width, CHASSIS_HEIGHT, 2 * half + 2 * BOX_MARGIN], mass, comOffset: clampCom(config.comOffset) },
     axles,
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
     drive: {

@@ -108,7 +108,7 @@ export interface LowerColliderSpec {
 }
 
 export interface ChassisSpec {
-  /** width (X), height (Y), length (Z) [m] — sets inertia (and default frame) */
+  /** width (X), height (Y), length (Z) [m] of the inertia box (and the frame height). The ladder frame itself has a fixed width. */
   size: Vec3;
   /**
    * collision from primitives. default: rounded ladder frame (= default visuals).
@@ -118,7 +118,10 @@ export interface ChassisSpec {
   /** coarse body block collider and preview box (optional) */
   lowerCollider?: LowerColliderSpec;
   mass: number;
-  /** center of mass relative to box center */
+  /**
+   * The one centre of mass, relative to the box centre. Nothing else shifts it: colliders (frame, `lowerCollider`,
+   * `colliders`) carry no mass, and the vehicle weight is the total.
+   */
   comOffset?: Vec3;
   color?: number;
   /** false = no ladder frame is drawn (single-track vehicles: only suspension and points show) */

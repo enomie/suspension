@@ -32,3 +32,19 @@ describe('collider-lower', () => {
     expect(customFromSpec(make(false).spec).colliderBox).toBe(false);
   });
 });
+
+describe('centre of mass', () => {
+  it('is only the one set in the profile, whatever colliders exist', () => {
+    for (const colliderBox of [true, false]) {
+      const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+      const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, colliderBox, comOffset: [0.1, -0.3, 0.4] });
+      const v = new Vehicle(RAPIER, world, spec, { x: 0, y: 0.6, z: 0 });
+      const com = v.chassis.localCom();
+      expect([com.x, com.y, com.z].map((x) => +x.toFixed(4))).toEqual([0.1, -0.3, 0.4]);
+    }
+  });
+  it('the inertia box is as wide as the widest axle track, not a fixed chassis width', () => {
+    const wide = buildCustomSpec({ ...DEFAULT_CUSTOM, axles: DEFAULT_CUSTOM.axles.map((a) => ({ ...a, track: 2.4 })) });
+    expect(wide.chassis.size[0]).toBe(2.4);
+  });
+});
