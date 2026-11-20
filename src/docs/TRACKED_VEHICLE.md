@@ -67,7 +67,6 @@ Forward = −Z, `z` and `y` are relative to the chassis origin (`y` = wheel cent
 | `linkAsset` | Name of the link asset |
 | `drive` | `maxTorque`, `maxPower`, `reverseSpeed`, optional `maxSlipSpeed` |
 | `turnSpeed` | Optional: speed difference of the tracks at full steer, default 3 m/s |
-| `maxSpeed` | Optional: top speed forward, default 13 m/s (47 km/h), see below |
 
 `validateTrackedSpec()` returns one message per problem: axle count, order and overlap, strut only, idler in front
 of and sprocket behind the road wheels, tracks not overlapping, values within `TRACKED_LIMITS`.
@@ -93,10 +92,9 @@ chain, so speeds are at the outer surface of the track.
 
 ### Top speed
 
-Nothing limits the speed but rolling and air drag: with 400 kW the thrust balance alone would allow over 300 km/h.
-In simulation the tank gets unstable at about 13 to 16 m/s: its speed oscillates and it can spin out without any steering
-input. So the drive does not push beyond `maxSpeed` (default 13 m/s, 47 km/h; the panel's "Top speed" field, limits 3 to
-30 m/s). Above it, for example downhill, the motors brake against the speed. Raising it is up to the vehicle's stability.
+There is no speed limit, by decision: nothing limits the speed but thrust against rolling and air drag. With the
+tank preset's 400 kW, the vehicle in simulation does not get past about 13 to 16 m/s: its speed oscillates there, and
+it can spin out without any steering input. The cause of that instability is not found (see Open).
 
 ### Climbing
 
@@ -133,6 +131,7 @@ public-entry test in `integration.test.ts`.
 
 ## Open
 
+- Stability above about 13 to 16 m/s: the vehicle oscillates in speed and can spin out. Cause not found; there is no speed limit.
 - The real `Drive_Chain_Link.json` format (see above).
 - Sag of the upper run between the wheels: optional, not implemented. The chain is a taut hull.
 - Link thickness comes from the asset, not from `chainThickness`; they should match in the real asset.
