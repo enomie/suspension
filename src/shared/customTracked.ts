@@ -65,7 +65,7 @@ export const DEFAULT_CUSTOM_TRACKED: CustomTrackedConfig = {
   axleSpacing: 1,
   wheelRadius: 0.3,
   track: 2,
-  beltWidth: 0.45,
+  beltWidth: 0.55,
   chainThickness: 0.05,
   idler: { distance: 0.9, raise: 0.15, radius: 0.3, width: 0.45 },
   sprocket: { distance: 0.9, raise: 0.45, radius: 0.35, width: 0.45 },

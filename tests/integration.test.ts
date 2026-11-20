@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 // ONLY public entry points — how integration looks in another project (without worker)
-import { Vehicle, PRESETS, describeLayout, poseBodies, writeVehicleSnapshot, makeCar, specFromWheelPoints } from '../src/physics/vehicle';
+import { Vehicle, PRESETS, describeLayout, poseBodies, writeVehicleSnapshot, makeCar, specFromWheelPoints, createVehicle, tank, neutralInput } from '../src/physics/vehicle';
 import { VehicleVisual } from '../src/render/vehicle';
 import { createTerrain, HILLS_TERRAIN } from '../src/shared/terrain';
 
@@ -51,6 +51,27 @@ describe('integration without worker (minimal example from src/docs/INTEGRATION_
     v.updateTelemetry();
     const lv = v.chassis.linvel();
     expect(Math.hypot(lv.x, lv.y, lv.z)).toBeLessThan(0.2);
+  });
+});
+
+describe('tracked vehicle through the public entry points', () => {
+  it('createVehicle builds a tracked vehicle from its spec; layout, snapshot and visual work like for a wheeled one', () => {
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    world.timestep = 1 / 120;
+    world.numSolverIterations = 8;
+    world.createCollider(RAPIER.ColliderDesc.cuboid(200, 0.5, 200).setTranslation(0, -0.5, 0).setFriction(0.95));
+    const v = createVehicle(RAPIER, world, tank, { x: 0, y: 1, z: 0 });
+    const bodies = poseBodies(v.built);
+    const visual = new VehicleVisual(describeLayout(tank, v.built));
+    for (let i = 0; i < 480; i++) {
+      v.applyInput({ ...neutralInput(), throttle: 1 }, 1 / 120);
+      world.step();
+      v.updateTelemetry();
+    }
+    visual.apply(writeVehicleSnapshot(v, bodies, { stamp: 1000 }));
+    expect(v.forwardSpeed).toBeGreaterThan(2);
+    expect(visual.chassis.position.z).toBeLessThan(-2);
+    expect(visual.chassis.getObjectByName('chain')).toBeDefined();
   });
 });
 
