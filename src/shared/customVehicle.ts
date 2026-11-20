@@ -51,7 +51,7 @@ export const CUSTOM_LIMITS = {
   axles: [1, 5],
   wheelbase: [1, 10],
   track: [1, 3.2],
-  wheelRadius: [0.25, 0.6],
+  wheelRadius: [0.2, 0.6],
   wheelWidth: [0.15, 0.5],
   torque: [200, 30000],
   power: [5, 1000],
@@ -62,13 +62,12 @@ export const CUSTOM_LIMITS = {
 } as const;
 
 /** Suspension types that can carry a steering knuckle (long-arm and beam types are non-steering only) */
-export const STEERABLE_SUSPENSIONS: SuspensionType[] = ['strut', 'doubleWishbone', 'macPherson', 'solidAxle', 'multiLink', 'fourLink'];
+export const STEERABLE_SUSPENSIONS: SuspensionType[] = ['strut', 'doubleWishbone', 'macPherson', 'swingAxle', 'solidAxle', 'multiLink', 'fourLink'];
 
 export const ALL_SUSPENSIONS: SuspensionType[] = [
   ...STEERABLE_SUSPENSIONS,
   'trailingArm',
   'semiTrailingArm',
-  'swingAxle',
   'twistBeam',
   'springLeg',
   'bogie',
