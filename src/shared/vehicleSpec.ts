@@ -188,6 +188,13 @@ export interface CornerTelemetry {
 }
 
 
+/** Profile of the ladder frame rails [m] */
+export const FRAME_RAIL = 0.1;
+/** Outer width of the ladder frame [m]: the same for every vehicle (the frame is an orientation aid, not the body) */
+export const FRAME_OUTER_WIDTH = 0.5;
+/** Distance of each side rail from the centre line [m] */
+export const FRAME_RAIL_X = (FRAME_OUTER_WIDTH - FRAME_RAIL) / 2;
+
 /** Half the depth of a cross member: the side rails end flush with the outer cross members [m] */
 const CROSS_MEMBER_HALF_DEPTH = 0.04;
 

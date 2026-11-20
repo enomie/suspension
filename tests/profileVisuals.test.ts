@@ -31,12 +31,13 @@ describe('differential markers', () => {
 });
 
 describe('preview box', () => {
-  it('sits on top of the ladder frame, spans its length, and is semi-transparent', () => {
+  it('sits on top of the ladder frame, is as wide as the frame and 0.5 m longer, and is semi-transparent', () => {
     const spec = buildCustomSpec(DEFAULT_CUSTOM);
     const box = createPreviewBox(spec);
     expect(box.name).toBe('collider-lower');
     expect(box.position.y - box.scale.y / 2).toBeCloseTo(frameTopY(spec));
-    expect(box.scale.z).toBeCloseTo(frameHalfLength(spec) * 2);
+    expect(box.scale.x).toBeCloseTo(0.5);
+    expect(box.scale.z).toBeCloseTo(frameHalfLength(spec) * 2 + 0.5);
     const m = box.material as { transparent: boolean; opacity: number };
     expect(m.transparent).toBe(true);
     expect(m.opacity).toBeLessThan(1);
