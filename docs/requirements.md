@@ -1,42 +1,45 @@
 # Requirements: custom vehicle profile
 
-Status: collecting. Nothing here is implemented yet. Open questions are marked **Q**.
+Status: implemented (physics, panel, preview). Open points are marked **Q**.
+How to use the profile in another project: `src/docs/INTEGRATION_VEHICLE.md`, section "Custom vehicle profile".
 
 ## Goal
 - Production status, so suspension can be integrated into other games.
 - The other game needs only the **custom vehicle profile** (data), not the full app.
 
 ## 1. Handbrake per axle
-- Each axle has a checkbox: "handbrake acts on this axle".
+- Each axle has a checkbox: "handbrake acts on this axle" (`CustomAxleConfig.handbrake`).
 - The handbrake is independent of the normal brake, which brakes all wheels.
-- Braking torque is adjustable (not necessarily a full lock).
-- Decided: one braking-torque value for the whole vehicle. Per axle, only the checkbox.
+- One braking torque per wheel for the whole vehicle (`handbrakeTorque`, N·m); per axle only the checkbox.
+- Default: rear axle only.
 
 ## 2. Differential per driven axle
-- Each driven axle has a setting: differential yes/no.
-- If yes, it is shown as a sphere in the preview, like the instanced base geometries.
-- Now: yes/no only.
-- Later: a differential lock, toggled by a key press.
-- Decided: the key toggles the lock on/off.
-- **Q:** Fully locked, or an adjustable lock ratio? (Later; not needed now.)
+- Each driven axle has a differential yes/no (`CustomAxleConfig.differential`, default yes).
+  - Yes: open differential, the two wheels turn independently.
+  - No: spooled axle, both wheels are forced to the same speed (a joint couples them).
+- A differential is shown as a sphere at the axle centre in the preview (instanced, like the other base geometries).
+- Differential lock: key `L` toggles it. A locked differential behaves like a spooled axle. The HUD shows `diff lock ON/off`.
+- Only left/right wheel pairs are coupled; centred and double-centred wheels have no partner.
+- **Q:** Fully locked only, or an adjustable lock ratio? Not needed now.
 
 ## 3. Vehicle weight
-- The custom vehicle has an adjustable total weight.
-- Effects on handling are not yet known and will be explored.
-- Only the entered vehicle weight counts (total mass, kg). Nothing else adds to it, including the preview box (section 5).
+- `weight` is the total mass in kg, including the wheels. The chassis gets what remains (at least 100 kg).
+- Nothing else adds mass: the preview box and all colliders have none.
+- The service brake torque is sized from the weight.
+- Effects on handling are still to be explored.
 
-## 4. Body and colliders (in the target game)
-- The body is built from blocks of geometries; some have colliders, some do not.
-- There is a main collider.
+## 4. Body, colliders and centre of mass
+- In the target game the body is built from blocks of geometries, some with colliders, some without, plus a main collider.
 - Coarser colliders by name:
   - `collider-lower-...`: low friction
-  - `collider-upper-...`: higher friction
-- The center of mass (COM) should be settable. Whether the COM should move with these colliders is undecided; noted only.
-- Decided: the COM is one global offset in the profile. Colliders are not considered for it.
+  - `collider-upper-...`: higher friction (not built yet)
+- Decided: there is exactly one centre of mass, the global `comOffset` of the profile. Colliders carry no mass and never move it.
+- Chassis width is no longer an input. Width comes from the axle `track` values, and the wheelbase gives the length.
 
-## 5. Preview helper
-- Above the ladder frame, show a semi-transparent `collider-lower` box with a custom weight.
-- Purpose: see how handling changes and get more realistic collisions.
-- Decided: fixed default size and position, not adjustable.
-- Its weight is not separate: only the vehicle weight from section 3 counts.
-- Decided: the box can be shown/hidden in the preview.
+## 5. Ladder frame and preview box
+- The ladder frame is an orientation aid only: fixed outer width 0.5 m for every vehicle, length from the front to the rear axle.
+- `collider-lower` box (`colliderBox` in the profile, default on):
+  - as wide as the frame (0.5 m), 0.5 m longer than the frame, 0.35 m high, resting on the side rails
+  - a real collider with low friction (0.15) and a semi-transparent preview mesh, both from the same data (`chassis.lowerCollider`)
+  - fixed size and position, not adjustable
+  - switched in the custom panel (takes effect with "Apply"); the presets have no box

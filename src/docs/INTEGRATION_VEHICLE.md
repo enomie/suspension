@@ -47,7 +47,7 @@ generations against “stale frames”, and layout via message are already solve
 | Tick | fixed 120 Hz, 8 solver iterations (McPherson sets +16 only for its bodies). At 60 Hz soften springs and test. |
 | Collision groups | bits `0x1` terrain, `0x2` chassis, `0x4` wheel (`physics/vehicle/groups.ts`). Adjust when colliding with own groups. |
 | Ground | friction ~0.95; wheels 1.1 |
-| Input | `throttle` 0…1, `brake` 0…1 (at rest = reverse), `steer` −1 (right) … +1 (left), `handbrake` bool |
+| Input | `throttle` 0…1, `brake` 0…1 (at rest = reverse), `steer` −1 (right) … +1 (left), `handbrake` bool, `diffLock` bool (optional), `boost` bool (optional) |
 | IDs | `<vehicle>.a<axle><side>.<part>`, e.g. `car.a0L.wheel` (`ids.ts`) |
 
 ## 4. Hooking up the asset editor
@@ -96,15 +96,17 @@ Note single-track (motorcycle): builds correctly but falls without balance contr
 | In editor | in `VehicleSpec` | Note |
 |---|---|---|
 | body/frame primitives (collision) | `chassis.colliders: ColliderPrimitive[]` | box / sphere / capsule / cylinder, position + rotation chassis-local, `rounded` for edge rounding. **As close as possible to visible shape**, else “invisible wall”. |
-| total mass, CoM | `chassis.mass`, `chassis.comOffset` | mass from spec, **not** from primitive volume (colliders have density 0) |
-| dimensions (inertia) | `chassis.size` | box approximation for inertia |
+| total mass, CoM | `chassis.mass`, `chassis.comOffset` | mass from spec, **not** from primitive volume (colliders have density 0). `comOffset` is the only centre of mass; no collider moves it. |
+| dimensions (inertia) | `chassis.size` | box approximation for inertia; also the frame height. The ladder frame itself has a fixed width (`FRAME_OUTER_WIDTH`, 0.5 m) |
+| body block (low friction) | `chassis.lowerCollider` | optional `collider-lower` box: `size`, `position`, `friction`; no mass. Preview mesh comes from the same data |
 | wheel position (center) | axle: `z` (longitudinal), `y` (height), `track` | wheels per axle **symmetric** left/right; `track: 0` = single centered wheel (motorcycle) |
 | wheel dimensions | `axles[i].wheel`: `radius`, `width`, `mass`, `friction`, `shape` | `ball` = robust on terrain, `roundCylinder` = more realistic |
 | suspension type per axle | `axles[i].suspension` | one of 10, see 4.2 |
 | springs | `axles[i].spring`: `frequencyHz`, `dampingRatio`, `travel: [bump, rebound]` | frequency instead of spring rate. Rate from axle load → correct ride height per weight. Or `stiffness`/`damping` directly. |
 | steering | `axles[i].steer.maxAngle`, global `steering` | Ackermann per axle automatic; rear axles steer opposite, `crab` = same direction |
 | drive | `axles[i].drive.share`, global `drive` (`maxTorque`, `maxPower`, `reverseSpeed`; optional boost limiter `maxBoostSpeed`) | torque/power split via `share`. **Top speed is not an input:** it is where thrust (per driven axle `min(torque/r, P/v)`) = rolling (40 N per wheel, identical everywhere) + air drag (`½·1.2·0.8·v²`, identical everywhere); `topSpeed(spec)` in `shared/performance.ts` computes it. Boost cuts the drag area to ¼. |
-| brakes | `axles[i].brake.torque`, `handbrake.torque` | handbrake only on axles with `handbrake` |
+| brakes | `axles[i].brake.torque`, `handbrake.torque` | handbrake only on axles with `handbrake` (any axle, independent of the service brake) |
+| differential | `axles[i].differential` | driven axles only; `false` = spooled axle (wheels coupled), otherwise open. `DriverInput.diffLock` locks every differential |
 | tandem | `bogieSpacing` | `bogie` only |
 | visible meshes | **not** in spec | hang editor meshes on bodies, see 4.3 |
 
@@ -151,10 +153,34 @@ else types sit at different ride heights.
 7. Add test: vehicle rests at design height, drives, steers, stays upright
    (template: `tests/suspensions.test.ts`, `tests/invisibleWall.test.ts`).
 
+## 4.5 Custom vehicle profile (the part another game needs)
+Pure data in `shared/customVehicle.ts`; `buildCustomSpec(config)` turns it into a `VehicleSpec` (invalid values are clamped or corrected,
+limits in `CUSTOM_LIMITS`), `customFromSpec(spec)` goes back. Use `DEFAULT_CUSTOM` as the starting point.
+
+| Field | Meaning |
+|---|---|
+| `wheelbase` | front to rear axle [m], axles spaced evenly |
+| `weight` | total mass in kg including wheels; chassis mass = weight − wheels |
+| `comOffset` | the one centre of mass `[x, y, z]` relative to the chassis box centre (−z = front) |
+| `torque`, `power`, `wheelspin` | drive: traction limit [N·m], engine power [kW], slip limit [m/s] |
+| `handbrakeTorque` | handbrake torque per wheel [N·m], one value for the vehicle |
+| `colliderBox` | add the low-friction `collider-lower` block (collider and preview) |
+| `axles[i]` | `wheels` (pair / center / centerDouble), `track`, `steer`, `suspension`, `drive`, `differential`, `handbrake`, `wheelShape`, `wheelRadius`, `wheelWidth` |
+
+```ts
+const spec = buildCustomSpec({ ...DEFAULT_CUSTOM, weight: 1800, comOffset: [0, -0.3, 0] });
+const vehicle = new Vehicle(R, world, spec, pos);
+vehicle.applyInput({ throttle, brake, steer, handbrake, diffLock }, 1 / 120);   // diffLock: your toggle key
+```
+The game holds the diff-lock state itself (the demo toggles it with `L`). Rendering: `VehicleVisual` shows the differential spheres
+and the preview box; a game with its own meshes uses `spec.chassis.lowerCollider` and the axles' `differential` flags directly.
+Tests: `tests/customVehicle.test.ts`, `tests/differential.test.ts`, `tests/lowerCollider.test.ts`.
+
 ## 5. Important rules (Rapier)
 - Fixed tick, else spring behavior changes with frame rate.
 - Helper bodies (strut, knuckle, links) have **no collider**, but explicit mass/inertia, not too light
   vs chassis (≤ 1:30), else the chain jitters.
+- A driven axle without differential (or with the lock on) gets a joint between its two wheels; `Vehicle.differentials` creates and removes it. Do not remove wheel bodies without `vehicle.dispose()`.
 - Wheels with CCD. Always limit drive torque (`setMotorMaxForce`), else motor is “infinitely strong”.
 - Joint contacts between connected bodies off; wheels do not collide with own chassis.
 - Details: [VEHICLE_KIT.md](VEHICLE_KIT.md) §9.
