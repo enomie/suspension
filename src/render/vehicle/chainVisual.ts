@@ -1,5 +1,6 @@
 import { Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import type { ChainLinkAsset } from '../../shared/chainLink';
+import { lowerRunPath, lowerRunY } from '../../shared/trackPath';
 import { buildChainLoop, deformChainLoop, linkLayout, type ChainCircle, type ChainPose } from '../../shared/chainLoop';
 import { UNIT_BOX_GEOMETRY } from '../geometries/unitGeometries';
 import { MAT } from './materials';
@@ -92,16 +93,11 @@ export class ChainVisual {
   private updateSide(side: 0 | 1, wheels: readonly ChainCircle[], distance: number, lift?: (side: 0 | 1, z: number) => number): void {
     let loop = buildChainLoop(wheels, this.chainThickness);
     if (lift) {
-      // the line through the wheel bottoms (centre line of the chain), from which the ground profile was measured
-      const pts = wheels.map((w) => ({ z: w.z, y: w.y - w.radius - this.chainThickness / 2 })).sort((a, b) => a.z - b.z);
-      const floor = (z: number): number => {
-        if (z < pts[0].z || z > pts[pts.length - 1].z) return -Infinity;
-        let i = 0;
-        while (i + 2 < pts.length && pts[i + 1].z < z) i++;
-        const t = (z - pts[i].z) / Math.max(1e-9, pts[i + 1].z - pts[i].z);
-        return pts[i].y + (pts[i + 1].y - pts[i].y) * t;
-      };
-      loop = deformChainLoop(loop, (z) => lift(side, z), floor);
+      // the lower run of the chain under every wheel (centre line), the same path the ground profile was measured from
+      const path = lowerRunPath(
+        wheels.map((w) => ({ z: w.z, y: w.y, radius: w.radius + this.chainThickness / 2 })).sort((a, b) => a.z - b.z),
+      );
+      loop = deformChainLoop(loop, (z) => lift(side, z), (z) => lowerRunY(path, z));
     }
     const pitch = loop.length / this.linkCount;
     const k = this.widthScale;

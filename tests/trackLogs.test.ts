@@ -6,6 +6,7 @@ import { addLogColliders } from '../src/physics/testLogs';
 import { neutralInput } from '../src/shared/driverInput';
 import type { LogSpec } from '../src/shared/testLogs';
 import { Quaternion, Vector3 } from 'three';
+import { lowerRunPath, lowerRunY } from '../src/shared/trackPath';
 import { buildChainLoop, deformChainLoop } from '../src/shared/chainLoop';
 import { trackLiftAt, trackProfileRange } from '../src/shared/trackProfile';
 
@@ -101,14 +102,8 @@ describe('tracked vehicle over logs (flat ground, logs 20 m ahead, 10 %…90 % b
         }),
         { z: tank.sprocket.z, y: tank.sprocket.y, radius: tank.sprocket.radius },
       ];
-      const pts = circles.map((w) => ({ z: w.z, y: w.y - w.radius - ct0 / 2 })).sort((a, b) => a.z - b.z);
-      const floor = (z: number): number => {
-        if (z < pts[0].z || z > pts[pts.length - 1].z) return -Infinity;
-        let i = 0;
-        while (i + 2 < pts.length && pts[i + 1].z < z) i++;
-        return pts[i].y + ((pts[i + 1].y - pts[i].y) * (z - pts[i].z)) / (pts[i + 1].z - pts[i].z);
-      };
-      const loop = deformChainLoop(buildChainLoop(circles, ct0), (z) => trackLiftAt(v.trackProfile, 0, 0, z, z0, z1), floor);
+      const path = lowerRunPath(circles.map((w) => ({ z: w.z, y: w.y, radius: w.radius + ct0 / 2 })).sort((a, b) => a.z - b.z));
+      const loop = deformChainLoop(buildChainLoop(circles, ct0), (z) => trackLiftAt(v.trackProfile, 0, 0, z, z0, z1), (z) => lowerRunY(path, z));
       const p = { z: 0, y: 0, angle: 0 };
       for (let s = 0; s < loop.length; s += 0.02) {
         loop.at(s, p);

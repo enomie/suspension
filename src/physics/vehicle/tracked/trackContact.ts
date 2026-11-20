@@ -4,6 +4,7 @@ import type { Corner } from '../types';
 import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
 import type { TrackCommand } from '../../../shared/trackDrive';
 import { trackProfileRange, TRACK_PROFILE_CELLS, TRACK_PROFILE_LENGTH } from '../../../shared/trackProfile';
+import { lowerRunPath, lowerRunY, samplePath, type PathCircle, type PathPoint } from '../../../shared/trackPath';
 import { GROUP_ALL, GROUP_TERRAIN, groups } from '../groups';
 
 /**
@@ -34,9 +35,6 @@ const SUPPORT_DAMPING_TIME = 0.02;
 /** slip speed [m/s] at which the friction force reaches its limit */
 const SLIP_FULL_SPEED = 0.4;
 
-/** points on the idler and sprocket arc [rad below horizontal, nose → bottom]: the chain wraps the ends like a ramp */
-const END_ARC_ANGLES = [0, Math.PI / 4, Math.PI / 2];
-
 /** one contact of the last step, for debugging and tests */
 export interface TrackContactPoint {
   side: 'L' | 'R';
@@ -48,16 +46,6 @@ export interface TrackContactPoint {
   traction: number;
 }
 
-interface Anchor {
-  /** world position of the chain line end (bottom of the wheel) */
-  p: Vector3;
-  /** body the force goes to */
-  body: RAPIER.RigidBody;
-  v: Vector3;
-  /** a road wheel collider touches the ground at this end: no contact points right next to it */
-  wheel: boolean;
-}
-
 const _q = new Quaternion();
 const _up = new Vector3();
 const _fwd = new Vector3();
@@ -65,6 +53,8 @@ const _n = new Vector3();
 const _t = new Vector3();
 const _f = new Vector3();
 const _pa = new Vector3();
+const _pb = new Vector3();
+const _qi = new Quaternion();
 
 /**
  * Does a surface hit by a probe carry the chain? Its normal must face the chain (chassis up) and face up in the world.
@@ -121,29 +111,23 @@ export class TrackContact {
 
   /**
    * Ground profile for the chain visual (`shared/trackProfile.ts`): once per tick, after the step. For every grid cell a
-   * ray from above the taut line down to the surface: lift = height of the surface above the line (0 = free). Taken
-   * straight from the world, so it follows the real surface, whatever the spacing of the contact points.
+   * ray from above the lower run of the chain down to the surface: lift = height of the surface above the path (0 = free).
+   * Taken straight from the world, so it follows the real surface, whatever the spacing of the contact points.
    */
   updateProfile(): void {
     this.profile.fill(0);
     if (!this.enabled) return;
     this.frame();
     const [z0, z1] = trackProfileRange(this.spec);
-    const ct = this.chassis.translation();
     const filter = groups(GROUP_ALL, GROUP_TERRAIN);
     const ray = new this.R.Ray({ x: 0, y: 0, z: 0 }, { x: -_up.x, y: -_up.y, z: -_up.z });
     (['L', 'R'] as const).forEach((side, si) => {
-      const anchors = this.anchors(side);
-      // chassis-local z of each anchor: its chord is the taut line between neighbours
-      const lz = anchors.map((a) => (a.p.x - ct.x) * -_fwd.x + (a.p.y - ct.y) * -_fwd.y + (a.p.z - ct.z) * -_fwd.z);
-      let k = 0;
+      const path = this.path(side);
       for (let i = 0; i < TRACK_PROFILE_CELLS; i++) {
         const z = z0 + ((i + 0.5) / TRACK_PROFILE_CELLS) * (z1 - z0);
-        while (k + 2 < anchors.length && lz[k + 1] < z) k++;
-        const a = anchors[k];
-        const b = anchors[k + 1];
-        if (z < lz[0] || z > lz[lz.length - 1] || lz[k + 1] - lz[k] < 1e-6) continue;
-        _pa.copy(a.p).lerp(b.p, (z - lz[k]) / (lz[k + 1] - lz[k]));
+        const y = lowerRunY(path, z);
+        if (y === -Infinity) continue;
+        this.toWorld(side, z, y, _pa);
         ray.origin.x = _pa.x + _up.x * PROBE_LIFT;
         ray.origin.y = _pa.y + _up.y * PROBE_LIFT;
         ray.origin.z = _pa.z + _up.z * PROBE_LIFT;
@@ -156,92 +140,84 @@ export class TrackContact {
     });
   }
 
-  private anchors(side: 'L' | 'R'): Anchor[] {
-    const spec = this.spec;
-    const x = (side === 'L' ? -1 : 1) * (spec.track / 2);
+  /** chassis-local (z, y) on a track → world */
+  private toWorld(side: 'L' | 'R', z: number, y: number, out: Vector3): Vector3 {
     const ct = this.chassis.translation();
-    const lv = this.chassis.linvel();
-    const av = this.chassis.angvel();
-    const list: Anchor[] = [];
-    // point on the chain around an idler / sprocket (chassis-local → world); `a` = angle below the horizontal on the
-    // outer side: 0 = at axle height facing away from the vehicle, 90° = bottom
-    const endAnchor = (w: { z: number; y: number; radius: number }, outward: number, a: number): Anchor => {
-      const r = w.radius + spec.chainThickness;
-      const local = new Vector3(x, w.y - r * Math.sin(a), w.z + outward * r * Math.cos(a)).applyQuaternion(_q);
-      const v = new Vector3(lv.x + av.y * local.z - av.z * local.y, lv.y + av.z * local.x - av.x * local.z, lv.z + av.x * local.y - av.y * local.x);
-      return { p: new Vector3(ct.x + local.x, ct.y + local.y, ct.z + local.z), body: this.chassis, v, wheel: false };
-    };
-    // the chain wraps the front of the idler: contact ramp from its nose down to its bottom (idler is at −Z, outward = −1)
-    for (const a of END_ARC_ANGLES) list.push(endAnchor(spec.idler, -1, a));
+    out.set((side === 'L' ? -1 : 1) * (this.spec.track / 2), y, z).applyQuaternion(_q);
+    return out.set(out.x + ct.x, out.y + ct.y, out.z + ct.z);
+  }
+
+  /**
+   * Lower run of one track in chassis-local (z, y): the chain under idler, road wheels (current positions, outer radius
+   * incl. the chain) and sprocket (`shared/trackPath.ts`).
+   */
+  private path(side: 'L' | 'R'): PathPoint[] {
+    const spec = this.spec;
+    const ct = this.chassis.translation();
+    const cr = this.chassis.rotation();
+    _qi.set(cr.x, cr.y, cr.z, cr.w).invert();
+    const circles: PathCircle[] = [{ z: spec.idler.z, y: spec.idler.y, radius: spec.idler.radius + spec.chainThickness }];
     const wheels = this.corners.filter((c) => c.side === side).sort((a, b) => a.anchor[2] - b.anchor[2]);
     for (const c of wheels) {
       const t = c.wheel.translation();
-      const v = c.wheel.linvel();
-      list.push({ p: new Vector3(t.x, t.y, t.z).addScaledVector(_up, -c.axle.wheel.radius), body: c.wheel, v: new Vector3(v.x, v.y, v.z), wheel: true });
+      _pb.set(t.x - ct.x, t.y - ct.y, t.z - ct.z).applyQuaternion(_qi);
+      circles.push({ z: _pb.z, y: _pb.y, radius: c.axle.wheel.radius });
     }
-    for (const a of [...END_ARC_ANGLES].reverse()) list.push(endAnchor(spec.sprocket, 1, a));
-    return list;
+    circles.push({ z: spec.sprocket.z, y: spec.sprocket.y, radius: spec.sprocket.radius + spec.chainThickness });
+    return lowerRunPath(circles);
   }
 
   private applySide(side: 'L' | 'R', cmd: TrackCommand, cap: number, dt: number): void {
-    const anchors = this.anchors(side);
     const k = this.meanStiffness * SUPPORT_STIFFNESS_SHARE;
     const c = k * SUPPORT_DAMPING_TIME;
     const filter = groups(GROUP_ALL, GROUP_TERRAIN);
     const ray = new this.R.Ray({ x: 0, y: 0, z: 0 }, { x: -_up.x, y: -_up.y, z: -_up.z });
+    const ct = this.chassis.translation();
+    const lv = this.chassis.linvel();
+    const av = this.chassis.angvel();
 
-    for (let i = 0; i + 1 < anchors.length; i++) {
-      const a = anchors[i];
-      const b = anchors[i + 1];
-      const len = a.p.distanceTo(b.p);
-      const n = Math.max(1, Math.round(len / SAMPLE_SPACING));
-      for (let j = 0; j < n; j++) {
-        const s = (j + 0.5) / n;
-        if ((a.wheel && s * len < WHEEL_CLEARANCE) || (b.wheel && (1 - s) * len < WHEEL_CLEARANCE)) continue;
-        _pa.copy(a.p).lerp(b.p, s); // point on the chain line
-        ray.origin.x = _pa.x + _up.x * PROBE_LIFT;
-        ray.origin.y = _pa.y + _up.y * PROBE_LIFT;
-        ray.origin.z = _pa.z + _up.z * PROBE_LIFT;
-        const hit = this.world.castRayAndGetNormal(ray, PROBE_LIFT, true, undefined, filter);
-        if (!hit) continue;
-        const pen = PROBE_LIFT - hit.timeOfImpact;
-        if (pen <= 0) continue;
-        _n.set(hit.normal.x, hit.normal.y, hit.normal.z);
-        if (!supports(hit.normal, _up)) continue; // vertical, overhanging or back faces: only the wheel colliders deal with those
+    for (const sample of samplePath(this.path(side), SAMPLE_SPACING, WHEEL_CLEARANCE)) {
+      if (sample.atWheel) continue; // the wheel collider touches there
+      this.toWorld(side, sample.z, sample.y, _pa); // point on the chain
+      ray.origin.x = _pa.x + _up.x * PROBE_LIFT;
+      ray.origin.y = _pa.y + _up.y * PROBE_LIFT;
+      ray.origin.z = _pa.z + _up.z * PROBE_LIFT;
+      const hit = this.world.castRayAndGetNormal(ray, PROBE_LIFT, true, undefined, filter);
+      if (!hit) continue;
+      const pen = PROBE_LIFT - hit.timeOfImpact;
+      if (pen <= 0) continue;
+      _n.set(hit.normal.x, hit.normal.y, hit.normal.z);
+      if (!supports(hit.normal, _up)) continue; // vertical, overhanging or back faces: only the wheel colliders deal with those
 
-        // velocity of the chain line point, blended from its two anchors
-        const vx = a.v.x + (b.v.x - a.v.x) * s;
-        const vy = a.v.y + (b.v.y - a.v.y) * s;
-        const vz = a.v.z + (b.v.z - a.v.z) * s;
-        const vn = vx * _n.x + vy * _n.y + vz * _n.z;
-        const support = Math.max(0, k * pen - c * vn);
-        if (support === 0) continue;
+      // velocity of the chain point: the chassis moves it (the wheels hang on the chassis)
+      const rx = _pa.x - ct.x;
+      const ry = _pa.y - ct.y;
+      const rz = _pa.z - ct.z;
+      const vx = lv.x + av.y * rz - av.z * ry;
+      const vy = lv.y + av.z * rx - av.x * rz;
+      const vz = lv.z + av.x * ry - av.y * rx;
+      const vn = vx * _n.x + vy * _n.y + vz * _n.z;
+      const support = Math.max(0, k * pen - c * vn);
+      if (support === 0) continue;
 
-        // drive direction on the surface: chassis forward projected into the contact plane
-        _t.copy(_fwd).addScaledVector(_n, -_fwd.dot(_n));
-        if (_t.lengthSq() < 1e-6) continue;
-        _t.normalize();
-        const vt = vx * _t.x + vy * _t.y + vz * _t.z;
-        const slip = Math.max(-1, Math.min(1, (cmd.speed - vt) / SLIP_FULL_SPEED));
-        const limit = Math.min(this.friction * support, cap);
-        const traction = slip * limit;
+      // drive direction on the surface: chassis forward projected into the contact plane
+      _t.copy(_fwd).addScaledVector(_n, -_fwd.dot(_n));
+      if (_t.lengthSq() < 1e-6) continue;
+      _t.normalize();
+      const vt = vx * _t.x + vy * _t.y + vz * _t.z;
+      const slip = Math.max(-1, Math.min(1, (cmd.speed - vt) / SLIP_FULL_SPEED));
+      const limit = Math.min(this.friction * support, cap);
+      const traction = slip * limit;
 
-        _f.copy(_n).multiplyScalar(support).addScaledVector(_t, traction);
-        // on the chassis at the contact point: the light wheel bodies would be thrown around by these forces
-        const px = ray.origin.x - _up.x * hit.timeOfImpact;
-        const py = ray.origin.y - _up.y * hit.timeOfImpact;
-        const pz = ray.origin.z - _up.z * hit.timeOfImpact;
-        this.chassis.applyImpulseAtPoint({ x: _f.x * dt, y: _f.y * dt, z: _f.z * dt }, { x: px, y: py, z: pz }, true);
+      _f.copy(_n).multiplyScalar(support).addScaledVector(_t, traction);
+      // on the chassis at the contact point: the light wheel bodies would be thrown around by these forces
+      const px = ray.origin.x - _up.x * hit.timeOfImpact;
+      const py = ray.origin.y - _up.y * hit.timeOfImpact;
+      const pz = ray.origin.z - _up.z * hit.timeOfImpact;
+      this.chassis.applyImpulseAtPoint({ x: _f.x * dt, y: _f.y * dt, z: _f.z * dt }, { x: px, y: py, z: pz }, true);
 
-        this.spanThrust[side] += cmd.mode === 'drive' ? Math.max(0, traction) : 0;
-        this.points.push({
-          side,
-          point: new Vector3(ray.origin.x, ray.origin.y, ray.origin.z).addScaledVector(_up, -hit.timeOfImpact),
-          normal: _n.clone(),
-          support,
-          traction,
-        });
-      }
+      this.spanThrust[side] += cmd.mode === 'drive' ? Math.max(0, traction) : 0;
+      this.points.push({ side, point: new Vector3(px, py, pz), normal: _n.clone(), support, traction });
     }
   }
 }
