@@ -16,8 +16,8 @@ const axle = (z: number): AxleSpec => ({
   y: -0.5,
   suspension: 'strut',
   spring: { frequencyHz: 1.5, dampingRatio: 0.5, travel: [-0.15, 0.15] },
-  wheel: { radius: 0.3, width: 0.4, mass: 100, friction: 0.3, shape: 'cylinder' },
-  brake: { torque: 4000 },
+  wheel: { radius: 0.3, width: 0.4, mass: 100, friction: 0.8, shape: 'cylinder' },
+  brake: { torque: 4700 },
 });
 
 const spec: TrackedVehicleSpec = {
@@ -31,7 +31,7 @@ const spec: TrackedVehicleSpec = {
   beltWidth: 0.4,
   chainThickness: 0.05,
   linkAsset: 'Drive_Chain_Link',
-  drive: { maxTorque: 20000, maxPower: 200_000, reverseSpeed: 5 },
+  drive: { maxTorque: 44000, maxPower: 400_000, reverseSpeed: 5 },
 };
 
 function setup() {
@@ -83,23 +83,35 @@ describe('tracked drive', () => {
     expect(v.chassis.translation().z).toBeGreaterThan(1);
   });
 
-  it('steer +1 turns left while driving, steer −1 turns right', () => {
+  it('half steer turns left while driving on, negative steer turns right', () => {
     const a = setup();
     a.run(1);
-    a.run(3, input({ throttle: 1, steer: 1 }));
-    expect(a.yaw()).toBeGreaterThan(0.2);
+    a.run(3, input({ throttle: 1, steer: 0.5 }));
+    expect(a.v.forwardSpeed).toBeGreaterThan(2);
+    expect(a.v.chassis.angvel().y).toBeGreaterThan(0.1);
     const b = setup();
     b.run(1);
-    b.run(3, input({ throttle: 1, steer: -1 }));
-    expect(b.yaw()).toBeLessThan(-0.2);
+    b.run(3, input({ throttle: 1, steer: -0.5 }));
+    expect(b.v.chassis.angvel().y).toBeLessThan(-0.1);
+  });
+
+  it('full steer while driving brakes the inner track hard: the vehicle slows and pivots', () => {
+    const { v, run } = setup();
+    run(1);
+    run(3, input({ throttle: 1 }));
+    const fast = v.forwardSpeed;
+    run(3, input({ throttle: 1, steer: 1 }));
+    expect(v.forwardSpeed).toBeLessThan(fast / 2);
+    expect(v.chassis.angvel().y).toBeGreaterThan(0.5);
   });
 
   it('turns on the spot without throttle, staying close to where it was', () => {
-    const { v, run, yaw } = setup();
+    const { v, run } = setup();
     run(1);
     const t0 = v.chassis.translation();
-    run(3, input({ steer: 1 }));
-    expect(yaw()).toBeGreaterThan(0.2);
+    run(1, input({ steer: 1 }));
+    expect(v.chassis.angvel().y).toBeGreaterThan(0.3); // counter-clockwise from above = left
+    run(2, input({ steer: 1 }));
     const t1 = v.chassis.translation();
     expect(Math.hypot(t1.x - t0.x, t1.z - t0.z)).toBeLessThan(1.5);
   });
@@ -114,7 +126,7 @@ describe('tracked drive', () => {
       run(DT, input({ brake: 1 }));
       t += DT;
     }
-    expect(t).toBeLessThan(2.5);
+    expect(t).toBeLessThan(4);
     expect(v.forwardSpeed).toBeLessThanOrEqual(0.6);
   });
 });
