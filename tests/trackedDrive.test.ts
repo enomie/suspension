@@ -150,3 +150,17 @@ describe('tracked drive', () => {
     expect(v.forwardSpeed).toBeLessThanOrEqual(0.6);
   });
 });
+
+describe('tracked coasting', () => {
+  it('rolls on after letting go of the throttle, but rolling resistance slows it to a stop in well under a minute', () => {
+    const { v, run } = setup();
+    run(1);
+    run(5, input({ throttle: 1 }));
+    run(10);
+    const s10 = v.forwardSpeed;
+    expect(s10).toBeGreaterThan(1);
+    run(40);
+    expect(v.forwardSpeed).toBeLessThan(1);
+    expect(Math.abs(v.forwardSpeed)).toBeLessThan(s10);
+  });
+});

@@ -15,6 +15,10 @@ export function trackThrust(spec: TrackedVehicleSpec, radius: number, speed: num
  * two tracks by their demand (steering can send all of it to one track) and evenly over the wheels of a track; the radius of a road wheel already includes the chain, so speeds are at the outer surface of the track.
  * @param forwardSpeed vehicle speed along its heading [m/s], + = forward
  */
+/** rolling resistance of the tracks: force = coefficient × weight, shared by all road wheels. Tracks lose far more than tyres: a tank coasts to a stop in about 16 s from 14 m/s */
+export const TRACK_ROLLING_COEFFICIENT = 0.08;
+const GRAVITY = 9.81;
+
 export interface TrackDriveResult {
   cmd: { L: TrackCommand; R: TrackCommand };
   /** largest traction one contact point between the wheels may deliver per side [N]: one wheel's share of drive thrust or brake force */
@@ -40,11 +44,13 @@ export function applyTrackDrive(
   // the engine feeds the driven tracks: one track alone gets all of the thrust, two tracks at full demand half each
   const demand = (left.mode === 'drive' ? left.amount : 0) + (right.mode === 'drive' ? right.amount : 0);
   const wheelsPerSide = Math.max(1, corners.length / 2);
+  const rollingForcePerWheel = (TRACK_ROLLING_COEFFICIENT * spec.chassis.mass * GRAVITY) / Math.max(1, corners.length);
 
   for (const c of corners) {
     const cmd = c.side === 'L' ? left : right;
     const r = c.axle.wheel.radius;
     let torque: number;
+    let target = cmd.speed;
     switch (cmd.mode) {
       case 'drive':
         torque = (Math.max(0, (trackThrust(spec, r, forwardSpeed) * cmd.amount) / Math.max(1, demand) - (c.side === 'R' ? spanThrust.R : spanThrust.L)) * r) / wheelsPerSide;
@@ -54,8 +60,13 @@ export function applyTrackDrive(
         break;
       default: // brake, hold
         torque = c.axle.brake.torque * cmd.amount;
+        if (cmd.mode === 'brake' && cmd.amount === 0) {
+          // coasting: only rolling resistance (a small constant torque against the wheel spin), no brake
+          torque = rollingForcePerWheel * r;
+          target = 0;
+        }
     }
-    c.joints.spin.configureMotorVelocity(cmd.speed / r, MOTOR_FACTOR); // brake/hold/park: speed 0 unless the inner track of a turn brakes to a slower speed
+    c.joints.spin.configureMotorVelocity(target / r, MOTOR_FACTOR); // brake/hold/park: speed 0 unless the inner track of a turn brakes to a slower speed
     c.joints.spin.setMotorMaxForce(torque);
   }
 

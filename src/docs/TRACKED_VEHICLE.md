@@ -17,7 +17,7 @@ the kit in another project: [INTEGRATION_VEHICLE.md](INTEGRATION_VEHICLE.md).
 | Chain | Visual only. A taut belt around all wheels, computed in `shared/chainLoop.ts` (not in the main game) |
 | Link spacing | Adjusted so a whole number of links fits the loop |
 | Steering | A separate layer: the vehicle receives `DriverInput` (throttle 0…1, brake 0…1, steer −1 right … +1 left). A tracked vehicle turns it into left and right track speed |
-| Parked | Without input the tracks coast while the vehicle rolls (like the wheeled ones) and hold it once it is almost stopped (below 0.6 m/s, idle brake share): wheels held only by rolling resistance would drift on a slope |
+| Parked | Without input the tracks coast while the vehicle rolls (like the wheeled ones, with rolling resistance of 8 % of the weight, `TRACK_ROLLING_COEFFICIENT`: about 16 s from 14 m/s to a stop) and hold it once it is almost stopped (below 0.6 m/s, idle brake share): wheels held only by rolling resistance would drift on a slope |
 
 ## Files
 
