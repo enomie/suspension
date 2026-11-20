@@ -8,11 +8,11 @@ import type { SimVehicle } from './simVehicle';
  * `bodies` = poseBodies(vehicle.built) (Reihenfolge = Layout-Indizes), `origin` = Floating Origin (sonst {0,0}).
  */
 export function writeVehicleSnapshot(
-  vehicle: Pick<SimVehicle, 'forwardSpeed' | 'corners'>,
+  vehicle: Pick<SimVehicle, 'forwardSpeed' | 'corners' | 'trackProfile'>,
   bodies: RAPIER.RigidBody[],
   opts: { gen?: number; stamp?: number; origin?: { x: number; z: number }; out?: Float64Array } = {},
 ): Float64Array {
-  const len = snapshotLength(vehicle.corners.length, bodies.length);
+  const len = snapshotLength(vehicle.corners.length, bodies.length, vehicle.trackProfile?.length ?? 0);
   const s = opts.out && opts.out.length === len ? opts.out : new Float64Array(len);
   const ox = opts.origin?.x ?? 0;
   const oz = opts.origin?.z ?? 0;
@@ -27,6 +27,10 @@ export function writeVehicleSnapshot(
     s[o + 2] = m.wheelOmega;
     s[o + 3] = m.steerAngle;
     o += CORNER_STRIDE;
+  }
+  if (vehicle.trackProfile) {
+    s.set(vehicle.trackProfile, o);
+    o += vehicle.trackProfile.length;
   }
   for (const b of bodies) {
     const p = b.translation();

@@ -1,3 +1,4 @@
+import { trackLiftAt, trackProfileRange } from '../../shared/trackProfile';
 import { Group, Mesh, Quaternion, Vector3 } from 'three';
 import { PLACEHOLDER_CHAIN_LINK, type ChainLinkAsset } from '../../shared/chainLink';
 import type { ChainCircle } from '../../shared/chainLoop';
@@ -30,6 +31,7 @@ export class TrackedVisual {
   private readonly sides: { corner: number; radius: number }[][];
   /** idler and sprocket pivots per side (spin about X with the chain) and their chain radius */
   private readonly spinners: { pivot: Group; side: number; radius: number }[] = [];
+  private readonly range: [number, number];
   private distance: [number, number] = [0, 0];
   private lastStamp = NaN;
   private readonly left: ChainCircle[];
@@ -37,6 +39,7 @@ export class TrackedVisual {
 
   constructor(layout: VehicleLayout, asset: ChainLinkAsset = PLACEHOLDER_CHAIN_LINK) {
     const t = layout.tracked as TrackedVehicleSpec;
+    this.range = trackProfileRange(t);
     this.idler = { z: t.idler.z, y: t.idler.y, radius: t.idler.radius };
     this.sprocket = { z: t.sprocket.z, y: t.sprocket.y, radius: t.sprocket.radius };
     for (const [w, name] of [[t.idler, 'idler'], [t.sprocket, 'sprocket']] as const) {
@@ -70,7 +73,7 @@ export class TrackedVisual {
    * After the vehicle's bodies are posed.
    * @param stamp snapshot time [ms]: the chain moves by speed × time since the previous snapshot
    */
-  update(poses: BodyPoses, layout: VehicleLayout, telemetry: { wheelOmega: number }[], stamp: number): void {
+  update(poses: BodyPoses, layout: VehicleLayout, telemetry: { wheelOmega: number }[], stamp: number, profile?: ArrayLike<number>): void {
     poses.position(layout.chassis, _c);
     poses.rotation(layout.chassis, _q).invert();
     const dt = (stamp - this.lastStamp) / 1000;
@@ -92,6 +95,7 @@ export class TrackedVisual {
     });
     // idler and sprocket turn with the chain: forward driving rolls the top toward −Z (negative about +X)
     for (const sp of this.spinners) sp.pivot.rotation.x = -this.distance[sp.side] / sp.radius;
-    this.chain.update(this.left, this.right, this.distance[0], this.distance[1]);
+    const lift = profile && this.range ? (side: 0 | 1, z: number) => trackLiftAt(profile, 0, side, z, this.range[0], this.range[1]) : undefined;
+    this.chain.update(this.left, this.right, this.distance[0], this.distance[1], lift);
   }
 }

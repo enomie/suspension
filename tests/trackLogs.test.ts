@@ -30,13 +30,15 @@ function drive(contact: boolean, field: LogSpec[], seconds: number) {
   v.contact.enabled = contact;
   const inp = { ...neutralInput(), throttle: 1 };
   let maxContacts = 0;
+  let maxLift = 0;
   for (let k = 0; k < seconds / DT; k++) {
     v.applyInput(inp, DT);
     world.step();
     maxContacts = Math.max(maxContacts, v.contact.points.length);
+    for (const x of v.trackProfile) maxLift = Math.max(maxLift, x);
     if (v.chassis.translation().z < -60) break; // past the last log (z ≈ −45)
   }
-  return { z: v.chassis.translation().z, y: v.chassis.translation().y, maxContacts };
+  return { z: v.chassis.translation().z, y: v.chassis.translation().y, maxContacts, maxLift };
 }
 
 describe('tracked vehicle over logs (flat ground, logs 20 m ahead, 10 %…90 % buried)', () => {
@@ -45,6 +47,7 @@ describe('tracked vehicle over logs (flat ground, logs 20 m ahead, 10 %…90 % b
     expect(r.z).toBeLessThan(-60);
     expect(r.y).toBeGreaterThan(0); // never fell through
     expect(r.maxContacts).toBeGreaterThan(0);
+    expect(r.maxLift).toBeGreaterThan(0.1); // the ground profile for the chain visual shows the logs
   });
   it('the chain wraps idler and sprocket: nose and tail contacts exist on a single log', () => {
     const r = drive(true, [logs(0.1, 0.1)[0]], 10);

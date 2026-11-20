@@ -4,6 +4,7 @@ import type { TrackedVehicleSpec } from '../shared/trackedSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import type { FromWorker, ToWorker } from '../shared/protocol';
 import { blendSnapshots, wallClock } from '../shared/snapshot';
+import { TRACK_PROFILE_LENGTH } from '../shared/trackProfile';
 import { StepClock } from '../shared/stepClock';
 import type { Simulation } from '../physics/Simulation';
 import { terrain } from '../shared/terrain';
@@ -163,7 +164,7 @@ export class PhysicsClient {
     const s0 = i > 0 ? b[i - 1] : s1;
     const span = s1[1] - s0[1];
     const a = span > 0 ? Math.min(1, Math.max(0, (t - s0[1]) / span)) : 1;
-    blendSnapshots(s0, s1, a, this.layout.corners.length, this.out);
+    blendSnapshots(s0, s1, a, this.layout.corners.length, this.out, this.layout.tracked ? TRACK_PROFILE_LENGTH : 0);
     // snapshots older than s0 are no longer needed
     if (i > 1) b.splice(0, i - 1);
     return this.out;

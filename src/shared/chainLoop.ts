@@ -185,3 +185,53 @@ export function linkLayout(loopLength: number, nominalPitch: number): LinkLayout
   const count = Math.max(3, Math.round(loopLength / nominalPitch));
   return { count, pitch: loopLength / count };
 }
+
+/** spacing of the points when a loop is bent over the ground [m] */
+const DEFORM_STEP = 0.05;
+
+/**
+ * The same loop with its lower side pushed up by `lift(z)` [m] (ground or an obstacle under the chain between the wheels).
+ * Only points on the lower side (travelling toward +z, or turning at the ends) move; the loop is sampled every 5 cm
+ * and its length grows with the bend, the links spread over the new length.
+ */
+export function deformChainLoop(loop: ChainLoop, lift: (z: number) => number): ChainLoop {
+  const n = Math.max(8, Math.ceil(loop.length / DEFORM_STEP));
+  const zs = new Float64Array(n);
+  const ys = new Float64Array(n);
+  const pose: ChainPose = { z: 0, y: 0, angle: 0 };
+  for (let i = 0; i < n; i++) {
+    loop.at((i / n) * loop.length, pose);
+    // lower side: the outer normal (right of the travel direction) points down
+    const below = Math.cos(pose.angle) > 0;
+    zs[i] = pose.z;
+    ys[i] = pose.y + (below ? lift(pose.z) : 0);
+  }
+  const cum = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    cum[i + 1] = cum[i] + Math.hypot(zs[j] - zs[i], ys[j] - ys[i]);
+  }
+  const length = cum[n];
+  return {
+    length,
+    wrapped: loop.wrapped,
+    at(dist: number, out: ChainPose = { z: 0, y: 0, angle: 0 }): ChainPose {
+      const d = ((dist % length) + length) % length;
+      // binary search of the segment
+      let lo = 0;
+      let hi = n - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (cum[mid] <= d) lo = mid;
+        else hi = mid - 1;
+      }
+      const j = (lo + 1) % n;
+      const seg = cum[lo + 1] - cum[lo];
+      const t = seg > 1e-12 ? (d - cum[lo]) / seg : 0;
+      out.z = zs[lo] + (zs[j] - zs[lo]) * t;
+      out.y = ys[lo] + (ys[j] - ys[lo]) * t;
+      out.angle = Math.atan2(ys[j] - ys[lo], zs[j] - zs[lo]);
+      return out;
+    },
+  };
+}

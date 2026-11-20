@@ -19,6 +19,10 @@ export class TrackedVehicle {
   forwardSpeed = 0;
   /** contact of the chain with the ground between the wheels */
   readonly contact: TrackContact;
+  /** chain lift per cell and side, for the snapshot */
+  get trackProfile(): Float64Array {
+    return this.contact.profile;
+  }
 
   constructor(
     R: typeof RAPIER,

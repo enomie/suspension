@@ -10,6 +10,8 @@ export interface SimVehicle {
   readonly corners: Corner[];
   /** forward speed [m/s] (+ = chassis −Z) */
   readonly forwardSpeed: number;
+  /** tracked vehicles: how far the ground lifts the chain between the wheels (`shared/trackProfile.ts`), sent in the snapshot */
+  readonly trackProfile?: Float64Array;
   /** call before every world.step() */
   applyInput(input: DriverInput, dt: number): void;
   /** call after world.step() */

@@ -1,6 +1,6 @@
 import { Group, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import type { ChainLinkAsset } from '../../shared/chainLink';
-import { buildChainLoop, linkLayout, type ChainCircle, type ChainPose } from '../../shared/chainLoop';
+import { buildChainLoop, deformChainLoop, linkLayout, type ChainCircle, type ChainPose } from '../../shared/chainLoop';
 import { UNIT_BOX_GEOMETRY } from '../geometries/unitGeometries';
 import { MAT } from './materials';
 
@@ -76,14 +76,22 @@ export class ChainVisual {
    * @param distanceLeft distance the left track surface has moved along the ground [m], forward driving = positive
    * @param distanceRight same for the right track
    */
-  update(left: readonly ChainCircle[], right: readonly ChainCircle[], distanceLeft: number, distanceRight: number): void {
-    this.updateSide(0, left, distanceLeft);
-    this.updateSide(1, right, distanceRight);
+  update(
+    left: readonly ChainCircle[],
+    right: readonly ChainCircle[],
+    distanceLeft: number,
+    distanceRight: number,
+    /** optional lift of the lower run per side: `lift(side, z)` [m], chassis-local (ground profile, see `trackProfile.ts`) */
+    lift?: (side: 0 | 1, z: number) => number,
+  ): void {
+    this.updateSide(0, left, distanceLeft, lift);
+    this.updateSide(1, right, distanceRight, lift);
     for (const m of this.meshes) m.instanceMatrix.needsUpdate = true;
   }
 
-  private updateSide(side: number, wheels: readonly ChainCircle[], distance: number): void {
-    const loop = buildChainLoop(wheels, this.chainThickness);
+  private updateSide(side: 0 | 1, wheels: readonly ChainCircle[], distance: number, lift?: (side: 0 | 1, z: number) => number): void {
+    let loop = buildChainLoop(wheels, this.chainThickness);
+    if (lift) loop = deformChainLoop(loop, (z) => lift(side, z));
     const pitch = loop.length / this.linkCount;
     const k = this.widthScale;
     for (let i = 0; i < this.linkCount; i++) {

@@ -13,6 +13,7 @@ import { createComMarker } from './comVisual';
 import { createPreviewBox } from './previewBoxVisual';
 import { JointRenderer } from './jointVisual';
 import { TrackedVisual } from './trackedVisual';
+import { TRACK_PROFILE_LENGTH } from '../../shared/trackProfile';
 
 const tireMat = new MeshStandardMaterial({ color: 0x202226, roughness: 0.9 });
 const rimMat = new MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.4, metalness: 0.3 });
@@ -117,7 +118,7 @@ export class VehicleVisual implements BodyPoses {
       id: c.id,
       telemetry: { travel: 0, springForce: 0, wheelOmega: 0, steerAngle: 0 },
     }));
-    this.q0 = bodyOffset(layout.corners.length);
+    this.q0 = bodyOffset(layout.corners.length, layout.tracked ? TRACK_PROFILE_LENGTH : 0);
     this.root.name = layout.spec.name;
     this.frame = createFrameVisual(layout.spec);
     this.frame.visible = layout.spec.chassis.frame !== false;
@@ -181,7 +182,7 @@ export class VehicleVisual implements BodyPoses {
     });
     this.links.sync(this);
     this.joints.sync(this);
-    this.tracked?.update(this, L, this.corners.map((c) => c.telemetry), s[1]);
+    this.tracked?.update(this, L, this.corners.map((c) => c.telemetry), s[1], s.subarray(o, o + TRACK_PROFILE_LENGTH));
     this.root.visible = true;
   }
 

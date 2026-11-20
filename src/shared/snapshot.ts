@@ -4,6 +4,7 @@
  *   [1] timestamp [ms, performance.timeOrigin + now] of simulated time
  *   [2] forward speed [m/s]
  *   [3..] per corner 4 telemetry values (travel, springForce, wheelOmega, steerAngle)
+ *   [extra] optional vehicle-specific block (tracked: ground profile of the chain, `trackProfile.ts`), blended linearly
  *   then per body 7 values: ABSOLUTE position (x, y, z) + quaternion (x, y, z, w)
  * absolute positions (Float64) decouple floating origin from worker and main thread.
  */
@@ -11,10 +12,10 @@ export const HEADER = 3;
 export const CORNER_STRIDE = 4;
 export const BODY_STRIDE = 7;
 
-export const snapshotLength = (corners: number, bodies: number) =>
-  HEADER + corners * CORNER_STRIDE + bodies * BODY_STRIDE;
+export const snapshotLength = (corners: number, bodies: number, extra = 0) =>
+  HEADER + corners * CORNER_STRIDE + extra + bodies * BODY_STRIDE;
 
-export const bodyOffset = (corners: number) => HEADER + corners * CORNER_STRIDE;
+export const bodyOffset = (corners: number, extra = 0) => HEADER + corners * CORNER_STRIDE + extra;
 
 /** shared clock for worker and main thread [ms] */
 export const wallClock = () => performance.timeOrigin + performance.now();
@@ -23,8 +24,8 @@ export const wallClock = () => performance.timeOrigin + performance.now();
  * blends two snapshots (linear values linear, quaternions nlerp with sign fix —
  * at 8 ms spacing practically same as slerp, but cheaper).
  */
-export function blendSnapshots(a: Float64Array, b: Float64Array, t: number, corners: number, out: Float64Array): void {
-  const q0 = bodyOffset(corners);
+export function blendSnapshots(a: Float64Array, b: Float64Array, t: number, corners: number, out: Float64Array, extra = 0): void {
+  const q0 = bodyOffset(corners, extra);
   for (let i = 0; i < q0; i++) out[i] = a[i] + (b[i] - a[i]) * t;
   out[0] = b[0];
   for (let o = q0; o < a.length; o += BODY_STRIDE) {

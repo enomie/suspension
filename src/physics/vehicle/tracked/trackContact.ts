@@ -3,6 +3,7 @@ import { Quaternion, Vector3 } from 'three';
 import type { Corner } from '../types';
 import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
 import type { TrackCommand } from '../../../shared/trackDrive';
+import { fillTrackProfile, trackProfileRange, TRACK_PROFILE_LENGTH, type ProfileSample } from '../../../shared/trackProfile';
 import { GROUP_ALL, GROUP_TERRAIN, groups } from '../groups';
 
 /**
@@ -64,12 +65,15 @@ const _n = new Vector3();
 const _t = new Vector3();
 const _f = new Vector3();
 const _pa = new Vector3();
+const _zAxis = new Vector3();
 
 export class TrackContact {
   /** contacts of the last `apply`, both sides */
   /** false = only the road wheel colliders touch the ground (for comparison and tests) */
   enabled = true;
   readonly points: TrackContactPoint[] = [];
+  /** how far the ground lifts the chain per cell and side (`shared/trackProfile.ts`) */
+  readonly profile = new Float64Array(TRACK_PROFILE_LENGTH);
   /** traction force delivered by the span contacts last step, per side [N, along the drive direction] */
   readonly spanThrust = { L: 0, R: 0 };
   private readonly meanStiffness: number;
@@ -98,6 +102,7 @@ export class TrackContact {
     _up.set(0, 1, 0).applyQuaternion(_q);
     _fwd.set(0, 0, -1).applyQuaternion(_q);
     this.spanThrust.L = this.spanThrust.R = 0;
+    this.profile.fill(0);
     if (!this.enabled) return;
     for (const side of ['L', 'R'] as const) this.applySide(side, cmd[side], driveCap[side], dt);
   }
@@ -134,6 +139,10 @@ export class TrackContact {
     const k = this.meanStiffness * SUPPORT_STIFFNESS_SHARE;
     const c = k * SUPPORT_DAMPING_TIME;
     const filter = groups(GROUP_ALL, GROUP_TERRAIN);
+    const samples: ProfileSample[] = [];
+    const [z0, z1] = trackProfileRange(this.spec);
+    _zAxis.set(0, 0, 1).applyQuaternion(_q);
+    const ct = this.chassis.translation();
     const ray = new this.R.Ray({ x: 0, y: 0, z: 0 }, { x: -_up.x, y: -_up.y, z: -_up.z });
 
     for (let i = 0; i + 1 < anchors.length; i++) {
@@ -148,12 +157,17 @@ export class TrackContact {
         ray.origin.x = _pa.x + _up.x * PROBE_LIFT;
         ray.origin.y = _pa.y + _up.y * PROBE_LIFT;
         ray.origin.z = _pa.z + _up.z * PROBE_LIFT;
+        const zl = (_pa.x - ct.x) * _zAxis.x + (_pa.y - ct.y) * _zAxis.y + (_pa.z - ct.z) * _zAxis.z; // chassis-local z
         const hit = this.world.castRayAndGetNormal(ray, PROBE_LIFT, true, undefined, filter);
-        if (!hit) continue;
-        const pen = PROBE_LIFT - hit.timeOfImpact;
-        if (pen <= 0) continue;
+        const pen = hit ? PROBE_LIFT - hit.timeOfImpact : 0;
+        const sample: ProfileSample = { z: zl, lift: Math.max(0, pen) };
+        samples.push(sample);
+        if (!hit || pen <= 0) continue;
         _n.set(hit.normal.x, hit.normal.y, hit.normal.z);
-        if (_n.dot(_up) <= 0.05) continue; // vertical or overhanging faces: only the wheel colliders deal with those
+        if (_n.dot(_up) <= 0.05) {
+          sample.lift = 0;
+          continue;
+        } // vertical or overhanging faces: only the wheel colliders deal with those
 
         // velocity of the chain line point, blended from its two anchors
         const vx = a.v.x + (b.v.x - a.v.x) * s;
@@ -161,11 +175,17 @@ export class TrackContact {
         const vz = a.v.z + (b.v.z - a.v.z) * s;
         const vn = vx * _n.x + vy * _n.y + vz * _n.z;
         const support = Math.max(0, k * pen - c * vn);
-        if (support === 0) continue;
+        if (support === 0) {
+          sample.lift = 0;
+          continue;
+        }
 
         // drive direction on the surface: chassis forward projected into the contact plane
         _t.copy(_fwd).addScaledVector(_n, -_fwd.dot(_n));
-        if (_t.lengthSq() < 1e-6) continue;
+        if (_t.lengthSq() < 1e-6) {
+          sample.lift = 0;
+          continue;
+        }
         _t.normalize();
         const vt = vx * _t.x + vy * _t.y + vz * _t.z;
         const slip = Math.max(-1, Math.min(1, (cmd.speed - vt) / SLIP_FULL_SPEED));
@@ -189,5 +209,6 @@ export class TrackContact {
         });
       }
     }
+    fillTrackProfile(this.profile, side === 'L' ? 0 : 1, samples, z0, z1);
   }
 }
