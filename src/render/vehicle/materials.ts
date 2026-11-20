@@ -13,5 +13,6 @@ export const MAT = {
   differential: new MeshStandardMaterial({ color: 0xe03fd8, roughness: 0.4 }),
   previewBox: new MeshStandardMaterial({ color: 0x4fb3ff, roughness: 0.6, transparent: true, opacity: 0.3, depthWrite: false, side: DoubleSide }),
   com: new MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true }),
+  chain: new MeshStandardMaterial({ color: 0x4a4f45, roughness: 0.55, metalness: 0.5 }),
   hub: new MeshStandardMaterial({ color: 0x8a9099, roughness: 0.4, metalness: 0.5 }),
 };
