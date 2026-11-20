@@ -122,3 +122,49 @@ describe('tracked vehicle over logs (flat ground, logs 20 m ahead, 10 %…90 % b
     expect(worst).toBeLessThan(0.1); // without the ground profile the chain goes about 0.4 m into the log; the rest is the steep flank
   });
 });
+
+describe('tracked vehicle tipped over', () => {
+  // a heightfield like the real terrain: Rapier returns the normal of a ray hit turned toward the ray origin, so rays from
+  // an upside-down vehicle find the ground from underneath
+  for (const deg of [180, 140, 100]) {
+    it(`${deg}° on a heightfield: no support, no chain lift (the chain must not move)`, () => {
+      const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+      world.timestep = DT;
+      world.numSolverIterations = 8;
+      const n = 64;
+      world.createCollider(RAPIER.ColliderDesc.heightfield(n, n, new Float32Array((n + 1) * (n + 1)), { x: 128, y: 1, z: 128 }));
+      const v = new TrackedVehicle(RAPIER, world, tank, { x: 0, y: 3, z: 0 });
+      // tip the whole vehicle about the chassis Z axis (all bodies together, joints stay valid)
+      const c = v.chassis.translation();
+      const a = (deg * Math.PI) / 180;
+      const tip = new Quaternion(0, 0, Math.sin(a / 2), Math.cos(a / 2));
+      for (const b of new Set([v.chassis, ...v.corners.flatMap((k) => k.bodies)])) {
+        const t = b.translation();
+        const r = b.rotation();
+        const q = tip.clone().multiply(new Quaternion(r.x, r.y, r.z, r.w));
+        const dx = t.x - c.x;
+        const dy = t.y - c.y;
+        b.setTranslation({ x: c.x + dx * Math.cos(a) - dy * Math.sin(a), y: c.y + dx * Math.sin(a) + dy * Math.cos(a), z: t.z }, true);
+        b.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
+      }
+      let tipped = 0;
+      let maxLift = 0;
+      let maxContacts = 0;
+      for (let k = 0; k < 480; k++) {
+        v.applyInput(neutralInput(), DT);
+        world.step();
+        v.updateTelemetry();
+        const r = v.chassis.rotation();
+        if (1 - 2 * (r.x * r.x + r.z * r.z) < 0.05) {
+          // chassis up axis no longer points up
+          tipped++;
+          for (const x of v.trackProfile) maxLift = Math.max(maxLift, x);
+          maxContacts = Math.max(maxContacts, v.contact.points.length);
+        }
+      }
+      expect(tipped).toBeGreaterThan(100);
+      expect(maxLift).toBe(0);
+      expect(maxContacts).toBe(0);
+    });
+  }
+});

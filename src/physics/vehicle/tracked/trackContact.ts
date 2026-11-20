@@ -66,6 +66,15 @@ const _t = new Vector3();
 const _f = new Vector3();
 const _pa = new Vector3();
 
+/**
+ * Does a surface hit by a probe carry the chain? Its normal must face the chain (chassis up) and face up in the world.
+ * Rapier returns the normal of a ray hit turned toward the ray origin, so a vehicle upside down would find the ground
+ * from underneath with a normal that points to the chain: only the world-up test rejects that back face.
+ */
+function supports(normal: { x: number; y: number; z: number }, up: Vector3): boolean {
+  return normal.y > 0.05 && normal.x * up.x + normal.y * up.y + normal.z * up.z > 0.05;
+}
+
 export class TrackContact {
   /** contacts of the last `apply`, both sides */
   /** false = only the road wheel colliders touch the ground (for comparison and tests) */
@@ -138,9 +147,11 @@ export class TrackContact {
         ray.origin.x = _pa.x + _up.x * PROBE_LIFT;
         ray.origin.y = _pa.y + _up.y * PROBE_LIFT;
         ray.origin.z = _pa.z + _up.z * PROBE_LIFT;
-        const hit = this.world.castRay(ray, PROBE_LIFT, true, undefined, filter);
+        const hit = this.world.castRayAndGetNormal(ray, PROBE_LIFT, true, undefined, filter);
         // a probe that starts inside a solid (toi 0) has no usable surface: leave the chain alone
-        if (hit && hit.timeOfImpact > 1e-6) this.profile[si * TRACK_PROFILE_CELLS + i] = Math.max(0, PROBE_LIFT - hit.timeOfImpact);
+        if (!hit || hit.timeOfImpact <= 1e-6) continue;
+        if (!supports(hit.normal, _up)) continue;
+        this.profile[si * TRACK_PROFILE_CELLS + i] = Math.max(0, PROBE_LIFT - hit.timeOfImpact);
       }
     });
   }
@@ -196,7 +207,7 @@ export class TrackContact {
         const pen = PROBE_LIFT - hit.timeOfImpact;
         if (pen <= 0) continue;
         _n.set(hit.normal.x, hit.normal.y, hit.normal.z);
-        if (_n.dot(_up) <= 0.05) continue; // vertical or overhanging faces: only the wheel colliders deal with those
+        if (!supports(hit.normal, _up)) continue; // vertical, overhanging or back faces: only the wheel colliders deal with those
 
         // velocity of the chain line point, blended from its two anchors
         const vx = a.v.x + (b.v.x - a.v.x) * s;
