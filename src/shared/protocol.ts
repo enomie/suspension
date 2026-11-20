@@ -6,7 +6,7 @@ import type { TerrainConfig } from './terrain/types';
 
 /** main thread → physics worker */
 export type ToWorker =
-  | { type: 'init'; preset: number; x: number; z: number; terrain: TerrainConfig }
+  | { type: 'init'; preset: number; x: number; z: number; terrain: TerrainConfig; testLogs?: boolean }
   | { type: 'input'; input: DriverInput }
   /** `spec` = custom vehicle (then `preset` is -1) */
   | { type: 'spawn'; preset: number; spec?: VehicleSpec | TrackedVehicleSpec };

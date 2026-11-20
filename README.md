@@ -29,7 +29,7 @@ npm test
 | Mouse | Orbit / zoom camera |
 | F1 … F7 | Debug toggles (shadows, morph, interpolation, freeze LOD, wireframe, sun, shadow filter) |
 
-URL parameters: `?x=…&z=…` spawn position (mountains: `?x=858000&z=897000`), `?terrain=world|hills`, `?seed=…`, `?worker=0` physics on main thread, `?dpr=1` lower resolution,
+URL parameters: `?x=…&z=…` spawn position (mountains: `?x=858000&z=897000`), `?terrain=world|hills`, `?seed=…`, `?worker=0` physics on main thread, `?dpr=1` lower resolution, `?logs=0` removes the test logs (10 logs, radius 0.4 m, 10 m wide, 2 m apart, 10 %…90 % buried, starting 20 m ahead of the spawn point; `src/shared/testLogs.ts`),
 `?debug=shadows,morph,interp` enable toggles upfront.
 
 ## Documentation

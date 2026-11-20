@@ -51,7 +51,7 @@ export class PhysicsClient {
     this.mode = mode;
   }
 
-  static async create(opts: { preset: number; x: number; z: number; useWorker: boolean }): Promise<PhysicsClient> {
+  static async create(opts: { preset: number; x: number; z: number; useWorker: boolean; testLogs?: boolean }): Promise<PhysicsClient> {
     if (opts.useWorker && typeof Worker !== 'undefined') {
       const c = new PhysicsClient('worker');
       const w = new Worker(new URL('../physics/worker.ts', import.meta.url), { type: 'module' });
@@ -74,7 +74,7 @@ export class PhysicsClient {
             if (first) resolve();
           }
         };
-        c.send({ type: 'init', preset: opts.preset, x: opts.x, z: opts.z, terrain: terrain().config });
+        c.send({ type: 'init', preset: opts.preset, x: opts.x, z: opts.z, terrain: terrain().config, testLogs: opts.testLogs });
       });
       return c;
     }

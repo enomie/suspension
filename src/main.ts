@@ -4,6 +4,8 @@ import { setTerrain, TERRAIN_PRESETS } from './shared/terrain';
 import { OriginShifter } from './shared/originShifter';
 import { wallClock } from './shared/snapshot';
 import { createStage, gpuBackendLabel } from './render/scene';
+import { TestLogsVisual } from './render/testLogsVisual';
+import { buildLogField } from './shared/testLogs';
 import { LodTerrain } from './render/terrain/LodTerrain';
 import { DEFAULT_TOGGLES, VehicleVisual, type VisualToggles } from './render/vehicle/VehicleVisual';
 import { PhysicsClient } from './app/PhysicsClient';
@@ -43,8 +45,12 @@ const stage = await createStage(document.querySelector<HTMLDivElement>('#app')!,
 });
 const { scene, camera, renderer, cameraRig, sun } = stage;
 
+/** test obstacle: 10 half-buried logs 20 m ahead of the start; ?logs=0 disables */
+const testLogs = params.get('logs') !== '0';
 const terrain = new LodTerrain();
 scene.add(terrain.root);
+const logsVisual = testLogs ? new TestLogsVisual(buildLogField(ORIGIN.x, ORIGIN.z)) : null;
+if (logsVisual) scene.add(logsVisual.root);
 
 // ── physics (worker; ?worker=0 → main thread) ────────────────────
 let vehicle: VehicleVisual | null = null;
@@ -54,6 +60,7 @@ const physics = await PhysicsClient.create({
   x: ORIGIN.x,
   z: ORIGIN.z,
   useWorker: params.get('worker') !== '0',
+  testLogs,
 });
 const vehiclePickerHost = document.querySelector<HTMLDivElement>('#vehicle-picker-host')!;
 const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.spawn(preset), (t) => {
@@ -83,6 +90,7 @@ showVehicle();
 const origin = new OriginShifter();
 origin.on((dx, dz) => cameraRig.shift(dx, dz));
 origin.on(() => terrain.onOriginShift());
+origin.on(() => logsVisual?.place());
 
 // ── input / HUD / debug ────────────────────────────────────────
 const hud = new TelemetryHud(document.querySelector<HTMLDivElement>('#hud')!);

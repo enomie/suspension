@@ -14,6 +14,8 @@ import { neutralInput, type DriverInput } from '../shared/driverInput';
 import type { VehicleSpec } from '../shared/vehicleSpec';
 import type { TrackedVehicleSpec } from '../shared/trackedSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
+import { addLogColliders } from './testLogs';
+import { buildLogField } from '../shared/testLogs';
 import { setTerrain, type TerrainConfig } from '../shared/terrain';
 
 /**
@@ -33,7 +35,7 @@ export class Simulation {
 
   constructor(
     private R: typeof RAPIER,
-    opts: { preset: number; x: number; z: number; terrain?: TerrainConfig },
+    opts: { preset: number; x: number; z: number; terrain?: TerrainConfig; testLogs?: boolean },
   ) {
     if (opts.terrain) setTerrain(opts.terrain);
     ORIGIN.x = opts.x;
@@ -42,6 +44,7 @@ export class Simulation {
     this.world.timestep = PHYSICS_DT / PHYSICS_SUBSTEPS;
     this.world.numSolverIterations = 8;
     this.tiles = new PhysicsTiles(R, this.world);
+    if (opts.testLogs) addLogColliders(R, this.world, buildLogField(opts.x, opts.z));
     // origin shift: move all Rapier bodies together (joints are relative → stay valid)
     this.origin.on((dx, dz) =>
       this.world.forEachRigidBody((b) => {
