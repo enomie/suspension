@@ -12,7 +12,10 @@ import {
 } from '../shared/customVehicle';
 import { numberInput } from './numberField';
 import { topSpeed } from '../shared/performance';
+import { buildTrackedSpec, type CustomTrackedConfig } from '../shared/customTracked';
+import type { TrackedVehicleSpec } from '../shared/trackedSpec';
 import type { SuspensionType, VehicleSpec } from '../shared/vehicleSpec';
+import { CustomTrackedSection } from './customTrackedPanel';
 
 const STEER_LABELS: Record<SteerMode, string> = { none: 'No steering', steer: 'Steering', counter: 'Counter-steering' };
 
@@ -49,7 +52,8 @@ function checkbox(checked: boolean, onChange: (on: boolean) => void): HTMLInputE
  * Collapsible panel to assemble any vehicle: wheelbase (front to rear axle), number of axles (1–5), and per axle
  * wheels (pair, center, center double), steering mode, suspension type (the list depends on wheels and steering), drive, differential (driven axles only),
  * handbrake, track width and wheel size. Vehicle-wide: weight, center of mass offset, handbrake torque, engine torque and power.
- * "Apply" builds a `VehicleSpec` and hands it to `onApply`.
+ * The vehicle type selects between these wheeled fields and the tracked fields (`CustomTrackedSection`).
+ * "Apply" builds a `VehicleSpec` or `TrackedVehicleSpec` and hands it to `onApply`.
  */
 export class CustomPanel {
   private config: CustomVehicleConfig = structuredClone(DEFAULT_CUSTOM);
@@ -58,7 +62,11 @@ export class CustomPanel {
   /** writes the current config into the top-level inputs (set in the constructor) */
   private syncInputs: () => void = () => {};
 
-  constructor(parent: HTMLElement, onApply: (spec: VehicleSpec) => void) {
+  private wheeledHost = el('div', { className: 'custom-wheeled' });
+  private tracked = new CustomTrackedSection();
+  private typeSelect = el('select');
+
+  constructor(parent: HTMLElement, onApply: (spec: VehicleSpec | TrackedVehicleSpec) => void) {
     const details = el('details', { id: 'custom-panel' }, el('summary', { textContent: 'Custom vehicle' }));
 
     const wheelbase = numberInput(this.config.wheelbase, CUSTOM_LIMITS.wheelbase, 0.1, (v) => (this.config.wheelbase = v));
@@ -97,9 +105,12 @@ export class CustomPanel {
     };
 
     const apply = el('button', { type: 'button', textContent: 'Apply' });
-    apply.addEventListener('click', () => onApply(buildCustomSpec(this.config)));
+    apply.addEventListener('click', () => onApply(this.typeSelect.value === 'tracked' ? buildTrackedSpec(this.tracked.config) : buildCustomSpec(this.config)));
 
-    details.append(
+    this.typeSelect.append(option('wheeled', 'Wheeled'), option('tracked', 'Tracked'));
+    this.typeSelect.addEventListener('change', () => this.showType());
+
+    this.wheeledHost.append(
       field('Wheelbase (m)', wheelbase),
       field('Axles', count),
       this.axleHost,
@@ -113,15 +124,32 @@ export class CustomPanel {
       field('Power (kW)', power),
       field('Wheelspin (m/s)', wheelspin),
       field('Top speed', this.topSpeedOut),
-      apply,
     );
+    details.append(field('Vehicle type', this.typeSelect), this.wheeledHost, this.tracked.element, apply);
+    this.showType();
     parent.append(details);
     this.renderAxles();
     this.refreshTopSpeed();
   }
 
+  /** shows the fields of the selected vehicle type */
+  private showType(): void {
+    const tracked = this.typeSelect.value === 'tracked';
+    this.wheeledHost.hidden = tracked;
+    this.tracked.element.hidden = !tracked;
+  }
+
+  /** Replace the tracked fields with this config and show them (e.g. when the tracked preset is picked) */
+  loadTracked(config: CustomTrackedConfig): void {
+    this.tracked.load(config);
+    this.typeSelect.value = 'tracked';
+    this.showType();
+  }
+
   /** Replace the whole panel with this config (e.g. when a preset is picked in the vehicle dropdown) */
   load(config: CustomVehicleConfig): void {
+    this.typeSelect.value = 'wheeled';
+    this.showType();
     this.config = structuredClone(config);
     this.syncInputs();
     this.renderAxles();

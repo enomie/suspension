@@ -13,6 +13,7 @@ import { DebugToggles } from './app/debug';
 import { VehiclePicker } from './app/vehiclePicker';
 import { CustomPanel } from './app/customPanel';
 import { customFromSpec } from './shared/customVehicle';
+import { trackedConfigFromSpec } from './shared/customTracked';
 
 /*
  * Main thread. Physics runs in the physics worker (src/physics/worker.ts), terrain tiles in tile workers.
@@ -68,8 +69,12 @@ const showVehicle = () => {
   keyboard.resetDiffLock();
   scene.add(vehicle.root);
   vehiclePicker.setPreset(physics.preset);
-  // a wheeled preset fills the custom panel (same concept; the panel has no tracked fields yet); a custom vehicle came from the panel, which already shows it
-  if (physics.preset >= 0 && !physics.layout.tracked) customPanel.load(customFromSpec(physics.layout.spec));
+  // a preset fills the custom panel (same concept); a custom vehicle came from the panel, which already shows it
+  if (physics.preset >= 0) {
+    const tracked = physics.layout.tracked;
+    if (tracked) customPanel.loadTracked(trackedConfigFromSpec(tracked));
+    else customPanel.load(customFromSpec(physics.layout.spec));
+  }
 };
 physics.onVehicle = showVehicle;
 showVehicle();
