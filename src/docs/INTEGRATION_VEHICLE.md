@@ -184,3 +184,8 @@ Tests: `tests/customVehicle.test.ts`, `tests/differential.test.ts`, `tests/lower
 - Wheels with CCD. Always limit drive torque (`setMotorMaxForce`), else motor is “infinitely strong”.
 - Joint contacts between connected bodies off; wheels do not collide with own chassis.
 - Details: [VEHICLE_KIT.md](VEHICLE_KIT.md) §9.
+
+## Tracked vehicles
+Tracked vehicles use the same pipeline (`createVehicle`, `describeLayout`, `writeVehicleSnapshot`, `VehicleVisual`) with a
+`TrackedVehicleSpec`; see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md). The driver input is the same `DriverInput`, so the
+control layer needs no change.

@@ -11,5 +11,6 @@ export { createFrameVisual } from './frameVisual';
 export { createDifferentialMarkers } from './differentialVisual';
 export { createComMarker } from './comVisual';
 export { createPreviewBox } from './previewBoxVisual';
+export { TrackedVisual } from './trackedVisual';
 export { ChainVisual, linkMatrix, type ChainVisualOptions } from './chainVisual';
 export { MAT } from './materials';

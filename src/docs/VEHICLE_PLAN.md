@@ -27,7 +27,7 @@ Concept, naming, parts: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code structure: [ARCHI
 | 4 motorcycle + moped | telescopic fork with rake/trail, swingarm, `parts/balance.ts` (counter-steer feedback while moving, virtual stand when slow), presets `motorcycle` + `moped` (picker entries 12/13, no ladder frame drawn), bike tire = apokalypto torus, visual and physics 1:1 (`WheelSpec.shape: 'torus'`, `shared/unitTorus.ts`: unit torus mesh, uniform scale Ø → width 0.6·R, collider = `roundConvexHull` of the torus vertices with apokalypto's border 11 % of tube radius, 3.5–26 mm) with rim ring | ✓ (`tests/fork.test.ts`, `tests/balance.test.ts`) |
 | 5 trailers | `coupling.ts` (hitch / fifthWheel / kingPin), drawbar trailer, semi-truck, key `T`; simple engine curve | open |
 | 6 optional | gearbox, limited-slip differential (open and spooled axles, a global lock level cycled with `L`, and a slipping clutch exist: `parts/differential.ts`) | open |
-| 7 tracks | road wheels on swingarms (torsion bar = position motor), left/right drive separate | open |
+| 7 tracks | tracked vehicle as its own module: sliding strut road wheels with track-wide collider, fixed idler and sprocket, left/right track drive (skid steering), chain loop and links, custom panel; see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md) | ✓ (`tests/tracked*.test.ts`) |
 | — distant physics | coarser heightfield rings for distant objects (own collision group), from `sampleGrid` | prepared |
 
 ## Starting values car (preset `car`)

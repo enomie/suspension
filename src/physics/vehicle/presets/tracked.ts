@@ -23,7 +23,7 @@ export const tank: TrackedVehicleSpec = {
   idler: { z: -2.4, y: -0.35, radius: 0.3, width: 0.45 },
   sprocket: { z: 2.4, y: -0.05, radius: 0.35, width: 0.45 },
   track: 2,
-  beltWidth: 0.45,
+  beltWidth: 0.55,
   chainThickness: 0.05,
   linkAsset: PLACEHOLDER_CHAIN_LINK.name,
   drive: { maxTorque: 24000, maxPower: 400_000, reverseSpeed: 5 },
