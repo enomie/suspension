@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createDifferentialMarkers } from '../src/render/vehicle/differentialVisual';
 import { createPreviewBox } from '../src/render/vehicle/previewBoxVisual';
-import { frameTopY } from '../src/render/vehicle/frameVisual';
 import { buildCustomSpec, DEFAULT_CUSTOM } from '../src/shared/customVehicle';
-import { frameHalfLength } from '../src/shared/vehicleSpec';
+import { frameHalfLength, frameTopY } from '../src/shared/vehicleSpec';
 
 const withDiff = (front: boolean, rear: boolean) =>
   buildCustomSpec({
@@ -31,9 +30,9 @@ describe('differential markers', () => {
 });
 
 describe('preview box', () => {
-  it('sits on top of the ladder frame, is as wide as the frame and 0.5 m longer, and is semi-transparent', () => {
+  it('is the lower collider of the spec: on the frame, same width, 0.5 m longer, semi-transparent', () => {
     const spec = buildCustomSpec(DEFAULT_CUSTOM);
-    const box = createPreviewBox(spec);
+    const box = createPreviewBox(spec)!;
     expect(box.name).toBe('collider-lower');
     expect(box.position.y - box.scale.y / 2).toBeCloseTo(frameTopY(spec));
     expect(box.scale.x).toBeCloseTo(0.5);
@@ -41,5 +40,8 @@ describe('preview box', () => {
     const m = box.material as { transparent: boolean; opacity: number };
     expect(m.transparent).toBe(true);
     expect(m.opacity).toBeLessThan(1);
+  });
+  it('is absent when the profile has no collider box', () => {
+    expect(createPreviewBox(buildCustomSpec({ ...DEFAULT_CUSTOM, colliderBox: false }))).toBeNull();
   });
 });

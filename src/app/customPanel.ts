@@ -76,7 +76,11 @@ export class CustomPanel {
       numberInput(this.config.comOffset[k], CUSTOM_LIMITS.comOffset[axis], 0.05, (v) => (this.config.comOffset[k] = v)),
     );
 
+    const box = el('input', { type: 'checkbox', checked: this.config.colliderBox });
+    box.addEventListener('change', () => (this.config.colliderBox = box.checked));
+
     this.syncInputs = () => {
+      box.checked = this.config.colliderBox;
       weight.value = String(this.config.weight);
       handbrake.value = String(this.config.handbrakeTorque);
       com.forEach((input, k) => (input.value = String(this.config.comOffset[k])));
@@ -94,6 +98,7 @@ export class CustomPanel {
       field('Wheelbase (m)', wheelbase),
       field('Axles', count),
       this.axleHost,
+      field('Collider box (low friction)', box),
       field('Weight (kg)', weight),
       field('Center of mass x (m)', com[0]),
       field('Center of mass y (m)', com[1]),

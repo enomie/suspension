@@ -96,6 +96,17 @@ export interface ColliderPrimitive {
   friction?: number;
 }
 
+/**
+ * Coarse body block on top of the ladder frame, like the `collider-lower-...` colliders of the real game (low friction).
+ * Chassis-local. Collider and preview mesh come from the same data. It has no mass of its own: the vehicle weight is the total.
+ */
+export interface LowerColliderSpec {
+  /** full edge lengths [m] */
+  size: Vec3;
+  position: Vec3;
+  friction: number;
+}
+
 export interface ChassisSpec {
   /** width (X), height (Y), length (Z) [m] — sets inertia (and default frame) */
   size: Vec3;
@@ -104,6 +115,8 @@ export interface ChassisSpec {
    * keep close to visible shape — an invisible oversized collider acts like a wall.
    */
   colliders?: ColliderPrimitive[];
+  /** coarse body block collider and preview box (optional) */
+  lowerCollider?: LowerColliderSpec;
   mass: number;
   /** center of mass relative to box center */
   comOffset?: Vec3;
@@ -194,6 +207,25 @@ export const FRAME_RAIL = 0.1;
 export const FRAME_OUTER_WIDTH = 0.5;
 /** Distance of each side rail from the centre line [m] */
 export const FRAME_RAIL_X = (FRAME_OUTER_WIDTH - FRAME_RAIL) / 2;
+
+/** Height of the top of the side rails in chassis space [m] */
+export function frameTopY(spec: VehicleSpec): number {
+  return -spec.chassis.size[1] / 2 + FRAME_RAIL + 0.1;
+}
+
+const LOWER_COLLIDER_HEIGHT = 0.35;
+/** the block is longer than the frame by this much [m] (half at each end) */
+const LOWER_COLLIDER_EXTRA_LENGTH = 0.5;
+const LOWER_COLLIDER_FRICTION = 0.15;
+
+/** Default `collider-lower` block: as wide as the frame, 0.5 m longer, 0.35 m high, resting on the side rails */
+export function defaultLowerCollider(spec: VehicleSpec): LowerColliderSpec {
+  return {
+    size: [FRAME_OUTER_WIDTH, LOWER_COLLIDER_HEIGHT, frameHalfLength(spec) * 2 + LOWER_COLLIDER_EXTRA_LENGTH],
+    position: [0, frameTopY(spec) + LOWER_COLLIDER_HEIGHT / 2, 0],
+    friction: LOWER_COLLIDER_FRICTION,
+  };
+}
 
 /** Half the depth of a cross member: the side rails end flush with the outer cross members [m] */
 const CROSS_MEMBER_HALF_DEPTH = 0.04;

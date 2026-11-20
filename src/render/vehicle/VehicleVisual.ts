@@ -88,7 +88,6 @@ export class VehicleVisual implements BodyPoses {
   readonly absPos = new Vector3();
   private wheels: Group[];
   private frame: Mesh;
-  private previewBox: Mesh;
   private links: LinkRenderer;
   private joints: JointRenderer;
   private state: Float64Array | null = null;
@@ -105,8 +104,9 @@ export class VehicleVisual implements BodyPoses {
     this.root.name = layout.spec.name;
     this.frame = createFrameVisual(layout.spec);
     this.frame.visible = layout.spec.chassis.frame !== false;
-    this.previewBox = createPreviewBox(layout.spec);
-    this.chassis.add(this.frame, createMountPlates(layout.mounts), createDifferentialMarkers(layout.spec), this.previewBox);
+    this.chassis.add(this.frame, createMountPlates(layout.mounts), createDifferentialMarkers(layout.spec));
+    const box = createPreviewBox(layout.spec);
+    if (box) this.chassis.add(box);
     this.wheels = layout.corners.map((c) => {
       const w = createWheelMesh(c.wheelSpec);
       w.name = `${c.id}.wheel`;
@@ -177,11 +177,6 @@ export class VehicleVisual implements BodyPoses {
   /** show/hide ladder frame (suspension and wheels stay visible) */
   setFrameVisible(on: boolean): void {
     this.frame.visible = on && this.spec.chassis.frame !== false;
-  }
-
-  /** Show or hide the semi-transparent preview `collider-lower` box above the ladder frame */
-  setPreviewBoxVisible(on: boolean): void {
-    this.previewBox.visible = on;
   }
 
   /** Show or hide the joint markers (balls and hinge cylinders) */

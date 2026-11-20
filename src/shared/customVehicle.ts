@@ -1,5 +1,5 @@
 import { torusWheelWidth } from './unitTorus';
-import type { AxleSpec, SuspensionType, Vec3, VehicleSpec, WheelShape, WheelSpec } from './vehicleSpec';
+import { defaultLowerCollider, type AxleSpec, SuspensionType, Vec3, VehicleSpec, WheelShape, WheelSpec } from './vehicleSpec';
 
 /** What a custom axle does with the steering input */
 export type SteerMode = 'none' | 'steer' | 'counter';
@@ -41,6 +41,8 @@ export interface CustomVehicleConfig {
   handbrakeTorque: number;
   /** centre of mass relative to the chassis box centre [m] (x, y, z; −z = front) */
   comOffset: Vec3;
+  /** add the `collider-lower` block (collider and preview box) on top of the ladder frame */
+  colliderBox: boolean;
   /** wheelspin: how much faster than the ground a wheel may spin [m/s] (slip limit; 2.5 = hardly any) */
   wheelspin: number;
 }
@@ -120,6 +122,7 @@ export const DEFAULT_CUSTOM: CustomVehicleConfig = {
   ],
   torque: 2400,
   power: 360,
+  colliderBox: true,
   weight: 1280,
   handbrakeTorque: 3500,
   comOffset: [0, -0.2, 0],
@@ -161,6 +164,7 @@ export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
       wheelRadius: clamp(a.wheel.radius, CUSTOM_LIMITS.wheelRadius),
       wheelWidth: clamp(a.wheel.width, CUSTOM_LIMITS.wheelWidth),
     })),
+    colliderBox: !!spec.chassis.lowerCollider,
     weight: clamp(spec.chassis.mass + axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0), CUSTOM_LIMITS.weight),
     handbrakeTorque: clamp(axles.find((a) => a.handbrake)?.handbrake?.torque ?? DEFAULT_CUSTOM.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque),
     comOffset: clampCom(spec.chassis.comOffset ?? [0, 0, 0]),
@@ -211,7 +215,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   const wheelsMass = axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0);
   const mass = Math.max(MIN_CHASSIS_MASS, clamp(config.weight, CUSTOM_LIMITS.weight) - wheelsMass);
 
-  return {
+  const spec: VehicleSpec = {
     name: 'custom',
     label: 'Custom',
     chassis: { size: [1.4, 0.5, 2 * half + 2 * BOX_MARGIN], mass, comOffset: clampCom(config.comOffset) },
@@ -224,4 +228,6 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
       maxSlipSpeed: clamp(config.wheelspin, CUSTOM_LIMITS.wheelspin),
     },
   };
+  if (config.colliderBox) spec.chassis.lowerCollider = defaultLowerCollider(spec);
+  return spec;
 }

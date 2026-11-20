@@ -44,6 +44,14 @@ export function primitiveDesc(R: typeof RAPIER, p: ColliderPrimitive): RAPIER.Co
   return d;
 }
 
+/** the `collider-lower` block (spec.lowerCollider): low friction, no mass of its own */
+function addLowerCollider(R: typeof RAPIER, world: RAPIER.World, spec: ChassisSpec, body: RAPIER.RigidBody): void {
+  const c = spec.lowerCollider;
+  if (!c) return;
+  const desc = primitiveDesc(R, { shape: 'box', position: c.position, size: c.size, rounded: 0.03, friction: c.friction });
+  world.createCollider(desc.setDensity(0).setCollisionGroups(CHASSIS_GROUPS), body);
+}
+
 /** chassis = sprung mass. mass/inertia of full box `size`, collision = frame. */
 export function createChassis(
   R: typeof RAPIER,
@@ -68,6 +76,7 @@ export function createChassis(
     // primitives: mass/COM/inertia on body explicitly, colliders without own mass
     body.setAdditionalMassProperties(m, { x: cx, y: cy, z: cz }, inertia, IDENTITY_ROT, true);
     for (const p of spec.colliders) world.createCollider(primitiveDesc(R, p).setDensity(0).setCollisionGroups(CHASSIS_GROUPS), body);
+    addLowerCollider(R, world, spec, body);
     return body;
   }
   const { half, y } = frameColliderBox(spec, frameHalf);
@@ -79,5 +88,6 @@ export function createChassis(
     .setFriction(0.5)
     .setCollisionGroups(CHASSIS_GROUPS);
   world.createCollider(desc, body);
+  addLowerCollider(R, world, spec, body);
   return body;
 }
