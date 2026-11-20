@@ -111,7 +111,7 @@ body,
 }
 
 #custom-panel select,
-#custom-panel input[type='number'] {
+#custom-panel input.num {
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid rgba(200, 212, 224, 0.35);
@@ -120,7 +120,7 @@ body,
   font: inherit;
 }
 
-#custom-panel input[type='number'] {
+#custom-panel input.num {
   width: 5rem;
 }
 

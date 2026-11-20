@@ -10,6 +10,7 @@ import {
   type CustomVehicleConfig,
   type SteerMode,
 } from '../shared/customVehicle';
+import { numberInput } from './numberField';
 import { topSpeed } from '../shared/performance';
 import type { SuspensionType, VehicleSpec } from '../shared/vehicleSpec';
 
@@ -42,16 +43,6 @@ function checkbox(checked: boolean, onChange: (on: boolean) => void): HTMLInputE
   const box = el('input', { type: 'checkbox', checked });
   box.addEventListener('change', () => onChange(box.checked));
   return box;
-}
-
-function numberInput(value: number, [min, max]: readonly [number, number], step: number, onChange: (v: number) => void): HTMLInputElement {
-  const i = el('input', { type: 'number', value: String(value), min: String(min), max: String(max), step: String(step) });
-  i.addEventListener('change', () => {
-    const v = Math.min(max, Math.max(min, Number(i.value) || min));
-    i.value = String(v);
-    onChange(v);
-  });
-  return i;
 }
 
 /**
@@ -95,14 +86,14 @@ export class CustomPanel {
 
     this.syncInputs = () => {
       box.checked = this.config.colliderBox;
-      weight.value = String(this.config.weight);
-      handbrake.value = String(this.config.handbrakeTorque);
-      com.forEach((input, k) => (input.value = String(this.config.comOffset[k])));
-      wheelbase.value = String(this.config.wheelbase);
+      weight.setNumber(this.config.weight);
+      handbrake.setNumber(this.config.handbrakeTorque);
+      com.forEach((input, k) => input.setNumber(this.config.comOffset[k]));
+      wheelbase.setNumber(this.config.wheelbase);
       count.value = String(this.config.axles.length);
-      torque.value = String(this.config.torque);
-      power.value = String(this.config.power);
-      wheelspin.value = String(this.config.wheelspin);
+      torque.setNumber(this.config.torque);
+      power.setNumber(this.config.power);
+      wheelspin.setNumber(this.config.wheelspin);
     };
 
     const apply = el('button', { type: 'button', textContent: 'Apply' });
