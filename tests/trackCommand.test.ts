@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { neutralInput, type DriverInput } from '../src/shared/driverInput';
 import { HANDBRAKE_FACTOR, IDLE_HOLD_SHARE, trackCommand, type TrackDriveParams } from '../src/shared/trackDrive';
 
-const P: TrackDriveParams = { reverseSpeed: 5, slipSpeed: 2.5, turnSpeed: 2 };
+const P: TrackDriveParams = { reverseSpeed: 5, slipSpeed: 2.5, turnSpeed: 2, maxSpeed: 13 };
 const amounts = (i: DriverInput, v = 0) => [trackCommand('L', i, v, P).amount, trackCommand('R', i, v, P).amount];
 const input = (o: Partial<DriverInput>): DriverInput => ({ ...neutralInput(), ...o });
 
@@ -19,6 +19,12 @@ describe('trackCommand', () => {
   it('the motor target stays slip speed above the vehicle speed', () => {
     expect(trackCommand('L', input({ throttle: 0.5 }), 8, P).speed).toBeCloseTo(10.5, 9);
     expect(trackCommand('L', input({ throttle: 0.5 }), 8, P).amount).toBe(0.5);
+  });
+
+  it('does not push beyond the top speed: above it the motor target falls back to the top speed', () => {
+    expect(trackCommand('L', input({ throttle: 1 }), 12, P).speed).toBe(13);
+    expect(trackCommand('L', input({ throttle: 1 }), 20, P).speed).toBe(13);
+    expect(trackCommand('R', input({ throttle: 1 }), 12, P).speed).toBe(13);
   });
 
   it('steer +1 (left) slows the left track and speeds up the right one, around the vehicle speed', () => {

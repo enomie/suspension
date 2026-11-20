@@ -95,6 +95,14 @@ describe('validateTrackedSpec', () => {
     expect(msg).toContain('linkAsset');
   });
 
+  it('checks the top speed when given', () => {
+    const s = spec();
+    s.maxSpeed = 13;
+    expect(validateTrackedSpec(s)).toEqual([]);
+    s.maxSpeed = 80;
+    expect(validateTrackedSpec(s).join()).toContain('maxSpeed');
+  });
+
   it('checks the turn speed when given', () => {
     const s = spec();
     s.turnSpeed = 2.5;

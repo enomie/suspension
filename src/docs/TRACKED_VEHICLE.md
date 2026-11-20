@@ -67,6 +67,7 @@ Forward = −Z, `z` and `y` are relative to the chassis origin (`y` = wheel cent
 | `linkAsset` | Name of the link asset |
 | `drive` | `maxTorque`, `maxPower`, `reverseSpeed`, optional `maxSlipSpeed` |
 | `turnSpeed` | Optional: speed difference of the tracks at full steer, default 3 m/s |
+| `maxSpeed` | Optional: top speed forward, default 13 m/s (47 km/h), see below |
 
 `validateTrackedSpec()` returns one message per problem: axle count, order and overlap, strut only, idler in front
 of and sprocket behind the road wheels, tracks not overlapping, values within `TRACKED_LIMITS`.
@@ -89,6 +90,13 @@ drive, idle.
 `applyTrackDrive()` sets the velocity motor of every road wheel from its side's command. The thrust (torque limit at low
 speed, power limit at high speed) is split evenly over the road wheels of a track. A road wheel's radius includes the
 chain, so speeds are at the outer surface of the track.
+
+### Top speed
+
+Nothing limits the speed but rolling and air drag: with 400 kW the thrust balance alone would allow over 300 km/h.
+In simulation the tank gets unstable at about 13 to 16 m/s: its speed oscillates and it can spin out without any steering
+input. So the drive does not push beyond `maxSpeed` (default 13 m/s, 47 km/h; the panel's "Top speed" field, limits 3 to
+30 m/s). Above it, for example downhill, the motors brake against the speed. Raising it is up to the vehicle's stability.
 
 ### Climbing
 
