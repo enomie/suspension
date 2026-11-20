@@ -1,3 +1,4 @@
+import { DEFAULT_TOGGLES, type VisualToggles } from '../render/vehicle';
 import { VEHICLE_PRESET_LABELS } from '../shared/vehiclePresetLabels';
 
 /** top-right dropdown: pick vehicle preset. */
@@ -5,7 +6,8 @@ export class VehiclePicker {
   readonly select: HTMLSelectElement;
   private syncing = false;
 
-  constructor(parent: HTMLElement, onSelect: (preset: number) => void, onFrame: (visible: boolean) => void, onJoints: (visible: boolean) => void, onCom: (visible: boolean) => void) {
+  constructor(parent: HTMLElement, onSelect: (preset: number) => void, onToggles: (toggles: VisualToggles) => void) {
+    const toggles = { ...DEFAULT_TOGGLES };
     const wrap = document.createElement('div');
     wrap.id = 'vehicle-picker';
     const label = document.createElement('label');
@@ -24,16 +26,19 @@ export class VehiclePicker {
       if (this.syncing) return;
       onSelect(Number(this.select.value));
     });
-    const toggle = (text: string, on: (visible: boolean) => void) => {
+    const toggle = (text: string, key: keyof VisualToggles) => {
       const l = document.createElement('label');
       const box = document.createElement('input');
       box.type = 'checkbox';
-      box.checked = true;
-      box.addEventListener('change', () => on(box.checked));
+      box.checked = toggles[key];
+      box.addEventListener('change', () => {
+        toggles[key] = box.checked;
+        onToggles({ ...toggles });
+      });
       l.append(box, ` ${text}`);
       return l;
     };
-    wrap.append(label, this.select, toggle('Ladder frame', onFrame), toggle('Joints', onJoints), toggle('Center of mass', onCom));
+    wrap.append(label, this.select, toggle('Ladder frame', 'frame'), toggle('Joints', 'joints'), toggle('Center of mass', 'com'));
     parent.appendChild(wrap);
   }
 

@@ -74,6 +74,18 @@ function createWheelMesh(spec: WheelSpec): Group {
   return g;
 }
 
+/** Which optional parts of the vehicle are drawn */
+export interface VisualToggles {
+  /** ladder frame */
+  frame: boolean;
+  /** joint markers (balls and hinge cylinders) */
+  joints: boolean;
+  /** white centre-of-mass marker (debug) */
+  com: boolean;
+}
+
+export const DEFAULT_TOGGLES: VisualToggles = { frame: true, joints: true, com: true };
+
 /**
  * visible vehicle (main thread). built only from physics worker layout —
  * no Rapier on main thread. `apply(snapshot)` sets all meshes from interpolated snapshot.
@@ -178,19 +190,11 @@ export class VehicleVisual implements BodyPoses {
     return out.set(s[o + 3], s[o + 4], s[o + 5], s[o + 6]);
   }
 
-  /** show/hide ladder frame (suspension and wheels stay visible) */
-  setFrameVisible(on: boolean): void {
-    this.frame.visible = on && this.spec.chassis.frame !== false;
-  }
-
-  /** Show or hide the white centre-of-mass marker (debug) */
-  setComVisible(on: boolean): void {
-    this.com.visible = on;
-  }
-
-  /** Show or hide the joint markers (balls and hinge cylinders) */
-  setJointsVisible(on: boolean): void {
-    this.joints.root.visible = on;
+  /** show or hide the optional parts (suspension and wheels always stay visible) */
+  setToggles(t: VisualToggles): void {
+    this.frame.visible = t.frame && this.spec.chassis.frame !== false;
+    this.joints.root.visible = t.joints;
+    this.com.visible = t.com;
   }
 
   dispose(): void {

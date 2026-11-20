@@ -5,7 +5,7 @@ import { OriginShifter } from './shared/originShifter';
 import { wallClock } from './shared/snapshot';
 import { createStage, gpuBackendLabel } from './render/scene';
 import { LodTerrain } from './render/terrain/LodTerrain';
-import { VehicleVisual } from './render/vehicle/VehicleVisual';
+import { DEFAULT_TOGGLES, VehicleVisual, type VisualToggles } from './render/vehicle/VehicleVisual';
 import { PhysicsClient } from './app/PhysicsClient';
 import { Keyboard } from './app/keyboard';
 import { TelemetryHud } from './app/hud';
@@ -47,9 +47,7 @@ scene.add(terrain.root);
 
 // ── physics (worker; ?worker=0 → main thread) ────────────────────
 let vehicle: VehicleVisual | null = null;
-let frameVisible = true;
-let jointsVisible = true;
-let comVisible = true;
+let toggles: VisualToggles = { ...DEFAULT_TOGGLES };
 const physics = await PhysicsClient.create({
   preset: 0,
   x: ORIGIN.x,
@@ -57,23 +55,15 @@ const physics = await PhysicsClient.create({
   useWorker: params.get('worker') !== '0',
 });
 const vehiclePickerHost = document.querySelector<HTMLDivElement>('#vehicle-picker-host')!;
-const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.spawn(preset), (on) => {
-  frameVisible = on;
-  vehicle?.setFrameVisible(on);
-}, (on) => {
-  jointsVisible = on;
-  vehicle?.setJointsVisible(on);
-}, (on) => {
-  comVisible = on;
-  vehicle?.setComVisible(on);
+const vehiclePicker = new VehiclePicker(vehiclePickerHost, (preset) => physics.spawn(preset), (t) => {
+  toggles = t;
+  vehicle?.setToggles(t);
 });
 const customPanel = new CustomPanel(document.querySelector<HTMLDivElement>('#custom-panel-host')!, (spec) => physics.spawn(-1, spec));
 const showVehicle = () => {
   vehicle?.dispose();
   vehicle = new VehicleVisual(physics.layout);
-  vehicle.setFrameVisible(frameVisible);
-  vehicle.setJointsVisible(jointsVisible);
-  vehicle.setComVisible(comVisible);
+  vehicle.setToggles(toggles);
   scene.add(vehicle.root);
   vehiclePicker.setPreset(physics.preset);
   // a preset fills the custom panel (same concept); a custom vehicle came from the panel, which already shows it

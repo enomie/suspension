@@ -3,7 +3,7 @@
  *   const visual = new VehicleVisual(describeLayout(spec, vehicle.built)); scene.add(visual.root);
  *   // per frame: visual.apply(snapshot)   (snapshot: worker interpolation or writeVehicleSnapshot)
  */
-export { VehicleVisual } from './VehicleVisual';
+export { VehicleVisual, DEFAULT_TOGGLES, type VisualToggles } from './VehicleVisual';
 export { LinkRenderer, type BodyPoses } from './linkVisual';
 export { JointRenderer } from './jointVisual';
 export { createMountPlates } from './mountVisual';
