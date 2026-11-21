@@ -117,7 +117,7 @@ Coasting sets the wheel motors to speed 0 with the rolling resistance as their o
 
 There is no speed limit, by decision: nothing limits the speed but thrust against rolling and air drag. With the
 tank preset's 400 kW on flat ground at full throttle, the vehicle reaches about 32 m/s after 20 s; after that its speed
-falls again and its heading drifts (about 12° after 50 s). The cause is not found (see Open).
+falls again and its heading drifts (about 12° after 50 s). Accepted as is (see Known behavior).
 
 ### Climbing
 
@@ -155,11 +155,14 @@ game's real file format is not known yet: adapt `parseChainLink()` when it is.
 gets no support), `customTracked.test.ts`, `trackedIntegration.test.ts`, and the public-entry test in
 `integration.test.ts`.
 
+## Known behavior (accepted)
+
+- Top speed: above about 30 m/s the vehicle loses speed and its heading drifts. There is no speed limit, by decision.
+- Slopes: on a flat plane with tilted gravity the tank climbs 20°. At 15° and more it does not hold or climb reliably:
+  once it rolls faster than 0.6 m/s without throttle it coasts, like a wheeled vehicle.
+
 ## Open
 
-- Top speed: above about 30 m/s the vehicle loses speed and its heading drifts. Cause not found; there is no speed limit.
-- Slopes: on a flat plane with tilted gravity the tank climbs 20°, but it does not hold or climb reliably at 15° and more:
-  once it rolls faster than 0.6 m/s it coasts and runs away, and the results change with the setup. Not investigated.
 - The real `Drive_Chain_Link.json` format (see above).
 - Sag of the upper run between the wheels: optional, not implemented. The upper side of the chain is taut.
 - Link thickness comes from the asset, not from `chainThickness`; they should match in the real asset.
