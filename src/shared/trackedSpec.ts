@@ -102,7 +102,7 @@ export function validateTrackedSpec(spec: TrackedVehicleSpec): string[] {
 }
 
 /** true for a tracked vehicle description, false for a wheeled one */
-export function isTrackedSpec(spec: VehicleSpec | TrackedVehicleSpec): spec is TrackedVehicleSpec {
+export function isTrackedSpec(spec: { type?: string }): spec is TrackedVehicleSpec {
   return spec.type === 'tracked';
 }
 

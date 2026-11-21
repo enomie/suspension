@@ -1,5 +1,6 @@
 import type { Side, Vec3, VehicleSpec, WheelSpec } from './vehicleSpec';
 import type { TrackedVehicleSpec } from './trackedSpec';
+import type { BikeVehicleSpec } from './bikeSpec';
 
 /**
  * what rendering needs about a vehicle — plain data, produced by physics worker
@@ -13,10 +14,15 @@ export interface BodyPoint {
 }
 
 export interface VehicleLayout {
-  /** what the renderer draws: the vehicle itself, or for a tracked vehicle its chassis and road axles (see `trackedRenderSpec`) */
+  /**
+   * what the renderer draws: the vehicle itself, for a tracked vehicle its chassis and road axles (see `trackedRenderSpec`),
+   * for a bike its derived wheeled description (see `bikeVehicleSpec`)
+   */
   spec: VehicleSpec;
   /** tracked vehicles only: the full description, for idler, sprocket and chain */
   tracked?: TrackedVehicleSpec;
+  /** bikes only: the bike description (fills the bike panel when a bike preset is picked) */
+  bike?: BikeVehicleSpec;
   /** number of bodies in snapshot */
   bodyCount: number;
   chassis: number;

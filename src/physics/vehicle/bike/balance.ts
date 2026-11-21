@@ -1,6 +1,6 @@
 import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Quaternion, Vector3 } from 'three';
-import type { BalanceSpec } from '../types';
+import type { BalanceSpec } from '../../../shared/bikeSpec';
 import { G } from '../tuning';
 
 const _q = new Quaternion();
@@ -11,9 +11,11 @@ const _w = new Vector3();
 const _h = new Vector3();
 const UP = new Vector3(0, 1, 0);
 
-/** feedback gains of the steering controller (per rad of lean error / per rad/s of roll rate) */
+/** feedback gains of the steering controller (per rad of lean error / per rad/s of roll rate) at `REF_WHEELBASE` */
 const LEAN_GAIN = 2.5;
 const RATE_GAIN = 0.35;
+/** the gains were tuned on this wheelbase [m]; the curvature of a steer angle is ∝ 1/L, so the gains scale with L */
+const REF_WHEELBASE = 1.4;
 /** below this speed the steering feedback is useless (steer authority ∝ v²) [m/s] */
 const MIN_FEEDBACK_SPEED = 2;
 /** share of the stand stiffness that stays active at speed (0…1) */
@@ -31,8 +33,13 @@ const smooth = (x: number) => {
  *  - slow / stopped: a virtual stand (roll torque, PD) fades in so the bike does not fall over at rest.
  */
 export class Balance {
-  /** lean angle [rad], + = leaning right */
+  /**
+   * lean of the line from the tire contact to the center of mass [rad], + = leaning right: what the controller
+   * balances. Equals the chassis lean when the center of mass sits on the center plane (`BalanceSpec.comLean` = 0)
+   */
   lean = 0;
+  /** lean of the chassis itself [rad], + = leaning right */
+  chassisLean = 0;
   /** roll rate [rad/s], + = leaning further right */
   rollRate = 0;
 
@@ -53,7 +60,8 @@ export class Balance {
     _u.set(0, 1, 0).applyQuaternion(_q);
     // horizontal right-hand direction of travel
     _r.crossVectors(_h.set(_f.x, 0, _f.z).normalize(), UP);
-    this.lean = Math.atan2(_u.dot(_r), _u.y);
+    this.chassisLean = Math.atan2(_u.dot(_r), _u.y);
+    this.lean = this.chassisLean + this.spec.comLean;
     const av = chassis.angvel();
     this.rollRate = _w.set(av.x, av.y, av.z).dot(_f);
 
@@ -76,7 +84,7 @@ export class Balance {
 
     // steering feedback: steer toward the side the bike is falling to (right lean → steer right = negative)
     const authority = smooth((v - MIN_FEEDBACK_SPEED) / MIN_FEEDBACK_SPEED);
-    const scale = Math.min(1, 25 / (Math.max(v, MIN_FEEDBACK_SPEED) ** 2)) * authority;
+    const scale = Math.min(1, 25 / (Math.max(v, MIN_FEEDBACK_SPEED) ** 2)) * authority * (this.wheelbase / REF_WHEELBASE);
     const feedback = -scale * (LEAN_GAIN * (this.lean - target) + RATE_GAIN * this.rollRate);
     return Math.max(-maxSteer, Math.min(maxSteer, feedForward + feedback));
   }

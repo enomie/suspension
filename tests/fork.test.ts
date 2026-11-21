@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Vehicle } from '../src/physics/vehicle/Vehicle';
-import { motorcycle } from '../src/physics/vehicle/presets/motorcycle';
+import { motorcycle as bike } from '../src/physics/vehicle/presets/bike';
+import { bikeVehicleSpec } from '../src/shared/bikeSpec';
+
+/** the motorcycle as the wheeled builder sees it: fork + swingarm, no balance */
+const motorcycle = bikeVehicleSpec(bike);
 import type { DriverInput } from '../src/shared/driverInput';
 
 await RAPIER.init();
@@ -9,14 +13,14 @@ await RAPIER.init();
 const DT = 1 / 120;
 const idle: DriverInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
 
-/** the bike cannot balance yet: lock the roll axis (world Z, the bike points along −Z) to test the suspension alone */
+/** no balance assist on the plain wheeled vehicle: lock the roll axis (world Z, the bike points along −Z) to test the suspension alone */
 function setup() {
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = DT;
   world.numSolverIterations = 8;
   const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -0.5, 0));
   world.createCollider(RAPIER.ColliderDesc.cuboid(500, 0.5, 500).setFriction(0.95), ground);
-  const v = new Vehicle(RAPIER, world, { ...motorcycle, balance: undefined }, { x: 0, y: 0.6, z: 0 });
+  const v = new Vehicle(RAPIER, world, motorcycle, { x: 0, y: 0.6, z: 0 });
   v.chassis.setEnabledRotations(true, true, false, true);
   const run = (seconds: number, input: DriverInput = idle) => {
     for (let i = 0; i < seconds / DT; i++) {

@@ -4,8 +4,8 @@ Three threads, four layers. Folders strictly separate who may import what:
 
 | Folder | Runs in | May import | Contents |
 |---|---|---|---|
-| `shared/` | everywhere | only `shared/` | Constants (`config`), floating origin (`origin`, `originShifter`), terrain height (`terrainHeight`), tile geometry (`tileGeometry`), tick (`stepClock`), messages (`protocol`), snapshot format (`snapshot`), vehicle types (`vehicleSpec`, `vehicleLayout`), driver input (`driverInput`), tracked vehicle (`trackedSpec`, `trackDrive`, `trackPath`, `trackProfile`, `chainLoop`, `chainLink`, `customTracked`, test obstacle `testLogs`: see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md)) |
-| `physics/` | physics worker | `shared/`, Rapier | `worker.ts` (entry), `Simulation.ts`, `terrainColliders.ts`, `vehicle/` (build, suspensions, drivetrain, steering, presets, `layout.ts`) |
+| `shared/` | everywhere | only `shared/` | Constants (`config`), floating origin (`origin`, `originShifter`), terrain height (`terrainHeight`), tile geometry (`tileGeometry`), tick (`stepClock`), messages (`protocol`), snapshot format (`snapshot`), vehicle types (`vehicleSpec`, `vehicleLayout`), driver input (`driverInput`), tracked vehicle (`trackedSpec`, `trackDrive`, `trackPath`, `trackProfile`, `chainLoop`, `chainLink`, `customTracked`, test obstacle `testLogs`: see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md)), bike (`bikeSpec`, `customBike`: see [BIKE_VEHICLE.md](BIKE_VEHICLE.md)), `anyVehicleSpec` |
+| `physics/` | physics worker | `shared/`, Rapier | `worker.ts` (entry), `Simulation.ts`, `terrainColliders.ts`, `vehicle/` (build, suspensions, drivetrain, steering, presets, `layout.ts`; `tracked/`, `bike/`) |
 | `render/` | main thread | `shared/`, three.js | `scene.ts` (renderer/camera/light), `CameraRig`, `SunRig`, `terrain/` (LOD + tile worker), `vehicle/` (visuals from layout) |
 | `app/` | main thread | everything except `physics/` (exception: dynamic fallback) | `PhysicsClient` (worker binding + interpolation), `keyboard`, `hud`, `debug` |
 

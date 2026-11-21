@@ -5,7 +5,7 @@ export type SuspensionType =
   | 'strut' //            1 slider strut (vertical prismatic)
   | 'doubleWishbone' //   2 double wishbone
   | 'macPherson' //       3 MacPherson (inclined strut + lower control arm)
-  | 'trailingArm' //      4 trailing arm (motorcycle swingarm)
+  | 'trailingArm' //      4 trailing arm
   | 'semiTrailingArm' //  5 semi-trailing arm
   | 'swingAxle' //        6 swing axle
   | 'solidAxle' //        7 solid axle
@@ -61,6 +61,8 @@ export interface AxleSpec {
   steer?: { maxAngle: number; counter?: boolean };
   /** telescopicFork: steering-head rake from vertical [rad] and trail [m] (default 0.45 rad / 0.10 m) */
   fork?: { rake: number; trail: number };
+  /** swingArm: pivot-to-axle length [m] (default: two wheel radii, at least 0.5 m) */
+  armLength?: number;
   /** Double wishbone: horizontal reach of the lower arm from the ball joint to the chassis pivot [m] (default 0.45) */
   armSpan?: number;
   /** tandem bogie: wheel spacing along axle [m] */
@@ -111,7 +113,8 @@ export interface ChassisSpec {
   /** width (X), height (Y), length (Z) [m] of the inertia box (and the frame height). The ladder frame itself has a fixed width. */
   size: Vec3;
   /**
-   * collision from primitives. default: rounded ladder frame (= default visuals).
+   * collision from primitives. default: rounded ladder frame (= default visuals). An empty list = no chassis collider
+   * besides `lowerCollider` (bikes).
    * keep close to visible shape — an invisible oversized collider acts like a wall.
    */
   colliders?: ColliderPrimitive[];
@@ -139,17 +142,6 @@ export interface SteeringSpec {
   highSpeedFactor?: number;
 }
 
-/** Single-track balance assist: steering feedback while moving, a virtual stand while (nearly) stopped */
-export interface BalanceSpec {
-  /** speed above which steering alone balances [m/s]; below it the virtual stand fades in */
-  standSpeed: number;
-  /** max lean angle commanded by steering input [rad] */
-  maxLean: number;
-  /** stand stiffness [N·m/rad] and damping [N·m·s/rad] */
-  standStiffness: number;
-  standDamping: number;
-}
-
 export interface DriveSpec {
   /** total torque at all driven wheels [N·m]: caps the thrust at low speed (traction, wheelspin) */
   maxTorque: number;
@@ -167,7 +159,7 @@ export interface DriveSpec {
 }
 
 export interface VehicleSpec {
-  /** vehicle type: wheeled (default); tracked vehicles use `TrackedVehicleSpec` */
+  /** vehicle type: wheeled (default); tracked vehicles use `TrackedVehicleSpec`, bikes `BikeVehicleSpec` */
   type?: 'wheeled';
   name: string;
   /** display name (HUD) */
@@ -179,8 +171,6 @@ export interface VehicleSpec {
   drive: DriveSpec;
   /** visual only: `slim` = thinner spring coils with tighter windings and smaller seats (bikes) */
   springStyle?: 'default' | 'slim';
-  /** single-track vehicles only (motorcycle, moped) */
-  balance?: BalanceSpec;
   jointMode?: 'impulse' | 'multibody';
 }
 

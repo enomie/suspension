@@ -14,9 +14,13 @@ import { numberInput } from './numberField';
 import { comFields } from './comFields';
 import { topSpeed } from '../shared/performance';
 import { buildTrackedSpec, type CustomTrackedConfig } from '../shared/customTracked';
-import type { TrackedVehicleSpec } from '../shared/trackedSpec';
-import type { SuspensionType, VehicleSpec } from '../shared/vehicleSpec';
+import type { CustomBikeConfig } from '../shared/customBike';
+import type { AnyVehicleSpec } from '../shared/anyVehicleSpec';
+import type { SuspensionType } from '../shared/vehicleSpec';
 import { CustomTrackedSection } from './customTrackedPanel';
+import { CustomBikeSection } from './customBikePanel';
+
+type VehicleKind = 'wheeled' | 'bike' | 'tracked';
 
 const STEER_LABELS: Record<SteerMode, string> = { none: 'No steering', steer: 'Steering', counter: 'Counter-steering' };
 
@@ -53,8 +57,8 @@ function checkbox(checked: boolean, onChange: (on: boolean) => void): HTMLInputE
  * Collapsible panel to assemble any vehicle: wheelbase (front to rear axle), number of axles (1–5), and per axle
  * wheels (pair, center, center double), steering mode, suspension type (the list depends on wheels and steering), drive, differential (driven axles only),
  * handbrake, track width and wheel size. Vehicle-wide: weight, center of mass offset, handbrake torque, engine torque and power.
- * The vehicle type selects between these wheeled fields and the tracked fields (`CustomTrackedSection`).
- * "Apply" builds a `VehicleSpec` or `TrackedVehicleSpec` and hands it to `onApply`.
+ * The vehicle type selects between these wheeled fields, the bike fields (`CustomBikeSection`) and the tracked fields
+ * (`CustomTrackedSection`). "Apply" builds a `VehicleSpec`, `BikeVehicleSpec` or `TrackedVehicleSpec` and hands it to `onApply`.
  */
 export class CustomPanel {
   private config: CustomVehicleConfig = structuredClone(DEFAULT_CUSTOM);
@@ -65,9 +69,10 @@ export class CustomPanel {
 
   private wheeledHost = el('div', { className: 'custom-wheeled' });
   private tracked = new CustomTrackedSection();
+  private bike = new CustomBikeSection();
   private typeSelect = el('select');
 
-  constructor(parent: HTMLElement, onApply: (spec: VehicleSpec | TrackedVehicleSpec) => void) {
+  constructor(parent: HTMLElement, onApply: (spec: AnyVehicleSpec) => void) {
     const details = el('details', { id: 'custom-panel' }, el('summary', { textContent: 'Custom vehicle' }));
 
     const wheelbase = numberInput(this.config.wheelbase, CUSTOM_LIMITS.wheelbase, 0.1, (v) => (this.config.wheelbase = v));
@@ -104,9 +109,12 @@ export class CustomPanel {
     };
 
     const apply = el('button', { type: 'button', textContent: 'Apply' });
-    apply.addEventListener('click', () => onApply(this.typeSelect.value === 'tracked' ? buildTrackedSpec(this.tracked.config) : buildCustomSpec(this.config)));
+    apply.addEventListener('click', () => {
+      const kind = this.typeSelect.value as VehicleKind;
+      onApply(kind === 'tracked' ? buildTrackedSpec(this.tracked.config) : kind === 'bike' ? this.bike.spec() : buildCustomSpec(this.config));
+    });
 
-    this.typeSelect.append(option('wheeled', 'Wheeled'), option('tracked', 'Tracked'));
+    this.typeSelect.append(option('wheeled', 'Wheeled'), option('bike', 'Bike'), option('tracked', 'Tracked'));
     this.typeSelect.addEventListener('change', () => this.showType());
 
     this.wheeledHost.append(
@@ -122,7 +130,7 @@ export class CustomPanel {
       field('Wheelspin (m/s)', wheelspin),
       field('Top speed', this.topSpeedOut),
     );
-    details.append(field('Vehicle type', this.typeSelect), this.wheeledHost, this.tracked.element, apply);
+    details.append(field('Vehicle type', this.typeSelect), this.wheeledHost, this.bike.element, this.tracked.element, apply);
     this.showType();
     parent.append(details);
     this.renderAxles();
@@ -131,9 +139,17 @@ export class CustomPanel {
 
   /** shows the fields of the selected vehicle type */
   private showType(): void {
-    const tracked = this.typeSelect.value === 'tracked';
-    this.wheeledHost.hidden = tracked;
-    this.tracked.element.hidden = !tracked;
+    const kind = this.typeSelect.value as VehicleKind;
+    this.wheeledHost.hidden = kind !== 'wheeled';
+    this.bike.element.hidden = kind !== 'bike';
+    this.tracked.element.hidden = kind !== 'tracked';
+  }
+
+  /** Replace the bike fields with this config and show them (e.g. when a bike preset is picked) */
+  loadBike(config: CustomBikeConfig): void {
+    this.bike.load(config);
+    this.typeSelect.value = 'bike';
+    this.showType();
   }
 
   /** Replace the tracked fields with this config and show them (e.g. when the tracked preset is picked) */

@@ -16,6 +16,7 @@ import { VehiclePicker } from './app/vehiclePicker';
 import { CustomPanel } from './app/customPanel';
 import { customFromSpec } from './shared/customVehicle';
 import { trackedConfigFromSpec } from './shared/customTracked';
+import { bikeConfigFromSpec } from './shared/customBike';
 
 /*
  * Main thread. Physics runs in the physics worker (src/physics/worker.ts), terrain tiles in tile workers.
@@ -78,8 +79,9 @@ const showVehicle = () => {
   vehiclePicker.setPreset(physics.preset);
   // a preset fills the custom panel (same concept); a custom vehicle came from the panel, which already shows it
   if (physics.preset >= 0) {
-    const tracked = physics.layout.tracked;
+    const { tracked, bike } = physics.layout;
     if (tracked) customPanel.loadTracked(trackedConfigFromSpec(tracked));
+    else if (bike) customPanel.loadBike(bikeConfigFromSpec(bike));
     else customPanel.load(customFromSpec(physics.layout.spec));
   }
 };

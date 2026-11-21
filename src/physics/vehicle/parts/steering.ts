@@ -26,8 +26,6 @@ export class Steering {
   }
 
   private speedScale = 1;
-  /** extra steer angle from the balance controller [rad], + = left */
-  balanceOffset = 0;
 
   update(input: number, dt: number, speed: number, maxSpeed: number): void {
     const target = Math.max(-1, Math.min(1, input));
@@ -49,7 +47,7 @@ export class Steering {
   angleFor(c: Corner): number {
     const max = c.axle.steer?.maxAngle ?? 0;
     if (!max) return 0;
-    const delta = this.angle + this.balanceOffset;
+    const delta = this.angle;
     let a: number;
     // `counter` axles steer against the front axle; the magnitude comes from the distance to the turning-centre line
     const sign = c.axle.steer?.counter ? -1 : 1;

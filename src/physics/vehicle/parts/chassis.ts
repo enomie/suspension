@@ -72,8 +72,8 @@ export function createChassis(
     z: (m / 12) * (w * w + h * h),
   };
   const [cx, cy, cz] = spec.comOffset ?? [0, 0, 0];
-  if (spec.colliders?.length) {
-    // primitives: mass/COM/inertia on body explicitly, colliders without own mass
+  if (spec.colliders) {
+    // primitives (also none at all, e.g. a bike without frame box): mass/COM/inertia on body explicitly, colliders without own mass
     body.setAdditionalMassProperties(m, { x: cx, y: cy, z: cz }, inertia, IDENTITY_ROT, true);
     for (const p of spec.colliders) world.createCollider(primitiveDesc(R, p).setDensity(0).setCollisionGroups(CHASSIS_GROUPS), body);
     addLowerCollider(R, world, spec, body);

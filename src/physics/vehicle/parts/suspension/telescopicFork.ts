@@ -5,12 +5,12 @@ import type { AxleBuilder } from './types';
 /** defaults: 26° steering-head angle, 100 mm trail */
 const DEFAULT_RAKE = 0.45;
 const DEFAULT_TRAIL = 0.1;
-/** distance from the axle line up the steering axis to the triple clamp [m] */
-const CLAMP_HEIGHT = 0.55;
-/** length of the lower leg (slider) above the axle line [m] */
-const SLIDER_LENGTH = 0.3;
-/** distance from the axle line to the lower steering bearing [m] */
-const LOWER_BEARING = 0.45;
+/** fork sizes per wheel radius (0.31 m wheel → clamp 0.55 m, slider 0.3 m, bearing 0.45 m), so the clamp always sits above the tire:
+ *  distance from the axle line up the steering axis to the triple clamp, length of the lower leg (slider) above the axle line,
+ *  distance from the axle line to the lower steering bearing */
+const CLAMP_HEIGHT_PER_RADIUS = 1.77;
+const SLIDER_LENGTH_PER_RADIUS = 0.97;
+const LOWER_BEARING_PER_RADIUS = 1.45;
 /** gap between tire side and fork leg axis: grows with the wheel, but legs stay close to a small tire [m] */
 const legClearance = (radius: number) => Math.max(0.04, radius * 0.17);
 
@@ -42,8 +42,9 @@ export const buildTelescopicFork: AxleBuilder = (ctx, axle, i) => {
   // chassis-local point on the steering axis at wheel height (axle line)
   const axisL = v(wl.x - offset * fwd.x, wl.y - offset * fwd.y, wl.z - offset * fwd.z);
   const onAxis = (t: number): P => add(W(ctx, axisL), v(up.x * t, up.y * t, up.z * t));
-  const clamp = onAxis(CLAMP_HEIGHT);
-  const bearing = onAxis(LOWER_BEARING);
+  const r = axle.wheel.radius;
+  const clamp = onAxis(CLAMP_HEIGHT_PER_RADIUS * r);
+  const bearing = onAxis(LOWER_BEARING_PER_RADIUS * r);
 
   // steering: chassis → yoke about the raked axis (markers and mounts sit on the chassis)
   const yoke = helper(ctx, axle, wc, partId(id, 'yoke'));
@@ -63,7 +64,7 @@ export const buildTelescopicFork: AxleBuilder = (ctx, axle, i) => {
   const withX = (p: P, x: number): P => v(p.x + x, p.y, p.z);
   const axleCenter = W(ctx, wl); // wheel center
   const legFoot = onAxis(0); // lower end of the leg on the steering axis (leg runs parallel to the spring)
-  const sliderTop = onAxis(SLIDER_LENGTH);
+  const sliderTop = onAxis(SLIDER_LENGTH_PER_RADIUS * r);
   const visuals = [link('beam', yoke, withX(clamp, -legX), yoke, withX(clamp, legX))];
   for (const x of [-legX, legX]) {
     // lower leg (rod) parallel to the steering axis, then spring + damper coaxial up to the clamp

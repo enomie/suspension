@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { UNIT_TORUS_GEOMETRY } from '../src/render/geometries/unitGeometries';
 import { torusAxialScale, torusHullBorder, torusHullPoints, torusWheelWidth } from '../src/shared/unitTorus';
-import { moped, motorcycle } from '../src/physics/vehicle/presets/motorcycle';
+import { moped as mopedBike, motorcycle as motorcycleBike } from '../src/physics/vehicle/presets/bike';
+import { bikeVehicleSpec } from '../src/shared/bikeSpec';
+
+const motorcycle = bikeVehicleSpec(motorcycleBike);
+const moped = bikeVehicleSpec(mopedBike);
 import { createWheel } from '../src/physics/vehicle/parts/wheel';
 
 await RAPIER.init();

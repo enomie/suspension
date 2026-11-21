@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Simulation } from '../src/physics/Simulation';
 import { ALL_PRESETS, PRESETS } from '../src/physics/vehicle/presets';
+import { BIKE_PRESETS } from '../src/physics/vehicle/presets/bike';
 import { tank } from '../src/physics/vehicle/presets/tracked';
 import { VehicleVisual } from '../src/render/vehicle';
 import { VEHICLE_PRESET_LABELS } from '../src/shared/vehiclePresetLabels';
@@ -16,10 +17,10 @@ afterEach(() => {
   ORIGIN.z = 0;
 });
 
-const TRACKED_INDEX = PRESETS.length;
+const TRACKED_INDEX = PRESETS.length + BIKE_PRESETS.length;
 
 describe('tracked preset', () => {
-  it('is valid and listed after the wheeled presets with its own label', () => {
+  it('is valid and listed after the wheeled and bike presets with its own label', () => {
     expect(validateTrackedSpec(tank)).toEqual([]);
     expect(ALL_PRESETS[TRACKED_INDEX]).toBe(tank);
     expect(isTrackedSpec(tank)).toBe(true);
