@@ -19,8 +19,12 @@ const instance = (mesh: ChainVisual['group']['children'][number], i: number) => 
 };
 
 describe('chain link', () => {
-  it('has seven parts: plate, grouser, two edge lips, two hinge lugs and a pin', () => {
-    expect(CHAIN_LINK.parts).toHaveLength(7);
+  it('has two parts: plate and grouser', () => {
+    expect(CHAIN_LINK.parts).toHaveLength(2);
+  });
+
+  it('nothing sticks out past the plate across the track', () => {
+    for (const p of CHAIN_LINK.parts) expect(Math.abs(p.position[0]) + p.size[0] / 2).toBeLessThanOrEqual(CHAIN_LINK.width / 2 + 1e-9);
   });
 
   it('all boxes are valid and the link is a plain JSON-able record', () => {
@@ -32,7 +36,7 @@ describe('chain link', () => {
     for (const p of CHAIN_LINK.parts) expect(p.position[1] - p.size[1] / 2).toBeGreaterThanOrEqual(-0.025 - 1e-9);
   });
 
-  it('neighbouring links do not overlap: the longest part is shorter than the pitch, the pin reaches into the gap', () => {
+  it('neighbouring links do not overlap: the longest part is shorter than the pitch', () => {
     for (const p of CHAIN_LINK.parts) expect(p.position[2] + p.size[2] / 2).toBeLessThan(CHAIN_LINK.pitch - (CHAIN_LINK.parts[0].size[2] / 2));
   });
 });
@@ -78,10 +82,9 @@ describe('ChainVisual', () => {
       maxY = Math.max(maxY, p.y);
     }
     expect([...xs].sort()).toEqual([-1, 1]);
-    // centre line at ±0.325 plus half the plate (0.01) outward
-    expect(minY).toBeLessThan(-0.325);
-    expect(minY).toBeGreaterThan(-0.345);
-    expect(maxY).toBeGreaterThan(0.325);
+    // plate centred on the centre line at ±0.325
+    expect(minY).toBeCloseTo(-0.325, 4);
+    expect(maxY).toBeCloseTo(0.325, 4);
   });
 
   it('scales the link across the track to the belt width', () => {

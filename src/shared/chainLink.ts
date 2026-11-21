@@ -21,20 +21,15 @@ export interface ChainLinkAsset {
 }
 
 /**
- * The chain link every tracked vehicle uses. From the outside in: a grouser (cross cleat) on a plate with a raised lip
- * along both edges, and on the inner side two hinge lugs and the pin that joins it to the next link. The inner side
- * stays within 0.025 m of the centre line (the chain thickness is 0.05 m), the grouser reaches 0.03 m outward.
+ * The chain link every tracked vehicle uses: a plate and one grouser (cross cleat) on its outer side. Nothing reaches
+ * past the plate across the track or inward, so the chain reads as a clean belt from the side. The inner side stays
+ * within 0.025 m of the centre line (the chain thickness is 0.05 m), the grouser reaches 0.03 m outward.
  */
 export const CHAIN_LINK: ChainLinkAsset = {
   width: 0.4,
   pitch: 0.15,
   parts: [
-    { position: [0, 0.01, 0], size: [0.4, 0.02, 0.136] }, // plate
+    { position: [0, 0, 0], size: [0.4, 0.04, 0.136] }, // plate
     { position: [0, 0.025, 0], size: [0.4, 0.01, 0.04] }, // grouser
-    { position: [-0.19, 0.025, 0], size: [0.02, 0.03, 0.136] }, // edge lip
-    { position: [0.19, 0.025, 0], size: [0.02, 0.03, 0.136] }, // edge lip
-    { position: [-0.12, -0.0125, 0], size: [0.03, 0.025, 0.08] }, // hinge lug
-    { position: [0.12, -0.0125, 0], size: [0.03, 0.025, 0.08] }, // hinge lug
-    { position: [0, -0.015, 0.068], size: [0.3, 0.02, 0.02] }, // pin
   ],
 };
