@@ -23,8 +23,11 @@ describe('chain link', () => {
     expect(CHAIN_LINK.parts).toHaveLength(2);
   });
 
-  it('nothing sticks out past the plate across the track', () => {
-    for (const p of CHAIN_LINK.parts) expect(Math.abs(p.position[0]) + p.size[0] / 2).toBeLessThanOrEqual(CHAIN_LINK.width / 2 + 1e-9);
+  it('the grouser sits on the plate, inset 5 % on every side', () => {
+    const [plate, grouser] = CHAIN_LINK.parts;
+    expect(grouser.size[0]).toBeCloseTo(plate.size[0] * 0.9, 9);
+    expect(grouser.size[2]).toBeCloseTo(plate.size[2] * 0.9, 9);
+    expect(grouser.position[1] - grouser.size[1] / 2).toBeCloseTo(plate.position[1] + plate.size[1] / 2, 9);
   });
 
   it('all boxes are valid and the link is a plain JSON-able record', () => {
