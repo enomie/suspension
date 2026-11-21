@@ -28,6 +28,7 @@ Concept, naming, parts: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code structure: [ARCHI
 | 5 trailers | `coupling.ts` (hitch / fifthWheel / kingPin), drawbar trailer, semi-truck, key `T`; simple engine curve | open |
 | 6 optional | gearbox, limited-slip differential (open and spooled axles, a global lock level cycled with `L`, and a slipping clutch exist: `parts/differential.ts`) | open |
 | 7 tracks | tracked vehicle as its own module: sliding strut road wheels with track-wide collider, fixed idler and sprocket, left/right track drive (skid steering), chain loop and links, custom panel; see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md) | ✓ (`tests/tracked*.test.ts`) |
+| 8 bike module | motorcycle and moped as their own module like tracked: `type: 'bike'`, fixed fork + swingarm + torus tires, own panel (wheelbase, radius and width per wheel, shared chassis/drive fields, rear brake torque), frame collider between the wheels, CoM limited and fed into balance, all other values derived; balance leaves the wheeled `Vehicle`; see [BIKE_VEHICLE.md](BIKE_VEHICLE.md) | planned |
 | — distant physics | coarser heightfield rings for distant objects (own collision group), from `sampleGrid` | prepared |
 
 ## Starting values car (preset `car`)

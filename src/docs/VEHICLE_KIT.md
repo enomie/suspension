@@ -83,10 +83,10 @@ Spring rates are converted to the wheel center via leverage (`leverRatio`, MR) �
 | 0 | `bogie` | Chassis ─Prismatic −Y→ carrier ─Rev X→ rocker → 2 wheels | prismatic motor |
 | – | `springLeg` | Chassis ─Prismatic along the outward-angled leg (~35° from vertical)→ leg (= carrier); non-steering, no coil drawn (light-aircraft main gear) | prismatic motor (k·cos²θ) |
 | – | `swingArm` | Chassis ─Rev X (ahead of wheel)→ arm with two legs; one mono-shock on the center plane | spring joint |
-| – | `telescopicFork` | Chassis ─Prismatic along rake axis→ stanchion ─Rev about the same axis (steering)→ knuckle → wheel; `fork: {rake, trail}` | prismatic motor (k·cos²ε) |
+| – | `telescopicFork` | Chassis ─Rev about the rake axis (steering)→ yoke ─Prismatic along the same axis→ slider → wheel; `fork: {rake, trail}` | prismatic motor (k·cos²ε) |
 
 Non-steerable types (4, 5, 8, 0) sit rear; front stays `strut` with steering.
-Motorcycle swingarm = `trailingArm` with `track: 0`.
+Motorcycle rear = `swingArm` (own builder). Bikes are moving to their own module: [BIKE_VEHICLE.md](BIKE_VEHICLE.md).
 
 Additionally (part, not a suspension): `antiRollBar` – stabilizer as force from left/right spring travel difference
 (`F = kRoll·(xL − xR)`), via `addForceAtPoint` per step.
