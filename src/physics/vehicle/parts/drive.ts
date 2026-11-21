@@ -62,9 +62,9 @@ export function applyDrive(corners: Corner[], spec: VehicleSpec, input: DriverIn
   }
 }
 
-/** air drag on the chassis against its velocity: F = k·v², as impulse −v·k·|v|·dt */
-export function applyAirDrag(chassis: RAPIER.RigidBody, dt: number, boost: boolean): void {
+/** air drag on the chassis against its velocity: F = k·v², as impulse −v·k·|v|·dt; `dragArea` = Cd·A [m²] (`DriveSpec.dragArea`) */
+export function applyAirDrag(chassis: RAPIER.RigidBody, dt: number, boost: boolean, dragArea?: number): void {
   const lv = chassis.linvel();
-  const j = dragCoeff(boost) * Math.hypot(lv.x, lv.y, lv.z) * dt;
+  const j = dragCoeff(boost, dragArea) * Math.hypot(lv.x, lv.y, lv.z) * dt;
   chassis.applyImpulse({ x: -lv.x * j, y: -lv.y * j, z: -lv.z * j }, true);
 }

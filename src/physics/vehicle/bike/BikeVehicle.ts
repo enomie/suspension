@@ -2,7 +2,7 @@ import type RAPIER from '@dimforge/rapier3d-simd-compat';
 import { Quaternion, Vector3 } from 'three';
 import type { Corner, VehicleSpec } from '../types';
 import type { DriverInput } from '../../../shared/driverInput';
-import { bikeBalance, bikeVehicleSpec, type BikeVehicleSpec } from '../../../shared/bikeSpec';
+import { bikeBalance, bikeBoostDrive, bikeVehicleSpec, type BikeVehicleSpec } from '../../../shared/bikeSpec';
 import { topSpeed } from '../../../shared/performance';
 import { Steering } from '../parts/steering';
 import { applyAirDrag, applyDrive } from '../parts/drive';
@@ -16,12 +16,15 @@ const _v = new Vector3();
 
 /**
  * Runtime bike (physics only): driver input → steering with balance assist, rear wheel drive, brakes.
+ * Boost (Shift) gives enough torque for a wheelie (`bikeBoostDrive`).
  * The steering input asks for a lean (a turn), not a steer angle; `Balance` turns it into the fork angle.
  */
 export class BikeVehicle {
   readonly built: BuiltBike;
   /** the derived wheeled description (fork, swingarm, wheels) the bike was built from */
   readonly wheeled: VehicleSpec;
+  /** the same with the boost drive (Shift: enough torque for a wheelie, see `bikeBoostDrive`) */
+  private readonly boosted: VehicleSpec;
   /** smooths the steering input */
   readonly steering: Steering;
   readonly balance: Balance;
@@ -40,6 +43,7 @@ export class BikeVehicle {
   ) {
     this.built = buildBikeVehicle(R, world, spec, pos);
     this.wheeled = bikeVehicleSpec(spec);
+    this.boosted = { ...this.wheeled, drive: bikeBoostDrive(spec) };
     this.refSpeed = topSpeed(this.wheeled);
     this.steering = new Steering(this.wheeled.steering, this.wheeled);
     this.balance = new Balance(bikeBalance(spec), spec.wheelbase);
@@ -66,8 +70,8 @@ export class BikeVehicle {
     const angle = this.balance.update(this.chassis, this.steering.value, this.maxSteer, this.forwardSpeed);
     this.front.telemetry.steerAngle = angle;
     this.front.joints.steer!.configureMotorPosition(angle, STEER_STIFFNESS, STEER_DAMPING);
-    applyDrive(this.corners, this.wheeled, input, this.forwardSpeed);
-    applyAirDrag(this.chassis, dt, !!input.boost);
+    applyDrive(this.corners, input.boost ? this.boosted : this.wheeled, input, this.forwardSpeed);
+    applyAirDrag(this.chassis, dt, !!input.boost, this.spec.drive.dragArea);
   }
 
   /** after world.step(): refresh telemetry */

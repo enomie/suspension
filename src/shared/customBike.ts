@@ -56,7 +56,7 @@ export const DEFAULT_CUSTOM_BIKE: CustomBikeConfig = {
   rear: { radius: 0.31, width: torusWheelWidth(0.31) },
   colliderBox: true,
   weight: 180,
-  comOffset: [0, -0.1, 0.05],
+  comOffset: [0, 0.1, 0.05],
   rearBrakeTorque: 600,
   torque: 350,
   power: 55,

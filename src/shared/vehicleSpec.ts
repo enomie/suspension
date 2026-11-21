@@ -63,6 +63,8 @@ export interface AxleSpec {
   fork?: { rake: number; trail: number };
   /** swingArm: pivot-to-axle length [m] (default: two wheel radii, at least 0.5 m) */
   armLength?: number;
+  /** swingArm: single-sided arm on this side (+X = right); default two legs. Visual only: the arm is one rigid body either way */
+  swingArmSide?: 'left' | 'right';
   /** Double wishbone: horizontal reach of the lower arm from the ball joint to the chassis pivot [m] (default 0.45) */
   armSpan?: number;
   /** tandem bogie: wheel spacing along axle [m] */
@@ -148,12 +150,14 @@ export interface DriveSpec {
   /** engine power [W] split over the driven axles by `share`: caps the thrust at high speed (thrust ≤ P / v) */
   maxPower: number;
   /**
-   * Top speed is not set directly: it is where thrust equals rolling + air drag, both the same for all vehicles
+   * Top speed is not set directly: it is where thrust equals rolling + air drag (rolling the same for all vehicles, air drag from `dragArea`)
    * (see `topSpeed()` in shared/performance.ts). Only for vehicles that get unstable beyond some speed:
    * limiter with boost (Shift) [m/s]; boost cuts the air drag to a quarter (≈ 2× top speed).
    */
   maxBoostSpeed?: number;
   reverseSpeed: number;
+  /** drag area Cd·A [m²], default `DEFAULT_DRAG_AREA` (0.8, a car); smaller for bikes. Sets the top speed together with the power */
+  dragArea?: number;
   /** slip limit (ASR): wheel tangential speed may exceed vehicle speed by this much [m/s]; default 2.5. Higher = more wheelspin. */
   maxSlipSpeed?: number;
 }

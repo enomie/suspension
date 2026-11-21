@@ -207,7 +207,7 @@ describe('bike balance at the extremes', () => {
 
 describe('center of mass along the bike', () => {
   /** the largest lift of the front and the rear wheel above their resting height during `seconds` of `input` [m] */
-  function lift(spec: BikeVehicleSpec, input: DriverInput, runUp: number) {
+  function lift(spec: BikeVehicleSpec, input: DriverInput, runUp: number, seconds = 1) {
     const { v, run } = setup(spec);
     run(3);
     if (runUp) run(runUp, { ...idle, throttle: 1 });
@@ -215,7 +215,7 @@ describe('center of mass along the bike', () => {
     const r0 = v.corners[1].wheel.translation().y;
     let front = 0;
     let rear = 0;
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < seconds / DT; i++) {
       run(DT, input);
       front = Math.max(front, v.corners[0].wheel.translation().y - f0);
       rear = Math.max(rear, v.corners[1].wheel.translation().y - r0);
@@ -224,14 +224,38 @@ describe('center of mass along the bike', () => {
   }
   const strong = { torque: 2000, power: 200, wheelspin: 15 };
 
-  it('far back + strong engine: wheelie; the default center of mass keeps the front down', () => {
+  it('far back + strong engine: wheelie on plain throttle', () => {
     expect(lift(bike({ ...strong, comOffset: [0, 0.3, 0.45] }), { ...idle, throttle: 1 }, 0).front).toBeGreaterThan(0.1);
-    expect(lift(bike({ ...strong }), { ...idle, throttle: 1 }, 0).front).toBeLessThan(0.1);
+  });
+
+  it.each(BIKE_PRESETS)('$name: half a second of Shift from standstill lifts the front, plain throttle does not', (spec) => {
+    expect(lift(spec, { ...idle, throttle: 1, boost: true }, 0, 0.5).front).toBeGreaterThan(0.1);
+    expect(lift(spec, { ...idle, throttle: 1 }, 0).front).toBeLessThan(0.05);
+  });
+
+  it('a low center of mass cannot wheelie even on Shift: the rear tire slips first (d / h above the friction)', () => {
+    const low = { ...motorcycle, comOffset: [0, -0.1, 0.05] as [number, number, number] };
+    expect(lift(low, { ...idle, throttle: 1, boost: true }, 0, 0.5).front).toBeLessThan(0.05);
   });
 
   it('far forward + full brake: stoppie; the default center of mass keeps the rear down', () => {
     expect(lift(bike({ comOffset: [0, 0.3, -0.45] }), { ...idle, brake: 1 }, 5).rear).toBeGreaterThan(0.1);
     expect(lift(bike({}), { ...idle, brake: 1 }, 5).rear).toBeLessThan(0.1);
+  });
+});
+
+describe('single-sided swingarm', () => {
+  it('both presets: the arm leg runs on the right of the wheel only, the shock stays on the center plane', () => {
+    for (const spec of BIKE_PRESETS) {
+      expect(bikeVehicleSpec(spec).axles[1].swingArmSide).toBe('right');
+      const world = new RAPIER.World({ x: 0, y: 0, z: 0 });
+      const rear = buildBikeVehicle(RAPIER, world, spec, { x: 0, y: 0, z: 0 }).corners[1];
+      const x = (a: { body: { translation(): { x: number } }; local: number[] }) => a.body.translation().x + a.local[0];
+      const beams = rear.visuals.filter((l) => l.kind === 'beam');
+      expect(beams).toHaveLength(1);
+      for (const b of beams) for (const end of [b.a, b.b]) expect(x(end)).toBeGreaterThan(spec.rear.width / 2);
+      for (const l of rear.visuals.filter((l) => l.kind === 'spring' || l.kind === 'damper')) for (const end of [l.a, l.b]) expect(x(end)).toBeCloseTo(0, 6);
+    }
   });
 });
 
