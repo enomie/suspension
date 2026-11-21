@@ -13,7 +13,7 @@ export interface CustomAxleConfig {
   suspension: SuspensionType;
   /** driven axle (torque is shared equally between driven axles) */
   drive: boolean;
-  /** driven axles only: the axle has a differential (ignored when `drive` is false) */
+  /** driven wheel pairs only: the axle has a differential (ignored when `drive` is false or the wheels are not a `pair`) */
   differential: boolean;
   /** the handbrake acts on this axle; independent of the service brake, which brakes every wheel */
   handbrake: boolean;
@@ -134,7 +134,8 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
       wheel,
       steer: c.steer === 'none' ? undefined : { maxAngle: 0.55, counter: c.steer === 'counter' || undefined },
       drive: c.drive ? { share: 1 } : undefined,
-      differential: c.drive ? c.differential : undefined,
+      // only a left/right pair can have a differential (`hasDifferential`)
+      differential: c.drive && c.wheels === 'pair' ? c.differential : undefined,
       brake: { torque: brake },
       handbrake: c.handbrake ? { torque: clamp(config.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque) } : undefined,
       bogieSpacing: suspension === 'bogie' ? radius * 2 + 0.4 : undefined,

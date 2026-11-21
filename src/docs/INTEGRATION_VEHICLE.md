@@ -173,7 +173,8 @@ const vehicle = new Vehicle(R, world, spec, pos);
 vehicle.applyInput({ throttle, brake, steer, handbrake, diffLock }, 1 / 120);   // diffLock: your lock level, e.g. cycled by a key
 ```
 The game holds the diff-lock level itself (the demo cycles `DIFF_LOCK_LEVELS` with `L`: open, 25, 50, 75, 100 %, back to open; a new vehicle starts open). Rendering: `VehicleVisual` shows the differential spheres
-and the preview box; a game with its own meshes uses `spec.chassis.lowerCollider` and the axles' `differential` flags directly.
+and the preview box; a game with its own meshes uses `spec.chassis.lowerCollider` and `hasDifferential(axle)` (driven, a left and a right wheel,
+`differential !== false`; a single or twin centered wheel never has one).
 Tests: `tests/customVehicle.test.ts`, `tests/differential.test.ts`, `tests/lowerCollider.test.ts`.
 
 ## 5. Important rules (Rapier)

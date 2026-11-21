@@ -189,11 +189,13 @@ export class CustomPanel {
   private axleRow(c: CustomAxleConfig, i: number): HTMLElement {
     const last = this.config.axles.length - 1;
     const tag = i === 0 ? ' (front)' : i === last ? ' (rear)' : '';
-    return el('fieldset', {}, el('legend', { textContent: `Axle ${i + 1}${tag}` }), ...this.layoutFields(c), ...this.wheelFields(c), ...this.driveFields(c));
+    // the differential checkbox depends on the wheel layout, so a layout change re-checks it
+    const drive = this.driveFields(c);
+    return el('fieldset', {}, el('legend', { textContent: `Axle ${i + 1}${tag}` }), ...this.layoutFields(c, drive.sync), ...this.wheelFields(c), ...drive.fields);
   }
 
   /** wheel layout, steering, suspension and track: the suspension list depends on layout and steering, the track on the layout */
-  private layoutFields(c: CustomAxleConfig): HTMLLabelElement[] {
+  private layoutFields(c: CustomAxleConfig, onWheels: () => void): HTMLLabelElement[] {
     const susp = el('select');
     const fillSuspension = () => {
       const allowed = suspensionsFor(c.steer, c.wheels);
@@ -208,6 +210,7 @@ export class CustomPanel {
     const wheels = labelSelect(WHEEL_LAYOUT_LABELS, c.wheels, (v) => {
       c.wheels = v;
       trackInput.disabled = v !== 'pair';
+      onWheels();
       fillSuspension();
       this.refreshTopSpeed();
     });
@@ -231,16 +234,17 @@ export class CustomPanel {
     return [field('Radius (m)', radius), field('Wheel shape', shape), field('Width (m)', widthInput)];
   }
 
-  /** driven, differential (driven axles only) and handbrake */
-  private driveFields(c: CustomAxleConfig): HTMLLabelElement[] {
+  /** driven, differential (driven wheel pairs only: a centered wheel has nothing to split the torque between) and handbrake */
+  private driveFields(c: CustomAxleConfig): { fields: HTMLLabelElement[]; sync: () => void } {
     const differential = checkbox(c.differential, (on) => (c.differential = on));
-    differential.disabled = !c.drive;
+    const sync = () => (differential.disabled = !c.drive || c.wheels !== 'pair');
+    sync();
     const drive = checkbox(c.drive, (on) => {
       c.drive = on;
-      differential.disabled = !on;
+      sync();
       this.refreshTopSpeed();
     });
     const handbrake = checkbox(c.handbrake, (on) => (c.handbrake = on));
-    return [field('Driven', drive), field('Differential', differential), field('Handbrake', handbrake)];
+    return { fields: [field('Driven', drive), field('Differential', differential), field('Handbrake', handbrake)], sync };
   }
 }

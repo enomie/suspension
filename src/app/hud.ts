@@ -1,4 +1,4 @@
-import type { CornerTelemetry, VehicleSpec } from '../shared/vehicleSpec';
+import { hasDifferential, type CornerTelemetry, type VehicleSpec } from '../shared/vehicleSpec';
 
 export interface TelemetrySource {
   spec: VehicleSpec;
@@ -58,7 +58,7 @@ export class TelemetryHud {
         `physics  ${physics.mode === 'worker' ? 'worker' : 'main thread'} · ${physics.stepMs.toFixed(2)} ms/step · interp. delay ${physics.delayMs.toFixed(1)} ms`,
       );
     if (debugLine) lines.push(debugLine);
-    const open = v.spec.axles.filter((a) => a.drive && a.differential !== false).length;
+    const open = v.spec.axles.filter(hasDifferential).length;
     if (open > 0) lines.push(`diff lock  ${diffLock === 0 ? 'open' : `${Math.round(diffLock * 100)}%`}  (L)`);
     lines.push('', 'Vehicle top-right · W/S throttle/brake · A/D steer · Space handbrake · L diff lock · R reset');
     this.el.textContent = lines.join('\n');
