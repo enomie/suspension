@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createDifferentialMarkers } from '../src/render/vehicle/differentialVisual';
 import { createPreviewBox } from '../src/render/vehicle/previewBoxVisual';
 import { buildCustomSpec, DEFAULT_CUSTOM } from '../src/shared/customVehicle';
-import { frameHalfLength, frameTopY } from '../src/shared/vehicleSpec';
+import { frameHalfLength, frameTopY, hasDifferential } from '../src/shared/vehicleSpec';
+import { BIKE_PRESETS } from '../src/physics/vehicle/presets/bike';
+import { bikeVehicleSpec } from '../src/shared/bikeSpec';
 
 const withDiff = (front: boolean, rear: boolean) =>
   buildCustomSpec({
@@ -22,6 +24,21 @@ describe('differential markers', () => {
     expect(p[12]).toBe(0);
     expect(p[13]).toBeCloseTo(spec.axles[1].y, 5);
     expect(p[14]).toBeCloseTo(spec.axles[1].z, 5);
+  });
+  it('only a driven left/right pair has one: never a single or twin centered wheel, never a bike', () => {
+    expect(hasDifferential({ drive: { share: 1 }, track: 1.6 })).toBe(true);
+    expect(hasDifferential({ drive: { share: 1 }, track: 1.6, differential: false })).toBe(false);
+    expect(hasDifferential({ track: 1.6 })).toBe(false);
+    expect(hasDifferential({ drive: { share: 1 }, track: 0 })).toBe(false);
+    for (const b of BIKE_PRESETS) expect(createDifferentialMarkers(bikeVehicleSpec(b)).count).toBe(0);
+    for (const wheels of ['center', 'centerDouble'] as const) {
+      const spec = buildCustomSpec({
+        ...DEFAULT_CUSTOM,
+        axles: [DEFAULT_CUSTOM.axles[0], { ...DEFAULT_CUSTOM.axles[1], wheels, suspension: 'strut', drive: true, differential: true }],
+      });
+      expect(spec.axles[1].differential).toBeUndefined();
+      expect(createDifferentialMarkers(spec).count).toBe(0);
+    }
   });
   it('none when no axle has a differential', () => {
     expect(createDifferentialMarkers(withDiff(false, false)).count).toBe(0);

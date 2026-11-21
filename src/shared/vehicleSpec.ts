@@ -72,7 +72,7 @@ export interface AxleSpec {
   /** driven: share of total torque */
   drive?: { share: number };
   /**
-   * driven axles only. Open differential unless `false`: the wheels of the axle turn independently. `false` = no differential
+   * driven axles with a left and a right wheel only (`track` > 0, see `hasDifferential`). Open differential unless `false`: the wheels of the axle turn independently. `false` = no differential
    * (spooled axle): the wheels are forced to the same speed. The driver can also lock differentials (`DriverInput.diffLock`).
    * Shown as a sphere in the preview.
    */
@@ -172,6 +172,15 @@ export interface VehicleSpec {
   /** visual only: `slim` = thinner spring coils with tighter windings and smaller seats (bikes) */
   springStyle?: 'default' | 'slim';
   jointMode?: 'impulse' | 'multibody';
+}
+
+/**
+ * true when the axle has an open differential: it is driven, `differential` is not `false`, and it has a left and a
+ * right wheel (`track` > 0). A single centered wheel or a twin wheel on one centered strut has no pair to split the
+ * torque between, so it never has one (physics: `parts/differential.ts`).
+ */
+export function hasDifferential(axle: Pick<AxleSpec, 'drive' | 'differential' | 'track'>): boolean {
+  return !!axle.drive && axle.differential !== false && axle.track > 0;
 }
 
 /** Steps the driver cycles through with the lock key: open, 25, 50, 75 %, fully locked */
