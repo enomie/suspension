@@ -31,7 +31,7 @@ project: [INTEGRATION_VEHICLE.md](INTEGRATION_VEHICLE.md).
 | `shared/trackPath.ts` | `lowerRunPath()`, `lowerRunY()`, `samplePath()`: the chain under the wheels (pure geometry) |
 | `shared/trackProfile.ts` | Ground profile grid of the chain: `trackProfileRange()`, `trackLiftAt()`, constants |
 | `shared/chainLoop.ts` | `buildChainLoop()`, `deformChainLoop()`, `linkLayout()` (pure geometry) |
-| `shared/chainLink.ts` | `ChainLinkAsset`, `PLACEHOLDER_CHAIN_LINK`, `parseChainLink()` |
+| `shared/chainLink.ts` | `ChainLinkAsset`, `CHAIN_LINK`: the one chain link |
 | `shared/customTracked.ts` | `CustomTrackedConfig`, `buildTrackedSpec()`, `trackedConfigFromSpec()` for the custom panel |
 | `physics/vehicle/tracked/buildTracked.ts` | `buildTrackedVehicle()`: bodies, joints, colliders |
 | `physics/vehicle/tracked/applyTrackDrive.ts` | `applyTrackDrive()`: sets the road wheel motors |
@@ -77,7 +77,6 @@ Forward = −Z, `z` and `y` are relative to the chassis origin (`y` = wheel cent
 | `track` | Distance between the centres of the left and right track |
 | `beltWidth` | Width of one track (default in the panel: 0.55 m) |
 | `chainThickness` | Thickness of the chain around the wheels |
-| `linkAsset` | Name of the link asset |
 | `drive` | `maxTorque`, `maxPower`, `reverseSpeed`, optional `maxSlipSpeed` |
 | `turnSpeed` | Optional: speed difference of the tracks at full steer, default 3 m/s |
 | `chassis.lowerCollider` | Optional low friction block on the frame, like a wheeled vehicle (panel: Collider box) |
@@ -137,20 +136,21 @@ top is the one on the bottom turned over; the outer side is to the right of the 
 `floor` is the lower run path (`lowerRunY`), `lift` the measured ground profile. The loop is sampled every 5 cm; its
 length grows with the bend. `linkLayout(length, nominalPitch)` adjusts the pitch so a whole number of links fits.
 
-`ChainVisual` places the link asset along the loop on both sides, one instanced mesh per link part. The link is scaled
+`ChainVisual` places `CHAIN_LINK` along the loop on both sides, one instanced mesh per link part. The link is scaled
 across its width to the belt width. Each track moves by the speed its road wheels turn (`wheelOmega` × contact radius).
 
-### Link asset
+### Chain link
 
-`ChainLinkAsset`: boxes (`position`, `size`) in link-local axes (X across the track, Y outward, Z along the chain),
-the width the link was authored for and the nominal pitch. `PLACEHOLDER_CHAIN_LINK` (plate, two lugs, pin) stands in
-until `Drive_Chain_Link.json` of the main game is plugged in; `parseChainLink()` validates parsed JSON. The main
-game's real file format is not known yet: adapt `parseChainLink()` when it is.
+`CHAIN_LINK` is the one link every tracked vehicle uses: boxes (`position`, `size`) in link-local axes (X across the track,
+Y outward, Z along the chain), the width it was authored for (stretched to `beltWidth`) and the nominal pitch. Seven boxes:
+a plate, a grouser (cross cleat) on it, a raised lip along each edge, two hinge lugs and the pin on the inner side. The
+inner side stays within 0.025 m of the centre line, the grouser reaches 0.03 m outward, which fits the default chain
+thickness of 0.05 m. The vehicle spec carries no link data.
 
 ## Tests
 
 `tests/trackedSpec.test.ts`, `trackCommand.test.ts`, `trackPath.test.ts`, `trackProfile.test.ts`, `chainLoop.test.ts`,
-`chainVisual.test.ts`, `trackedBody.test.ts`, `trackedDrive.test.ts` (driving, coasting, steering while rolling),
+`chainVisual.test.ts` (chain link included), `trackedBody.test.ts`, `trackedDrive.test.ts` (driving, coasting, steering while rolling),
 `trackLogs.test.ts` (ten logs, 10…90 % buried: the vehicle crosses them, the chain lies on them, a tipped-over vehicle
 gets no support), `customTracked.test.ts`, `trackedIntegration.test.ts`, and the public-entry test in
 `integration.test.ts`.
@@ -161,8 +161,6 @@ gets no support), `customTracked.test.ts`, `trackedIntegration.test.ts`, and the
 - Slopes: on a flat plane with tilted gravity the tank climbs 20°. At 15° and more it does not hold or climb reliably:
   once it rolls faster than 0.6 m/s without throttle it coasts, like a wheeled vehicle.
 
-## Open
+## Not implemented
 
-- The real `Drive_Chain_Link.json` format (see above).
-- Sag of the upper run between the wheels: optional, not implemented. The upper side of the chain is taut.
-- Link thickness comes from the asset, not from `chainThickness`; they should match in the real asset.
+- Sag of the upper run between the wheels: optional. The upper side of the chain is taut.

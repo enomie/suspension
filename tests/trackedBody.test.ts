@@ -29,8 +29,7 @@ function spec(): TrackedVehicleSpec {
     track: 2,
     beltWidth: 0.4,
     chainThickness: 0.05,
-    linkAsset: 'Drive_Chain_Link',
-    drive: { maxTorque: 8000, maxPower: 300, reverseSpeed: 5 },
+      drive: { maxTorque: 8000, maxPower: 300, reverseSpeed: 5 },
   };
 }
 

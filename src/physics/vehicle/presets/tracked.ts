@@ -1,6 +1,5 @@
 import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
 import type { AxleSpec } from '../types';
-import { PLACEHOLDER_CHAIN_LINK } from '../../../shared/chainLink';
 
 /** road axle: sliding strut pair, wheel mass like a heavy road wheel, traction for steep slopes; the tracks still skid-steer (see docs) */
 const roadAxle = (z: number): AxleSpec => ({
@@ -25,7 +24,6 @@ export const tank: TrackedVehicleSpec = {
   track: 2,
   beltWidth: 0.55,
   chainThickness: 0.05,
-  linkAsset: PLACEHOLDER_CHAIN_LINK.name,
   drive: { maxTorque: 44000, maxPower: 400_000, reverseSpeed: 5 },
 };
 

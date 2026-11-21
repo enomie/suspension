@@ -41,8 +41,6 @@ export interface TrackedVehicleSpec {
   beltWidth: number;
   /** thickness of the chain around the wheels [m] */
   chainThickness: number;
-  /** name of the standardized chain link asset (`Drive_Chain_Link.json`), scaled across its width to `beltWidth` */
-  linkAsset: string;
   drive: DriveSpec;
   /** speed difference of the tracks at full steer [m/s], default `DEFAULT_TURN_SPEED`: higher = tighter turns */
   turnSpeed?: number;
@@ -78,7 +76,6 @@ export function validateTrackedSpec(spec: TrackedVehicleSpec): string[] {
   if (!inRange(spec.chainThickness, L.chainThickness)) errors.push(`chainThickness ${spec.chainThickness} outside ${L.chainThickness[0]}…${L.chainThickness[1]}`);
   if (spec.track < spec.beltWidth) errors.push(`track ${spec.track} is smaller than beltWidth ${spec.beltWidth}: the tracks would overlap`);
   if (spec.turnSpeed !== undefined && !inRange(spec.turnSpeed, L.turnSpeed)) errors.push(`turnSpeed ${spec.turnSpeed} outside ${L.turnSpeed[0]}…${L.turnSpeed[1]}`);
-  if (!spec.linkAsset) errors.push('linkAsset is empty');
 
   axles.forEach((a, i) => {
     if (a.suspension !== 'strut') errors.push(`axle ${i}: suspension must be 'strut', is '${a.suspension}'`);

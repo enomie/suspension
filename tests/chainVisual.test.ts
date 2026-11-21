@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Matrix4, Vector3 } from 'three';
 import { ChainVisual, linkMatrix } from '../src/render/vehicle/chainVisual';
-import { PLACEHOLDER_CHAIN_LINK, parseChainLink } from '../src/shared/chainLink';
+import { CHAIN_LINK } from '../src/shared/chainLink';
 import { buildChainLoop, type ChainCircle } from '../src/shared/chainLoop';
 
 const wheels: ChainCircle[] = [
@@ -9,7 +9,7 @@ const wheels: ChainCircle[] = [
   { z: 0, y: 0, radius: 0.3 },
   { z: 1, y: 0, radius: 0.3 },
 ];
-const base = { asset: PLACEHOLDER_CHAIN_LINK, track: 2, beltWidth: 0.4, chainThickness: 0.05, wheels };
+const base = { asset: CHAIN_LINK, track: 2, beltWidth: 0.4, chainThickness: 0.05, wheels };
 
 const origin = (m: Matrix4) => new Vector3().setFromMatrixPosition(m);
 const instance = (mesh: ChainVisual['group']['children'][number], i: number) => {
@@ -18,17 +18,22 @@ const instance = (mesh: ChainVisual['group']['children'][number], i: number) => 
   return m;
 };
 
-describe('chain link asset', () => {
-  it('the placeholder is a plate, two lugs and a pin', () => {
-    expect(PLACEHOLDER_CHAIN_LINK.parts).toHaveLength(4);
-    expect(() => parseChainLink(JSON.parse(JSON.stringify(PLACEHOLDER_CHAIN_LINK)))).not.toThrow();
+describe('chain link', () => {
+  it('has seven parts: plate, grouser, two edge lips, two hinge lugs and a pin', () => {
+    expect(CHAIN_LINK.parts).toHaveLength(7);
   });
 
-  it('rejects broken data', () => {
-    expect(() => parseChainLink(null)).toThrow();
-    expect(() => parseChainLink({ ...PLACEHOLDER_CHAIN_LINK, width: 0 })).toThrow(/width/);
-    expect(() => parseChainLink({ ...PLACEHOLDER_CHAIN_LINK, parts: [] })).toThrow(/part/);
-    expect(() => parseChainLink({ ...PLACEHOLDER_CHAIN_LINK, parts: [{ position: [0, 0, 0], size: [1, 0, 1] }] })).toThrow(/size/);
+  it('all boxes are valid and the link is a plain JSON-able record', () => {
+    for (const p of CHAIN_LINK.parts) expect(p.size.every((s) => s > 0)).toBe(true);
+    expect(JSON.parse(JSON.stringify(CHAIN_LINK))).toEqual(CHAIN_LINK);
+  });
+
+  it('the inner side stays within half the chain thickness of the centre line (it must not sink into the wheel)', () => {
+    for (const p of CHAIN_LINK.parts) expect(p.position[1] - p.size[1] / 2).toBeGreaterThanOrEqual(-0.025 - 1e-9);
+  });
+
+  it('neighbouring links do not overlap: the longest part is shorter than the pitch, the pin reaches into the gap', () => {
+    for (const p of CHAIN_LINK.parts) expect(p.position[2] + p.size[2] / 2).toBeLessThan(CHAIN_LINK.pitch - (CHAIN_LINK.parts[0].size[2] / 2));
   });
 });
 
@@ -53,7 +58,7 @@ describe('linkMatrix', () => {
 describe('ChainVisual', () => {
   it('one instanced mesh per link part, with both tracks', () => {
     const v = new ChainVisual(base);
-    expect(v.group.children).toHaveLength(PLACEHOLDER_CHAIN_LINK.parts.length);
+    expect(v.group.children).toHaveLength(CHAIN_LINK.parts.length);
     for (const m of v.group.children) expect((m as any).count).toBe(v.linkCount * 2);
     // loop length of the placeholder case: 4 + 2π·0.325 = 6.04 m → about 40 links of 0.15 m
     expect(v.linkCount).toBe(40);

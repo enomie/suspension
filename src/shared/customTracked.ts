@@ -1,4 +1,3 @@
-import { PLACEHOLDER_CHAIN_LINK } from './chainLink';
 import { DEFAULT_TURN_SPEED } from './trackDrive';
 import { TRACKED_LIMITS, trackedRenderSpec, type TrackedVehicleSpec } from './trackedSpec';
 import { defaultLowerCollider, type AxleSpec } from './vehicleSpec';
@@ -146,7 +145,6 @@ export function buildTrackedSpec(config: CustomTrackedConfig): TrackedVehicleSpe
     track,
     beltWidth,
     chainThickness: clamp(config.chainThickness, L.chainThickness),
-    linkAsset: PLACEHOLDER_CHAIN_LINK.name,
     drive: { maxTorque: clamp(config.torque, L.torque), maxPower: 1000 * clamp(config.power, L.power), reverseSpeed: 5 },
     turnSpeed: clamp(config.turnSpeed, L.turnSpeed),
   };

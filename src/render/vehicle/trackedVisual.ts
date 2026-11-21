@@ -1,6 +1,6 @@
 import { trackLiftAt, trackProfileRange } from '../../shared/trackProfile';
 import { Group, Mesh, Quaternion, Vector3 } from 'three';
-import { PLACEHOLDER_CHAIN_LINK, type ChainLinkAsset } from '../../shared/chainLink';
+import { CHAIN_LINK, type ChainLinkAsset } from '../../shared/chainLink';
 import type { ChainCircle } from '../../shared/chainLoop';
 import type { TrackedVehicleSpec } from '../../shared/trackedSpec';
 import { designChainWheels } from '../../shared/trackedSpec';
@@ -37,7 +37,7 @@ export class TrackedVisual {
   private readonly left: ChainCircle[];
   private readonly right: ChainCircle[];
 
-  constructor(layout: VehicleLayout, asset: ChainLinkAsset = PLACEHOLDER_CHAIN_LINK) {
+  constructor(layout: VehicleLayout, asset: ChainLinkAsset = CHAIN_LINK) {
     const t = layout.tracked as TrackedVehicleSpec;
     this.range = trackProfileRange(t);
     this.idler = { z: t.idler.z, y: t.idler.y, radius: t.idler.radius };

@@ -22,7 +22,7 @@ export { TRACKED_PRESETS, tank } from './presets/tracked';
 export { isTrackedSpec, validateTrackedSpec, designChainWheels, trackedRenderSpec, TRACKED_LIMITS, type TrackedVehicleSpec, type TrackEndWheelSpec } from '../../shared/trackedSpec';
 export { trackCommand, DEFAULT_TURN_SPEED, type TrackCommand, type TrackDriveParams } from '../../shared/trackDrive';
 export { buildChainLoop, linkLayout, type ChainLoop, type ChainCircle, type ChainPose } from '../../shared/chainLoop';
-export { PLACEHOLDER_CHAIN_LINK, parseChainLink, type ChainLinkAsset } from '../../shared/chainLink';
+export { CHAIN_LINK, type ChainLinkAsset } from '../../shared/chainLink';
 export { neutralInput, type DriverInput } from '../../shared/driverInput';
 export { car, makeCar } from './presets/car';
 export { specFromWheelPoints, type WheelPoint, type WheelPointOptions } from './fromWheelPoints';

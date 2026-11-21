@@ -23,8 +23,7 @@ function spec(): TrackedVehicleSpec {
     track: 2,
     beltWidth: 0.4,
     chainThickness: 0.05,
-    linkAsset: 'Drive_Chain_Link',
-    drive: { maxTorque: 8000, maxPower: 300, reverseSpeed: 5 },
+      drive: { maxTorque: 8000, maxPower: 300, reverseSpeed: 5 },
   };
 }
 
@@ -84,15 +83,13 @@ describe('validateTrackedSpec', () => {
     expect(msg).toContain('axle 2: track must be > 0');
   });
 
-  it('rejects overlapping tracks, bad belt values and a missing link asset', () => {
+  it('rejects overlapping tracks and bad belt values', () => {
     const s = spec();
     s.track = 0.3;
     s.chainThickness = 0.5;
-    s.linkAsset = '';
     const msg = validateTrackedSpec(s).join('\n');
     expect(msg).toContain('tracks would overlap');
     expect(msg).toContain('chainThickness');
-    expect(msg).toContain('linkAsset');
   });
 
   it('checks the turn speed when given', () => {

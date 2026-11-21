@@ -30,7 +30,6 @@ const spec: TrackedVehicleSpec = {
   track: 2,
   beltWidth: 0.4,
   chainThickness: 0.05,
-  linkAsset: 'Drive_Chain_Link',
   drive: { maxTorque: 44000, maxPower: 400_000, reverseSpeed: 5 },
 };
 
