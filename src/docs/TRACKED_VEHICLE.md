@@ -143,8 +143,9 @@ across its width to the belt width. Each track moves by the speed its road wheel
 ### Chain link
 
 `CHAIN_LINK` is the one link every tracked vehicle uses: boxes (`position`, `size`) in link-local axes (X across the track,
-Y outward, Z along the chain), the width it was authored for (stretched to `beltWidth`) and the nominal pitch. Two boxes:
-a plate and a grouser on its outer side, inset 5 % from the plate edges on every side. The
+Y outward, Z along the chain), the width it was authored for (stretched to `beltWidth`) and the nominal pitch. Seven boxes:
+a plate and a grouser on its outer side, inset 5 % from the plate edges on every side; on the inner side an outer pair
+of hinge lugs and the pin at the front end, an inner pair at the rear end, so neighbouring links interleave on the pin. The
 inner side stays within 0.025 m of the centre line, the grouser reaches 0.03 m outward, which fits the default chain
 thickness of 0.05 m. The vehicle spec carries no link data.
 

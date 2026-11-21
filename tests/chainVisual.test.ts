@@ -19,8 +19,8 @@ const instance = (mesh: ChainVisual['group']['children'][number], i: number) => 
 };
 
 describe('chain link', () => {
-  it('has two parts: plate and grouser', () => {
-    expect(CHAIN_LINK.parts).toHaveLength(2);
+  it('has seven parts: plate, grouser, four hinge lugs and a pin', () => {
+    expect(CHAIN_LINK.parts).toHaveLength(7);
   });
 
   it('the grouser sits on the plate, inset 5 % on every side', () => {
@@ -39,8 +39,21 @@ describe('chain link', () => {
     for (const p of CHAIN_LINK.parts) expect(p.position[1] - p.size[1] / 2).toBeGreaterThanOrEqual(-0.025 - 1e-9);
   });
 
-  it('neighbouring links do not overlap: the longest part is shorter than the pitch', () => {
-    for (const p of CHAIN_LINK.parts) expect(p.position[2] + p.size[2] / 2).toBeLessThan(CHAIN_LINK.pitch - (CHAIN_LINK.parts[0].size[2] / 2));
+  it('the plate and grouser of neighbouring links do not overlap', () => {
+    for (const p of CHAIN_LINK.parts.slice(0, 2)) expect(p.size[2]).toBeLessThan(CHAIN_LINK.pitch);
+  });
+
+  it('hinge: outer lugs and pin at the front joint, inner lugs at the rear joint, interleaving without touching', () => {
+    const [, , o1, o2, i1, i2, pin] = CHAIN_LINK.parts;
+    const half = CHAIN_LINK.pitch / 2;
+    for (const p of [o1, o2, pin]) expect(p.position[2]).toBeCloseTo(half, 9);
+    for (const p of [i1, i2]) expect(p.position[2]).toBeCloseTo(-half, 9);
+    // the next link's inner lugs sit on this link's pin, inside the outer lugs, with a gap
+    expect(Math.abs(o1.position[0]) - o1.size[0] / 2).toBeGreaterThan(Math.abs(i1.position[0]) + i1.size[0] / 2);
+    expect(pin.size[0] / 2).toBeCloseTo(Math.abs(o1.position[0]) + o1.size[0] / 2, 9);
+    expect(pin.position[1]).toBeCloseTo(o1.position[1], 9);
+    expect(i2.position[0]).toBeCloseTo(-i1.position[0], 9);
+    expect(o2.position[0]).toBeCloseTo(-o1.position[0], 9);
   });
 });
 
