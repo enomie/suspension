@@ -19,7 +19,7 @@ This becomes a **kit**: same parts, clean naming, freely combinable into
 | 4-axle | 4 | 2 steer axles front, tandem rear |
 | Trailer (drawbar) | 1–2 | drawbar joint + kingpin |
 | Semi-truck | tractor + trailer | fifth wheel (kingpin) |
-| Tracked vehicle (later) | n road wheels | suspended road wheels, track as drive model |
+| Tracked vehicle | 2–5 road axles | suspended road wheels, chain contact between the wheels, track as drive model: [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md) |
 
 Code structure: see [ARCHITECTURE.md](ARCHITECTURE.md). Vehicle physics lives in `physics/vehicle/`
 (Rapier only, no visuals); visuals are built in `render/vehicle/` from the layout (`physics/vehicle/layout.ts`).
@@ -140,7 +140,7 @@ Coordinates: **forward = −Z**, up = +Y, right = +X (as in Ocean project). Unit
 | `Brake` | *`parts/brake.ts`* | velocity motor target 0 + MaxForce | brake torque per axle |
 | `Handbrake` | *in `brake.ts`* | like brake, rear axles only | torque |
 | `Hitch` / `FifthWheel` / `KingPin` | *`parts/coupling.ts`* | joint between 2 vehicles | type, angle limits |
-| `Track` (later) | *`parts/track.ts`* | road wheels + drive model | roller count, track tension |
+| `Track` | `tracked/` (see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md)) | road wheels on strut suspension, chain contact, drive model | road axles, idler, sprocket, belt |
 
 ## 7. Joint list
 
@@ -171,9 +171,9 @@ Generally: `joint.setContactsEnabled(false)` between connected bodies, plus coll
 - **`truck8x4`**: a0+a1 steerable (a1 smaller angle, Ackermann over wheelbase), a2+a3 drive.
 - **`drawbarTrailer`**: a0 on kingpin (revolute Y) + drawbar (`hitch`), a1 rigid.
 - **`semiTractor` + `semiTrailer`**: tractor 4x2/6x4 with `fifthWheel`, trailer with `kingPin` + 2–3 rear axles.
-- **`tank` (later)**: 5–7 road wheels/side on `swingArm` (torsion bar = revolute position motor), drive per side
-  (skid steering: left/right different speed). Track visual only + driven rollers first;
-  real track links (chain of boxes + revolute) maybe later as experiment.
+- **`tank`**: implemented as a tracked vehicle, see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md): 2–5 road wheels per side
+  on sliding struts, drive per side (skid steering: left/right different speed), chain visual plus chain contact
+  between the wheels. Real track links (chain of boxes + revolute) were not built.
 
 ## 9. Physics rules / pitfalls (Rapier)
 
