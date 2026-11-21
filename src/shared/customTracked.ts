@@ -1,6 +1,7 @@
 import { DEFAULT_TURN_SPEED } from './trackDrive';
 import { TRACKED_LIMITS, trackedRenderSpec, type TrackedVehicleSpec } from './trackedSpec';
-import { defaultLowerCollider, type AxleSpec } from './vehicleSpec';
+import { COM_OFFSET_LIMITS, clampComOffset } from './customRules';
+import { defaultLowerCollider, type AxleSpec, type Vec3 } from './vehicleSpec';
 
 /**
  * Custom tracked vehicle profile: the few numbers the panel edits, and the rules that turn them into a complete,
@@ -36,6 +37,8 @@ export interface CustomTrackedConfig {
   colliderBox: boolean;
   /** total vehicle mass including wheels [kg] */
   weight: number;
+  /** center of mass offset from the chassis centre [m] (−z = front), like `CustomVehicleConfig.comOffset` */
+  comOffset: Vec3;
   /** total drive torque [N·m] */
   torque: number;
   /** engine power [kW] */
@@ -56,6 +59,7 @@ export const CUSTOM_TRACKED_LIMITS = {
   endRadius: TRACKED_LIMITS.endWheelRadius,
   endWidth: TRACKED_LIMITS.endWheelWidth,
   weight: [2000, 60000],
+  comOffset: COM_OFFSET_LIMITS,
   torque: [2000, 100000],
   power: [50, 20000],
   turnSpeed: TRACKED_LIMITS.turnSpeed,
@@ -72,6 +76,7 @@ export const DEFAULT_CUSTOM_TRACKED: CustomTrackedConfig = {
   sprocket: { distance: 0.9, raise: 0.3, radius: 0.25, width: 0.45 },
   colliderBox: false, // like the tank preset, which has none
   weight: 12800,
+  comOffset: [0, 0, 0], // like the tank preset, which sets none
   torque: 44000,
   power: 400,
   turnSpeed: DEFAULT_TURN_SPEED,
@@ -138,6 +143,7 @@ export function buildTrackedSpec(config: CustomTrackedConfig): TrackedVehicleSpe
     chassis: {
       size: [track + BOX_EXTRA_WIDTH, CHASSIS_HEIGHT, rear - front + BOX_EXTRA_LENGTH],
       mass: Math.max(MIN_CHASSIS_MASS, weight - 2 * n * wheelMass(radius)),
+      comOffset: clampComOffset(config.comOffset),
     },
     axles,
     idler: end(config.idler, front, -1),
@@ -156,9 +162,11 @@ export function buildTrackedSpec(config: CustomTrackedConfig): TrackedVehicleSpe
 const clean = <T>(v: T): T =>
   typeof v === 'number'
     ? (Number(v.toFixed(6)) as T)
-    : v && typeof v === 'object'
-      ? (Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)])) as T)
-      : v;
+    : Array.isArray(v)
+      ? (v.map(clean) as T)
+      : v && typeof v === 'object'
+        ? (Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)])) as T)
+        : v;
 
 /** `TrackedVehicleSpec` → config: the panel shows what a preset is made of (values are clamped to its limits) */
 export function trackedConfigFromSpec(spec: TrackedVehicleSpec): CustomTrackedConfig {
@@ -188,6 +196,7 @@ function configFromSpec(spec: TrackedVehicleSpec): CustomTrackedConfig {
     sprocket: end(spec.sprocket, spec.sprocket.z - last.z),
     colliderBox: !!spec.chassis.lowerCollider,
     weight: clamp(spec.chassis.mass + spec.axles.reduce((m, a) => m + 2 * a.wheel.mass, 0), L.weight),
+    comOffset: clampComOffset(spec.chassis.comOffset ?? [0, 0, 0]),
     torque: clamp(spec.drive.maxTorque, L.torque),
     power: clamp(spec.drive.maxPower / 1000, L.power),
     turnSpeed: clamp(spec.turnSpeed ?? DEFAULT_TURN_SPEED, L.turnSpeed),

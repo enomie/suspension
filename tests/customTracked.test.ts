@@ -83,6 +83,12 @@ describe('buildTrackedSpec', () => {
     const wheels = spec.axles.reduce((m, a) => m + 2 * a.wheel.mass, 0);
     expect(spec.chassis.mass + wheels).toBeCloseTo(20000, 6);
   });
+
+  it('centre of mass is one clamped offset on the chassis and round-trips, like a wheeled vehicle', () => {
+    const spec = buildTrackedSpec(config({ comOffset: [0.1, -0.3, 9] }));
+    expect(spec.chassis.comOffset).toEqual([0.1, -0.3, CUSTOM_TRACKED_LIMITS.comOffset.z[1]]);
+    expect(trackedConfigFromSpec(buildTrackedSpec(config({ comOffset: [0.1, -0.3, 0.2] }))).comOffset).toEqual([0.1, -0.3, 0.2]);
+  });
 });
 
 describe('trackedConfigFromSpec', () => {

@@ -40,6 +40,7 @@ project: [INTEGRATION_VEHICLE.md](INTEGRATION_VEHICLE.md).
 | `physics/vehicle/presets/tracked.ts` | `TRACKED_PRESETS` (`tank`) |
 | `render/vehicle/chainVisual.ts`, `trackedVisual.ts` | Links on the loop, idler and sprocket meshes |
 | `app/customTrackedPanel.ts` | Tracked fields of the custom panel |
+| `app/comFields.ts` | Center of mass fields, shared by the wheeled and the tracked panel |
 
 ## Using it
 
@@ -90,7 +91,7 @@ one: it corrects values instead of rejecting them.
 
 Fields: road axles, wheelbase (first to last road axle, axles evenly spaced, wide wheels push them apart), wheel
 radius; track, belt width, chain thickness; idler and sprocket (distance from the outer axle, height above the road
-wheels, radius, width); collider box (low friction); weight, torque (up to 100 000 N·m), power (up to 20 000 kW),
+wheels, radius, width); collider box (low friction); weight, center of mass offset (x, y, z, same limits and fields as the wheeled panel), torque (up to 100 000 N·m), power (up to 20 000 kW),
 turn speed.
 
 ## Driving

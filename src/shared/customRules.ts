@@ -1,4 +1,4 @@
-import type { SuspensionType, WheelShape } from './vehicleSpec';
+import type { SuspensionType, Vec3, WheelShape } from './vehicleSpec';
 
 /**
  * Rules of the custom vehicle profile: value limits, which suspensions fit which wheel layout and steering, and UI labels.
@@ -11,6 +11,18 @@ export type SteerMode = 'none' | 'steer' | 'counter';
 /** Wheels of one axle: a left/right pair, one centered wheel, or two wheels side by side at the center */
 export type WheelLayout = 'pair' | 'center' | 'centerDouble';
 
+/** Center of mass offset from the chassis centre [m], per axis; shared by the wheeled and the tracked profile */
+export const COM_OFFSET_LIMITS = { x: [-0.5, 0.5], y: [-0.6, 0.6], z: [-2, 2] } as const;
+
+const clampAxis = (v: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, v));
+
+/** Keep a center of mass offset inside `COM_OFFSET_LIMITS` */
+export const clampComOffset = ([x, y, z]: Vec3): Vec3 => [
+  clampAxis(x, COM_OFFSET_LIMITS.x),
+  clampAxis(y, COM_OFFSET_LIMITS.y),
+  clampAxis(z, COM_OFFSET_LIMITS.z),
+];
+
 export const CUSTOM_LIMITS = {
   axles: [1, 5],
   wheelbase: [1, 10],
@@ -22,7 +34,7 @@ export const CUSTOM_LIMITS = {
   wheelspin: [2.5, 15],
   weight: [300, 30000],
   handbrakeTorque: [0, 20000],
-  comOffset: { x: [-0.5, 0.5], y: [-0.6, 0.6], z: [-2, 2] },
+  comOffset: COM_OFFSET_LIMITS,
 } as const;
 
 /** Suspension types that can carry a steering knuckle (long-arm and beam types are non-steering only) */

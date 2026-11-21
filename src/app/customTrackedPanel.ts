@@ -1,5 +1,6 @@
 import { CUSTOM_TRACKED_LIMITS, DEFAULT_CUSTOM_TRACKED, type CustomTrackEndConfig, type CustomTrackedConfig } from '../shared/customTracked';
 import { numberInput, type NumberInput } from './numberField';
+import { comFields } from './comFields';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]): HTMLElementTagNameMap[K] {
   const e = Object.assign(document.createElement(tag), props);
@@ -11,7 +12,7 @@ const field = (label: string, input: HTMLElement) => el('label', {}, label, inpu
 
 /**
  * Fields of a custom tracked vehicle: road axles (count, wheelbase, wheel radius), track and chain, idler and sprocket
- * (distance from the outer road axle, height, size), weight, drive and turning. Edits `config` in place.
+ * (distance from the outer road axle, height, size), weight, center of mass, drive and turning. Edits `config` in place.
  */
 export class CustomTrackedSection {
   readonly element = el('div', { className: 'custom-tracked' });
@@ -37,6 +38,8 @@ export class CustomTrackedSection {
     this.inputs.push({ set: () => (box.checked = this.config.colliderBox) });
 
     const c = () => this.config;
+    const com = comFields(() => c().comOffset);
+    this.inputs.push({ set: com.sync });
     this.element.append(
       el('fieldset', {}, el('legend', { textContent: 'Road wheels' }),
         field('Road axles', count),
@@ -52,6 +55,7 @@ export class CustomTrackedSection {
       this.endFieldset('Sprocket (rear)', () => c().sprocket),
       field('Collider box (low friction)', box),
       field('Weight (kg)', num(() => c().weight, (v) => (c().weight = v), L.weight, 100)),
+      ...com.fields,
       field('Torque (N·m)', num(() => c().torque, (v) => (c().torque = v), L.torque, 500)),
       field('Power (kW)', num(() => c().power, (v) => (c().power = v), L.power, 10)),
       field('Turn speed (m/s)', num(() => c().turnSpeed, (v) => (c().turnSpeed = v), L.turnSpeed, 0.1)),

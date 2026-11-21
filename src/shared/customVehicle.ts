@@ -1,5 +1,5 @@
 import { torusWheelWidth } from './unitTorus';
-import { CUSTOM_LIMITS, suspensionsFor, type SteerMode, type WheelLayout } from './customRules';
+import { CUSTOM_LIMITS, clampComOffset, suspensionsFor, type SteerMode, type WheelLayout } from './customRules';
 import { FRAME_OUTER_WIDTH, defaultLowerCollider, type AxleSpec, type SuspensionType, type Vec3, type VehicleSpec, type WheelShape, type WheelSpec } from './vehicleSpec';
 
 // the profile's public API stays in this one module
@@ -75,12 +75,6 @@ function wheelCount(a: Pick<AxleSpec, 'track' | 'twin' | 'suspension'>): number 
 /** Total mass of all wheels [kg] */
 const wheelsMass = (axles: AxleSpec[]) => axles.reduce((m, a) => m + wheelCount(a) * a.wheel.mass, 0);
 
-const clampCom = ([x, y, z]: Vec3): Vec3 => [
-  clamp(x, CUSTOM_LIMITS.comOffset.x),
-  clamp(y, CUSTOM_LIMITS.comOffset.y),
-  clamp(z, CUSTOM_LIMITS.comOffset.z),
-];
-
 /** VehicleSpec → config: the panel shows what a preset is made of (only what the panel can express; values are clamped to its limits) */
 export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
   const axles = spec.axles.slice(0, CUSTOM_LIMITS.axles[1]);
@@ -101,7 +95,7 @@ export function customFromSpec(spec: VehicleSpec): CustomVehicleConfig {
     colliderBox: !!spec.chassis.lowerCollider,
     weight: clamp(spec.chassis.mass + wheelsMass(axles), CUSTOM_LIMITS.weight),
     handbrakeTorque: clamp(axles.find((a) => a.handbrake)?.handbrake?.torque ?? DEFAULT_CUSTOM.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque),
-    comOffset: clampCom(spec.chassis.comOffset ?? [0, 0, 0]),
+    comOffset: clampComOffset(spec.chassis.comOffset ?? [0, 0, 0]),
     torque: clamp(spec.drive.maxTorque, CUSTOM_LIMITS.torque),
     power: clamp(spec.drive.maxPower / 1000, CUSTOM_LIMITS.power),
     wheelspin: clamp(spec.drive.maxSlipSpeed ?? DEFAULT_CUSTOM.wheelspin, CUSTOM_LIMITS.wheelspin),
@@ -155,7 +149,7 @@ export function buildCustomSpec(config: CustomVehicleConfig): VehicleSpec {
   const spec: VehicleSpec = {
     name: 'custom',
     label: 'Custom',
-    chassis: { size: [width, CHASSIS_HEIGHT, 2 * half + 2 * BOX_MARGIN], mass, comOffset: clampCom(config.comOffset) },
+    chassis: { size: [width, CHASSIS_HEIGHT, 2 * half + 2 * BOX_MARGIN], mass, comOffset: clampComOffset(config.comOffset) },
     axles,
     steering: { mode: 'ackermann', rate: 2.5, returnRate: 4, highSpeedFactor: 0.35 },
     drive: {

@@ -11,6 +11,7 @@ import {
   type SteerMode,
 } from '../shared/customVehicle';
 import { numberInput } from './numberField';
+import { comFields } from './comFields';
 import { topSpeed } from '../shared/performance';
 import { buildTrackedSpec, type CustomTrackedConfig } from '../shared/customTracked';
 import type { TrackedVehicleSpec } from '../shared/trackedSpec';
@@ -85,9 +86,7 @@ export class CustomPanel {
 
     const weight = numberInput(this.config.weight, CUSTOM_LIMITS.weight, 10, (v) => ((this.config.weight = v), this.refreshTopSpeed()));
     const handbrake = numberInput(this.config.handbrakeTorque, CUSTOM_LIMITS.handbrakeTorque, 100, (v) => (this.config.handbrakeTorque = v));
-    const com = (['x', 'y', 'z'] as const).map((axis, k) =>
-      numberInput(this.config.comOffset[k], CUSTOM_LIMITS.comOffset[axis], 0.05, (v) => (this.config.comOffset[k] = v)),
-    );
+    const com = comFields(() => this.config.comOffset);
 
     const box = el('input', { type: 'checkbox', checked: this.config.colliderBox });
     box.addEventListener('change', () => (this.config.colliderBox = box.checked));
@@ -96,7 +95,7 @@ export class CustomPanel {
       box.checked = this.config.colliderBox;
       weight.setNumber(this.config.weight);
       handbrake.setNumber(this.config.handbrakeTorque);
-      com.forEach((input, k) => input.setNumber(this.config.comOffset[k]));
+      com.sync();
       wheelbase.setNumber(this.config.wheelbase);
       count.value = String(this.config.axles.length);
       torque.setNumber(this.config.torque);
@@ -116,9 +115,7 @@ export class CustomPanel {
       this.axleHost,
       field('Collider box (low friction)', box),
       field('Weight (kg)', weight),
-      field('Center of mass x (m)', com[0]),
-      field('Center of mass y (m)', com[1]),
-      field('Center of mass z (m, − = front)', com[2]),
+      ...com.fields,
       field('Handbrake torque per wheel (N·m)', handbrake),
       field('Torque (N·m)', torque),
       field('Power (kW)', power),
