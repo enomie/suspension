@@ -1,5 +1,5 @@
 import { cornerId, partId } from '../../ids';
-import { AX, add, armLimits, coilover, finishCorner, helper, lerp, link, revolute, springFor, springJoint, v, W, wheelLocal, wheelRate, leverRatio } from './common';
+import { AX, add, type P, armLimits, coilover, finishCorner, helper, lerp, link, revolute, springFor, springJoint, v, W, wheelLocal, wheelRate, leverRatio } from './common';
 import type { AxleBuilder } from './types';
 
 /** default: the pivot sits about two wheel radii ahead of the axle, at least this far [m] (`AxleSpec.armLength` overrides) */
@@ -14,7 +14,8 @@ const SHOCK_HEIGHT_PER_RADIUS = 1.25;
 /**
  * 12 · swingarm (motorcycle rear, single centered wheel)
  *   Chassis ─[Revolute X, ahead of the wheel]→ arm (= carrier); one mono-shock (spring joint) on the center plane
- * Two arm legs run either side of the wheel; the shock sits above the arm in front of the wheel.
+ * Two arm legs run either side of the wheel, or one leg on one side (`AxleSpec.swingArmSide`: single-sided arm; the
+ * physics is the same rigid arm on the same hinge, only the drawing differs). The shock sits above the arm in front of the wheel.
  */
 export const buildSwingArm: AxleBuilder = (ctx, axle, i) => {
   const side = 'C' as const;
@@ -36,12 +37,21 @@ export const buildSwingArm: AxleBuilder = (ctx, axle, i) => {
   const top = add(sp, v(0, SHOCK_HEIGHT_PER_RADIUS * axle.wheel.radius, 0));
   springJoint(ctx, ctx.chassis, top, arm, sp, springFor(rate, leverRatio(AX.X, pivot, sp, wc)));
 
-  const visuals = [
-    link('beam', arm, add(pivot, v(-legX, 0, 0)), arm, add(wc, v(-legX, 0, 0))),
-    link('beam', arm, add(pivot, v(legX, 0, 0)), arm, add(wc, v(legX, 0, 0))),
-    link('rod', arm, add(pivot, v(-legX, 0, 0)), arm, add(pivot, v(legX, 0, 0))),
-    link('rod', arm, add(wc, v(-legX, 0, 0)), arm, add(wc, v(legX, 0, 0))),
-    ...coilover(ctx.chassis, top, arm, sp),
-  ];
+  const at = (p: P, x: number): P => add(p, v(x, 0, 0));
+  // pivot tube across the full width (the bearing), then one leg per side, or one leg on the chosen side only
+  const visuals = [link('rod', arm, at(pivot, -legX), arm, at(pivot, legX))];
+  const single = axle.swingArmSide;
+  if (single) {
+    // single-sided: one leg on that side, an axle stub to the wheel center and a bracket to the shock on the center plane
+    const x = single === 'right' ? legX : -legX;
+    visuals.push(link('beam', arm, at(pivot, x), arm, at(wc, x)), link('rod', arm, at(wc, x), arm, wc), link('rod', arm, at(sp, x), arm, sp));
+  } else {
+    visuals.push(
+      link('beam', arm, at(pivot, -legX), arm, at(wc, -legX)),
+      link('beam', arm, at(pivot, legX), arm, at(wc, legX)),
+      link('rod', arm, at(wc, -legX), arm, at(wc, legX)),
+    );
+  }
+  visuals.push(...coilover(ctx.chassis, top, arm, sp));
   return [finishCorner(ctx, axle, i, side, arm, wl, rate, [arm], visuals)];
 };

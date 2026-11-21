@@ -89,6 +89,7 @@ Mapping typical raycast parameters:
 | `maxSuspensionForce` | omitted (stops via `travel`) |
 | `rollInfluence` | omitted – real kinematics; anti-roll bar planned (VEHICLE_PLAN phase 2) |
 | motor force per wheel | `drive.maxTorque` (total) × `drive.share` (per axle) |
+| air drag | `drive.dragArea` (Cd·A [m²], default 0.8 = a car; with `drive.maxPower` it sets the top speed) |
 
 Note single-track: a plain `VehicleSpec` with two centered wheels builds, but has no balance and falls over. Bikes use `BikeVehicleSpec` and `BikeVehicle` instead (balance included), see [BIKE_VEHICLE.md](BIKE_VEHICLE.md).
 

@@ -87,6 +87,8 @@ const STEER_LOCK = 0.5;
 /** service brakes: torque = share × weight × wheel radius (front brakes harder) */
 const FRONT_BRAKE_SHARE = 0.65;
 const REAR_BRAKE_SHARE = 0.5;
+/** single-sided swingarm, on the right of the wheel */
+const SWING_ARM_SIDE = 'right';
 /** swingarm: about two rear wheel radii from pivot to axle, at least this long [m] (if the wheelbase allows) */
 const MIN_ARM_LENGTH = 0.5;
 /** frame box: gap to the rear tire, and to the front tire besides the fork travel [m] */
@@ -108,6 +110,10 @@ const MIN_COM_HEIGHT = 0.1;
 const STAND_STIFFNESS_PER_TIP = 8;
 const STAND_DAMPING_PER_TIP = 0.8;
 const STAND_SPEED = 5;
+/** wheelie on boost (Shift): drive torque = this × the torque that just lifts the front wheel */
+const WHEELIE_MARGIN = 1.3;
+/** wheelie on boost: wheelspin limit [m/s], so the slip limit does not cut the torque */
+const WHEELIE_SLIP = 8;
 const MAX_LEAN = 0.6;
 
 /** gravity [m/s²], same as the physics world */
@@ -184,6 +190,31 @@ export function bikeBalance(spec: BikeVehicleSpec): BalanceSpec {
   };
 }
 
+/**
+ * Drive torque at the rear wheel that lifts the front wheel, with a margin [N·m]: the rear tire must push the bike
+ * forward with m·g·d / h (d = rear axle to center of mass along the bike, h = center of mass height above the ground).
+ * The tire only transmits about friction × load, so a wheelie needs d / h below the tire friction: a low or far
+ * forward center of mass cannot lift the front, whatever the torque.
+ */
+export function bikeWheelieTorque(spec: BikeVehicleSpec): number {
+  const { ground } = bikeHeights(spec);
+  const d = spec.wheelbase / 2 - spec.comOffset[2];
+  const h = Math.max(MIN_COM_HEIGHT, spec.comOffset[1] - ground);
+  return WHEELIE_MARGIN * spec.mass * G * (d / h) * spec.rear.radius;
+}
+
+/**
+ * The drive while boosting (Shift): at least the wheelie torque (`bikeWheelieTorque`) and a wheelspin limit that lets it
+ * through. There is no wheelie assist: held too long, the bike goes over backwards.
+ */
+export function bikeBoostDrive(spec: BikeVehicleSpec): DriveSpec {
+  return {
+    ...spec.drive,
+    maxTorque: Math.max(spec.drive.maxTorque, bikeWheelieTorque(spec)),
+    maxSlipSpeed: Math.max(spec.drive.maxSlipSpeed ?? 0, WHEELIE_SLIP),
+  };
+}
+
 /** pivot-to-axle length of the swingarm: about two rear radii, never reaching the front tire [m] */
 function armLength(spec: BikeVehicleSpec): number {
   return Math.min(Math.max(MIN_ARM_LENGTH, 2 * spec.rear.radius), spec.wheelbase - spec.front.radius - FRAME_TIRE_GAP);
@@ -216,6 +247,7 @@ export function bikeVehicleSpec(spec: BikeVehicleSpec): VehicleSpec {
     y: rearY,
     suspension: 'swingArm',
     armLength: armLength(spec),
+    swingArmSide: SWING_ARM_SIDE,
     spring: { frequencyHz: REAR_SPRING_HZ, dampingRatio: DAMPING_RATIO, travel: [-rearTravel, rearTravel] },
     wheel: wheel(spec.rear),
     drive: { share: 1 },

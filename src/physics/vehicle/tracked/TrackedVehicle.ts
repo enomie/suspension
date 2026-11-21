@@ -50,7 +50,7 @@ export class TrackedVehicle {
     this.forwardSpeed = _v.x * lv.x + _v.y * lv.y + _v.z * lv.z;
     const { cmd, contactCap } = applyTrackDrive(this.corners, this.spec, input, this.forwardSpeed, this.contact.spanThrust);
     this.contact.apply(cmd, contactCap, dt);
-    applyAirDrag(this.chassis, dt, !!input.boost);
+    applyAirDrag(this.chassis, dt, !!input.boost, this.spec.drive.dragArea);
   }
 
   /** after world.step(): refresh telemetry. */

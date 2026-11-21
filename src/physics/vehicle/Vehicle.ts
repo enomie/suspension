@@ -55,7 +55,7 @@ export class Vehicle {
     this.steering.apply(this.corners);
     this.differentials.update(input.diffLock ?? 0);
     applyDrive(this.corners, this.spec, input, this.forwardSpeed);
-    applyAirDrag(this.chassis, dt, !!input.boost);
+    applyAirDrag(this.chassis, dt, !!input.boost, this.spec.drive.dragArea);
   }
 
   /** after world.step(): refresh telemetry. */
