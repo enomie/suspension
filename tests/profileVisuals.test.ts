@@ -30,11 +30,12 @@ describe('differential markers', () => {
 });
 
 describe('preview box', () => {
-  it('is the lower collider of the spec: on the frame, same width, 0.5 m longer, semi-transparent', () => {
+  it('is the lower collider of the spec: 1 cm above the frame (no z-fighting), centre unchanged, same width, 0.5 m longer, semi-transparent', () => {
     const spec = buildCustomSpec(DEFAULT_CUSTOM);
     const box = createPreviewBox(spec)!;
     expect(box.name).toBe('collider-lower');
-    expect(box.position.y - box.scale.y / 2).toBeCloseTo(frameTopY(spec));
+    expect(box.position.y - box.scale.y / 2).toBeCloseTo(frameTopY(spec) + 0.01);
+    expect(box.position.y).toBeCloseTo(frameTopY(spec) + 0.35 / 2);
     expect(box.scale.x).toBeCloseTo(0.5);
     expect(box.scale.z).toBeCloseTo(frameHalfLength(spec) * 2 + 0.5);
     const m = box.material as { transparent: boolean; opacity: number };

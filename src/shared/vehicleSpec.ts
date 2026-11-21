@@ -218,16 +218,20 @@ export function frameTopY(spec: VehicleSpec): number {
   return frameRailY(spec.chassis.size[1]) + FRAME_RAIL / 2;
 }
 
-const LOWER_COLLIDER_HEIGHT = 0.35;
+/** Vertical slot the block is centred in, on top of the side rails [m] */
+const LOWER_COLLIDER_SLOT = 0.35;
+/** The block is this much lower than its slot (half at the top, half at the bottom), so its faces never coincide with the rail tops (no z-fighting) [m] */
+const LOWER_COLLIDER_CLEARANCE = 0.02;
+const LOWER_COLLIDER_HEIGHT = LOWER_COLLIDER_SLOT - LOWER_COLLIDER_CLEARANCE;
 /** the block is longer than the frame by this much [m] (half at each end) */
 const LOWER_COLLIDER_EXTRA_LENGTH = 0.5;
 const LOWER_COLLIDER_FRICTION = 0.15;
 
-/** Default `collider-lower` block: as wide as the frame, 0.5 m longer, 0.35 m high, resting on the side rails */
+/** Default `collider-lower` block: as wide as the frame, 0.5 m longer, 0.33 m high, centred where a 0.35 m block resting on the side rails would be (1 cm gap above the rails) */
 export function defaultLowerCollider(spec: VehicleSpec): LowerColliderSpec {
   return {
     size: [FRAME_OUTER_WIDTH, LOWER_COLLIDER_HEIGHT, frameHalfLength(spec) * 2 + LOWER_COLLIDER_EXTRA_LENGTH],
-    position: [0, frameTopY(spec) + LOWER_COLLIDER_HEIGHT / 2, 0],
+    position: [0, frameTopY(spec) + LOWER_COLLIDER_SLOT / 2, 0],
     friction: LOWER_COLLIDER_FRICTION,
   };
 }
