@@ -12,7 +12,7 @@ This becomes a **kit**: same parts, clean naming, freely combinable into
 
 | Vehicle | Axles | Notes |
 |---|---|---|
-| Motorcycle | 2 (1 wheel each) | telescopic fork with trail, rear swingarm, balance/steer assist |
+| Motorcycle, moped | 2 (1 wheel each) | own module: telescopic fork with trail, rear swingarm, balance/steer assist: [BIKE_VEHICLE.md](BIKE_VEHICLE.md) |
 | Car 2-axle | 2 | Ackermann front, FWD/RWD/AWD |
 | 3-axle (truck) | 3 | steer axle front, tandem rear |
 | 3-axle all-wheel steer | 3 | all axles steer (opposite / crab) |
@@ -86,7 +86,7 @@ Spring rates are converted to the wheel center via leverage (`leverRatio`, MR) �
 | – | `telescopicFork` | Chassis ─Rev about the rake axis (steering)→ yoke ─Prismatic along the same axis→ slider → wheel; `fork: {rake, trail}` | prismatic motor (k·cos²ε) |
 
 Non-steerable types (4, 5, 8, 0) sit rear; front stays `strut` with steering.
-Motorcycle rear = `swingArm` (own builder). Bikes are moving to their own module: [BIKE_VEHICLE.md](BIKE_VEHICLE.md).
+Motorcycle rear = `swingArm` (own builder). Bikes are their own module built from these parts: [BIKE_VEHICLE.md](BIKE_VEHICLE.md).
 
 Additionally (part, not a suspension): `antiRollBar` – stabilizer as force from left/right spring travel difference
 (`F = kRoll·(xL − xR)`), via `addForceAtPoint` per step.
@@ -141,6 +141,7 @@ Coordinates: **forward = −Z**, up = +Y, right = +X (as in Ocean project). Unit
 | `Handbrake` | *in `brake.ts`* | like brake, rear axles only | torque |
 | `Hitch` / `FifthWheel` / `KingPin` | *`parts/coupling.ts`* | joint between 2 vehicles | type, angle limits |
 | `Track` | `tracked/` (see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md)) | road wheels on strut suspension, chain contact, drive model | road axles, idler, sprocket, belt |
+| `Balance` | `bike/balance.ts` (see [BIKE_VEHICLE.md](BIKE_VEHICLE.md)) | steer angle from the lean, virtual stand (roll torque) | stand stiffness/damping, max lean, center of mass lean |
 
 ## 7. Joint list
 
@@ -162,8 +163,8 @@ Generally: `joint.setContactsEnabled(false)` between connected bodies, plus coll
 
 ## 8. Vehicle recipes (target configurations)
 
-- **`motorcycle`**: a0C (`telescopicFork`, steerable, trail ~25°), a1C (`swingArm`, drive, handbrake). Needs `BalanceAssist`
-  (roll angle controller → steer angle, counter-steer) – otherwise it falls over. Optional outriggers for first test.
+- **`motorcycle`**, **`moped`**: implemented as bikes, see [BIKE_VEHICLE.md](BIKE_VEHICLE.md): a0C (`telescopicFork`,
+  steerable, rake 26°), a1C (`swingArm`, drive, handbrake), balance assist (lean controller → steer angle, virtual stand).
 - **`car`**: a0 L/R `strut` steerable (Ackermann), a1 L/R `strut` drive + handbrake. RWD/FWD/AWD via differential config.
 - **`truck6x4`**: a0 steerable, a1+a2 drive (+ optional `bogie`), handbrake a1+a2.
 - **`truck6x6AllWheelSteer`**: all 3 axles steerable, steer factor per axle (a0 = +1, a1 = 0…−0.3, a2 = −0.6) ⇒ opposite;

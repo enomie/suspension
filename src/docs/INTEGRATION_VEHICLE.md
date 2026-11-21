@@ -90,7 +90,7 @@ Mapping typical raycast parameters:
 | `rollInfluence` | omitted – real kinematics; anti-roll bar planned (VEHICLE_PLAN phase 2) |
 | motor force per wheel | `drive.maxTorque` (total) × `drive.share` (per axle) |
 
-Note single-track (motorcycle): builds correctly but falls without balance controller (VEHICLE_PLAN phase 4).
+Note single-track: a plain `VehicleSpec` with two centered wheels builds, but has no balance and falls over. Bikes use `BikeVehicleSpec` and `BikeVehicle` instead (balance included), see [BIKE_VEHICLE.md](BIKE_VEHICLE.md).
 
 ### 4.1 What the editor must supply → where it goes
 | In editor | in `VehicleSpec` | Note |
@@ -184,6 +184,10 @@ Tests: `tests/customVehicle.test.ts`, `tests/differential.test.ts`, `tests/lower
 - Wheels with CCD. Always limit drive torque (`setMotorMaxForce`), else motor is “infinitely strong”.
 - Joint contacts between connected bodies off; wheels do not collide with own chassis.
 - Details: [VEHICLE_KIT.md](VEHICLE_KIT.md) §9.
+
+## Bikes
+Bikes (motorcycle, moped) use the same pipeline with a `BikeVehicleSpec`: wheelbase, two wheels, mass, center of mass,
+drive, rear brake. `createVehicle` builds a `BikeVehicle`; see [BIKE_VEHICLE.md](BIKE_VEHICLE.md).
 
 ## Tracked vehicles
 Tracked vehicles use the same pipeline (`createVehicle`, `describeLayout`, `writeVehicleSnapshot`, `VehicleVisual`) with a

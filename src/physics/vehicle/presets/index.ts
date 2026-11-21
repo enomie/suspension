@@ -1,12 +1,12 @@
 import { VEHICLE_PRESET_LABELS } from '../../../shared/vehiclePresetLabels';
 import type { VehicleSpec } from '../types';
+import type { AnyVehicleSpec } from '../../../shared/anyVehicleSpec';
 import { car, makeCar } from './car';
 import { trophyTruck } from './trophyTruck';
-import { moped, motorcycle } from './motorcycle';
+import { BIKE_PRESETS } from './bike';
 import { TRACKED_PRESETS } from './tracked';
-import type { TrackedVehicleSpec } from '../../../shared/trackedSpec';
 
-/** Preset index → suspension layout (same test chassis). */
+/** Wheeled presets: preset index → suspension layout (same test chassis), then the trophy truck */
 export const PRESETS: VehicleSpec[] = [
   car,
   makeCar('wishbone', VEHICLE_PRESET_LABELS[1], 'doubleWishbone'),
@@ -19,9 +19,7 @@ export const PRESETS: VehicleSpec[] = [
   makeCar('multilink', VEHICLE_PRESET_LABELS[8], 'multiLink'),
   makeCar('bogie', VEHICLE_PRESET_LABELS[9], 'bogie'),
   trophyTruck,
-  motorcycle,
-  moped,
 ];
 
-/** All presets by preset index: the wheeled ones first, then the tracked ones */
-export const ALL_PRESETS: (VehicleSpec | TrackedVehicleSpec)[] = [...PRESETS, ...TRACKED_PRESETS];
+/** All presets by preset index (order = `VEHICLE_PRESET_LABELS`): wheeled, then bikes, then tracked */
+export const ALL_PRESETS: AnyVehicleSpec[] = [...PRESETS, ...BIKE_PRESETS, ...TRACKED_PRESETS];

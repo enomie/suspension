@@ -1,6 +1,5 @@
 import type { DriverInput } from '../shared/driverInput';
-import type { VehicleSpec } from '../shared/vehicleSpec';
-import type { TrackedVehicleSpec } from '../shared/trackedSpec';
+import type { AnyVehicleSpec } from '../shared/anyVehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import type { FromWorker, ToWorker } from '../shared/protocol';
 import { blendSnapshots, wallClock } from '../shared/snapshot';
@@ -120,7 +119,7 @@ export class PhysicsClient {
   }
 
   /** `custom` = freely assembled vehicle (preset index -1) */
-  spawn(preset: number, custom?: VehicleSpec | TrackedVehicleSpec): void {
+  spawn(preset: number, custom?: AnyVehicleSpec): void {
     if (this.worker) return this.send({ type: 'spawn', preset, spec: custom });
     const s = this.local!;
     s.spawn(preset, custom);

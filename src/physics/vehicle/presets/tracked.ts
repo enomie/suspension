@@ -27,5 +27,5 @@ export const tank: TrackedVehicleSpec = {
   drive: { maxTorque: 44000, maxPower: 400_000, reverseSpeed: 5 },
 };
 
-/** Tracked presets: preset index = `PRESETS.length` + index here */
+/** Tracked presets: preset index = `PRESETS.length + BIKE_PRESETS.length` + index here */
 export const TRACKED_PRESETS: TrackedVehicleSpec[] = [tank];

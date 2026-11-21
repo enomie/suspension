@@ -2,7 +2,7 @@ import { cornerId, partId } from '../../ids';
 import { AX, add, armLimits, coilover, finishCorner, helper, lerp, link, revolute, springFor, springJoint, v, W, wheelLocal, wheelRate, leverRatio } from './common';
 import type { AxleBuilder } from './types';
 
-/** pivot sits this far ahead of the axle: about two wheel radii, at least this long [m] */
+/** default: the pivot sits about two wheel radii ahead of the axle, at least this far [m] (`AxleSpec.armLength` overrides) */
 const MIN_ARM_LENGTH = 0.5;
 /** gap between tire side and swingarm leg [m] */
 const LEG_CLEARANCE = 0.05;
@@ -23,7 +23,7 @@ export const buildSwingArm: AxleBuilder = (ctx, axle, i) => {
   const wc = W(ctx, wl);
   const rate = wheelRate(ctx, axle, i, 1);
   const legX = axle.wheel.width / 2 + LEG_CLEARANCE;
-  const armLength = Math.max(MIN_ARM_LENGTH, axle.wheel.radius * 2);
+  const armLength = axle.armLength ?? Math.max(MIN_ARM_LENGTH, axle.wheel.radius * 2);
 
   const pivot = add(wc, v(0, 0.04, -armLength));
   const arm = helper(ctx, axle, wc, partId(id, 'arm'));

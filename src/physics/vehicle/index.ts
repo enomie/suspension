@@ -6,7 +6,8 @@
  *   // per physics step (120 Hz):
  *   v.applyInput(input, 1 / 120); world.step(); v.updateTelemetry();
  *
- * Tracked vehicles: `TrackedVehicle` (or `createVehicle`, which picks wheeled or tracked from the spec), see src/docs/TRACKED_VEHICLE.md
+ * Tracked vehicles: `TrackedVehicle`, see src/docs/TRACKED_VEHICLE.md. Bikes: `BikeVehicle`, see src/docs/BIKE_VEHICLE.md.
+ * `createVehicle` picks wheeled, tracked or bike from the spec.
  */
 export { Vehicle } from './Vehicle';
 export { buildVehicle, type BuiltVehicle } from './buildVehicle';
@@ -19,6 +20,12 @@ export { applyTrackDrive } from './tracked/applyTrackDrive';
 export { createVehicle } from './createVehicle';
 export type { SimVehicle } from './simVehicle';
 export { TRACKED_PRESETS, tank } from './presets/tracked';
+export { BikeVehicle } from './bike/BikeVehicle';
+export { buildBikeVehicle, type BuiltBike } from './bike/buildBike';
+export { Balance } from './bike/balance';
+export { BIKE_PRESETS, motorcycle, moped } from './presets/bike';
+export { isBikeSpec, validateBikeSpec, bikeVehicleSpec, bikeBalance, bikeFrameBox, bikeComLimits, clampBikeCom, minBikeWheelbase, BIKE_LIMITS, type BikeVehicleSpec, type BikeWheelSpec, type BalanceSpec } from '../../shared/bikeSpec';
+export type { AnyVehicleSpec } from '../../shared/anyVehicleSpec';
 export { isTrackedSpec, validateTrackedSpec, designChainWheels, trackedRenderSpec, TRACKED_LIMITS, type TrackedVehicleSpec, type TrackEndWheelSpec } from '../../shared/trackedSpec';
 export { trackCommand, DEFAULT_TURN_SPEED, type TrackCommand, type TrackDriveParams } from '../../shared/trackDrive';
 export { buildChainLoop, linkLayout, type ChainLoop, type ChainCircle, type ChainPose } from '../../shared/chainLoop';

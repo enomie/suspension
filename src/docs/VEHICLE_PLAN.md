@@ -24,11 +24,11 @@ Concept, naming, parts: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code structure: [ARCHI
 | — infrastructure | physics worker, infinite LOD terrain (32 km), floating origin, frame collider | ✓ |
 | 2 polish | `antiRollBar`, test track (ramp, waves, step), Rapier `debugRender` | open |
 | 3 multi-axle | presets `truck6x4`, `truck6x6aws` (all-wheel / crab steering), `truck8x4` | open (solid axle + bogie pivot exist) |
-| 4 motorcycle + moped | telescopic fork with rake/trail, swingarm, `parts/balance.ts` (counter-steer feedback while moving, virtual stand when slow), presets `motorcycle` + `moped` (picker entries 12/13, no ladder frame drawn), bike tire = apokalypto torus, visual and physics 1:1 (`WheelSpec.shape: 'torus'`, `shared/unitTorus.ts`: unit torus mesh, uniform scale Ø → width 0.6·R, collider = `roundConvexHull` of the torus vertices with apokalypto's border 11 % of tube radius, 3.5–26 mm) with rim ring | ✓ (`tests/fork.test.ts`, `tests/balance.test.ts`) |
+| 4 motorcycle + moped | telescopic fork with rake/trail, swingarm, balance assist (counter-steer feedback while moving, virtual stand when slow), presets `motorcycle` + `moped` (picker entries 12/13), bike tire = apokalypto torus, visual and physics 1:1 (`WheelSpec.shape: 'torus'`, `shared/unitTorus.ts`: unit torus mesh, uniform scale Ø → width 0.6·R, collider = `roundConvexHull` of the torus vertices with apokalypto's border 11 % of tube radius, 3.5–26 mm) with rim ring; moved into its own module in phase 8 | ✓ (`tests/fork.test.ts`, `tests/balance.test.ts`) |
 | 5 trailers | `coupling.ts` (hitch / fifthWheel / kingPin), drawbar trailer, semi-truck, key `T`; simple engine curve | open |
 | 6 optional | gearbox, limited-slip differential (open and spooled axles, a global lock level cycled with `L`, and a slipping clutch exist: `parts/differential.ts`) | open |
 | 7 tracks | tracked vehicle as its own module: sliding strut road wheels with track-wide collider, fixed idler and sprocket, left/right track drive (skid steering), chain loop and links, custom panel; see [TRACKED_VEHICLE.md](TRACKED_VEHICLE.md) | ✓ (`tests/tracked*.test.ts`) |
-| 8 bike module | motorcycle and moped as their own module like tracked: `type: 'bike'`, fixed fork + swingarm + torus tires, own panel (wheelbase, radius and width per wheel, shared chassis/drive fields, rear brake torque), frame collider between the wheels, CoM limited and fed into balance, all other values derived; balance leaves the wheeled `Vehicle`; see [BIKE_VEHICLE.md](BIKE_VEHICLE.md) | planned |
+| 8 bike module | motorcycle and moped as their own module like tracked: `type: 'bike'`, fixed fork + swingarm + torus tires, own panel (wheelbase, radius and width per wheel, shared chassis/drive fields, rear brake torque), frame collider between the wheels, center of mass limited and fed into balance (tipping torque m·g·h, lean of the center of mass line), all other values derived; balance left the wheeled `Vehicle`; see [BIKE_VEHICLE.md](BIKE_VEHICLE.md) | ✓ (`tests/bike.test.ts`, `tests/customBike.test.ts`) |
 | — distant physics | coarser heightfield rings for distant objects (own collision group), from `sampleGrid` | prepared |
 
 ## Starting values car (preset `car`)
@@ -45,5 +45,5 @@ Concept, naming, parts: [VEHICLE_KIT.md](VEHICLE_KIT.md). Code structure: [ARCHI
 |---|---|
 | joint chain soft/jittery | raise helper body masses, iterations only for chain, multibody |
 | cylinder wheel snags on terrain edges | rounded edge radius (5 cm) |
-| motorcycle balance | outrigger flag for debugging |
+| motorcycle balance | tested at the limits (`tests/bike.test.ts`); absurd engines (350 N·m on a 0.1 m wheel) flip a light bike over backwards, as in reality |
 | many bodies (semi ~40) | non-critical: physics in worker, ~0.25 ms/step today |

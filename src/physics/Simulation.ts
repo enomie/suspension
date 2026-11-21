@@ -11,8 +11,7 @@ import { OriginShifter } from '../shared/originShifter';
 import { PHYSICS_DT, PHYSICS_SUBSTEPS } from '../shared/stepClock';
 import { writeVehicleSnapshot } from './vehicle/snapshot';
 import { neutralInput, type DriverInput } from '../shared/driverInput';
-import type { VehicleSpec } from '../shared/vehicleSpec';
-import type { TrackedVehicleSpec } from '../shared/trackedSpec';
+import type { AnyVehicleSpec } from '../shared/anyVehicleSpec';
 import type { VehicleLayout } from '../shared/vehicleLayout';
 import { addLogColliders } from './testLogs';
 import { buildLogField } from '../shared/testLogs';
@@ -65,7 +64,7 @@ export class Simulation {
   }
 
   /** New vehicle (preset) at current position; new generation */
-  spawn(preset = this.preset, custom?: VehicleSpec | TrackedVehicleSpec): void {
+  spawn(preset = this.preset, custom?: AnyVehicleSpec): void {
     if (!custom && (preset < 0 || preset >= ALL_PRESETS.length)) return;
     const t = this.vehicle.chassis.translation();
     this.vehicle.dispose();

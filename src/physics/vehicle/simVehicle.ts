@@ -3,7 +3,7 @@ import type { DriverInput } from '../../shared/driverInput';
 import type { Corner } from './types';
 import type { BuiltVehicle } from './buildVehicle';
 
-/** What the simulation needs from a vehicle, wheeled or tracked */
+/** What the simulation needs from a vehicle: wheeled, tracked or bike */
 export interface SimVehicle {
   readonly built: BuiltVehicle;
   readonly chassis: RAPIER.RigidBody;
